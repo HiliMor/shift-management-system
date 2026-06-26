@@ -1,0 +1,28 @@
+# Operating system files
+.DS_Store
+Thumbs.db
+
+# IDE files
+.idea/
+.vscode/
+*.iml
+
+# Java and Maven build output
+target/
+*.class
+
+# Runtime logs
+*.log
+
+# Environment files
+.env
+.env.*
+
+# Local database volumes or generated runtime state
+postgres_data/
+
+# Local reference artifacts
+*.pdf
+*.docx
+*.pptx
+*.jpeg

@@ -1,0 +1,15 @@
+services:
+  postgres:
+    image: postgres:16
+    container_name: shift-management-postgres
+    environment:
+      POSTGRES_DB: shift_management
+      POSTGRES_USER: shift_user
+      POSTGRES_PASSWORD: shift_password
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+
+volumes:
+  postgres_data:

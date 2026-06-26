@@ -1,0 +1,19 @@
+spring:
+  application:
+    name: shift-management-backend
+
+  datasource:
+    url: jdbc:postgresql://localhost:5432/shift_management
+    username: shift_user
+    password: shift_password
+
+  jpa:
+    hibernate:
+      ddl-auto: none
+    open-in-view: false
+    properties:
+      hibernate:
+        format_sql: true
+
+server:
+  port: 8080

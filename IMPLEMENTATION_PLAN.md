@@ -1,0 +1,519 @@
+# Implementation Plan - Shift Management System
+
+Last updated: 2026-06-26
+
+This document is the working implementation plan for the project.  
+The goal is to build the system in small, understandable steps, while keeping each part easy to explain during the final presentation.
+
+## Working Sources
+
+- `spec-revised.md` - main specification.
+- `spec.md` - older specification, used only for comparison when needed.
+- Course instructions, initial design documents, and screen mockups are local reference materials and should not be committed unless converted to English project documentation.
+
+## Work Principles
+
+Each step should follow the same pattern:
+
+1. Understand the concept.
+2. Implement one small piece.
+3. Verify that it works.
+4. Document what was built and how to test it.
+
+Do not move to the next step until the current step can be explained clearly:
+
+- Which classes or files were added.
+- What each layer is responsible for.
+- How data flows from the UI to the database.
+- Which edge cases are handled and which are still open.
+
+## Repository Language Policy
+
+All files committed to Git should be written in English:
+
+- File and directory names.
+- Code identifiers.
+- Code comments.
+- README files and project documentation.
+- Commit messages.
+
+Local Hebrew reference materials can stay on the computer, but they should not be committed unless they are converted into English project documentation.
+
+## First Version Goal
+
+The first version should not include the whole system.  
+The first working milestone is a small but real backend:
+
+- Login.
+- Users and teams.
+- Schedule creation.
+- Shift creation.
+- Manual employee assignment.
+- Basic assignment validations: team membership, capacity, overlap, and rest period.
+
+After this version works and is understood, the project can grow into constraints, staffing roles, swaps, notifications, templates, and the full React UI.
+
+## Phase 0 - Project Setup
+
+Goal: create a clean foundation for development.
+
+### Understand
+
+- What the backend is responsible for.
+- What the frontend is responsible for.
+- What Spring Boot provides.
+- What React provides.
+- Why PostgreSQL is used.
+- Why Git should be used from the beginning.
+
+### Implement
+
+- [ ] Initialize a Git repository.
+- [x] Create a basic backend `README.md`.
+- [x] Create an empty Spring Boot backend project.
+- [ ] Create an empty React frontend project.
+- [x] Configure local PostgreSQL.
+- [x] Configure `application.yml`.
+- [ ] Verify that the backend starts.
+- [ ] Verify that the frontend starts.
+
+### Verify
+
+- [ ] Backend runs without errors.
+- [ ] Frontend runs without errors.
+- [x] A simple health endpoint exists: `GET /api/health`.
+- [ ] The health endpoint can be opened in the browser or tested with Postman.
+
+### Document
+
+- How to run the backend.
+- How to run the frontend.
+- How to connect to the database.
+
+## Phase 1 - Users, Teams, And Basic Authorization
+
+Goal: build the foundation of the system: users, teams, employee membership, and manager ownership.
+
+### Understand
+
+- The difference between `EMPLOYEE` and `MANAGER`.
+- The difference between an application role and a staffing role.
+- Many-to-many relationships through join tables.
+- What a Spring Data JPA repository does.
+
+### Implement
+
+- [ ] Create `User`.
+- [ ] Create `Team`.
+- [ ] Create `TeamMember`.
+- [ ] Create `TeamManager`.
+- [ ] Create `ApplicationRole`.
+- [ ] Create repositories for these entities.
+- [ ] Add initial seed data for development.
+
+### Verify
+
+- [ ] Users can be saved.
+- [ ] Teams can be saved.
+- [ ] An employee can be assigned to a team.
+- [ ] A manager can be assigned to a team.
+- [ ] Duplicate team membership is blocked.
+
+### Document
+
+- A short relationship diagram.
+- Why both `team_members` and `team_managers` are needed.
+
+## Phase 2 - Login And Security
+
+Goal: allow users to log in and make sure each user can access only authorized data.
+
+### Understand
+
+- What JWT is.
+- What Spring Security does.
+- The difference between authentication and authorization.
+- Why controllers should not contain business logic.
+
+### Implement
+
+- [ ] Store encrypted passwords.
+- [ ] Implement `POST /api/auth/login`.
+- [ ] Return a JWT after successful login.
+- [ ] Protect every endpoint except login and health.
+- [ ] Add basic role checks.
+- [ ] Add login request and response DTOs.
+
+### Verify
+
+- [ ] A valid user receives a token.
+- [ ] An invalid password returns an error.
+- [ ] A request without a token is rejected.
+- [ ] An employee cannot access manager actions.
+- [ ] A manager can access manager actions only for managed teams.
+
+### Document
+
+- The login flow.
+- Where the token is stored on the client.
+- Which endpoints are public and which are protected.
+
+## Phase 3 - Schedules And Shifts
+
+Goal: allow managers to create schedules and define shifts.
+
+### Understand
+
+- What `Schedule` represents.
+- What `Shift` represents.
+- The difference between `DRAFT` and `PUBLISHED`.
+- Why shifts need full `startTime` and `endTime` values.
+
+### Implement
+
+- [ ] Create `Schedule`.
+- [ ] Create `Shift`.
+- [ ] Create `ScheduleStatus`.
+- [ ] Allow managers to create draft schedules.
+- [ ] Allow managers to create shifts.
+- [ ] Allow managers to edit shifts.
+- [ ] Allow managers to delete shifts.
+- [ ] Validate that `endTime` is after `startTime`.
+
+### Verify
+
+- [ ] A manager can create a schedule for a managed team.
+- [ ] A manager cannot create a schedule for an unmanaged team.
+- [ ] A shift cannot end before it starts.
+- [ ] An employee cannot edit shifts.
+
+### Document
+
+- The `schedules` and `shifts` tables.
+- The endpoints added in this phase.
+
+## Phase 4 - Manual Assignment
+
+Goal: allow managers to assign employees to shifts with the first business rules.
+
+This is a central phase. Work slowly and keep it easy to explain.
+
+### Understand
+
+- What `Assignment` represents.
+- What shift capacity means.
+- The time-overlap formula.
+- How minimum rest between shifts is calculated.
+- Why assignment rules belong in a service, not in a controller.
+
+### Implement
+
+- [ ] Create `Assignment`.
+- [ ] Add a unique constraint on employee and shift.
+- [ ] Create `AssignmentService`.
+- [ ] Implement `POST /api/assignments`.
+- [ ] Validate team membership.
+- [ ] Validate shift capacity.
+- [ ] Validate overlapping assignments.
+- [ ] Validate minimum rest.
+- [ ] Return a unified error response when validation fails.
+
+### Verify
+
+- [ ] A valid assignment is saved.
+- [ ] A non-team employee cannot be assigned.
+- [ ] An employee cannot be assigned twice to the same shift.
+- [ ] An employee cannot be assigned to overlapping shifts.
+- [ ] An employee cannot be assigned without enough rest.
+- [ ] The error message is clear.
+
+### Document
+
+- The assignment validation order.
+- Examples of successful and failed assignments.
+- Where the business logic lives.
+
+## Phase 5 - Availability Constraints
+
+Goal: allow employees to declare unavailable time ranges and prevent conflicting assignments.
+
+### Understand
+
+- An availability constraint in this project means unavailability.
+- Constraints apply across all teams.
+- The backend is the final authority even if the frontend also validates input.
+
+### Implement
+
+- [ ] Create `AvailabilityConstraint`.
+- [ ] Allow an employee to create a constraint.
+- [ ] Allow an employee to view personal constraints.
+- [ ] Allow an employee to delete personal constraints.
+- [ ] Block a constraint that overlaps an existing assignment.
+- [ ] Add constraint validation to assignment creation.
+
+### Verify
+
+- [ ] An employee can create a full-day constraint.
+- [ ] An employee can create a time-range constraint.
+- [ ] An employee cannot view another employee's constraints.
+- [ ] A manager cannot assign an employee during an unavailable time range.
+- [ ] Invalid time ranges are rejected.
+
+### Document
+
+- How a full-day constraint is stored.
+- How constraint and shift overlap is checked.
+
+## Phase 6 - Staffing Roles
+
+Goal: support professional scheduling roles such as shift supervisor or entrance guard.
+
+### Understand
+
+- A staffing role is not the same as `MANAGER` or `EMPLOYEE`.
+- A staffing role belongs to one team.
+- An employee can have a staffing role in one team but not another.
+
+### Implement
+
+- [ ] Create `StaffingRole`.
+- [ ] Connect team members to staffing roles.
+- [ ] Allow managers to create team staffing roles.
+- [ ] Allow managers to assign staffing roles to employees.
+- [ ] Add an optional required staffing role to shifts.
+- [ ] Add staffing-role validation to assignment creation.
+
+### Verify
+
+- [ ] A manager can create a staffing role for a managed team.
+- [ ] An employee with the required role can be assigned.
+- [ ] An employee without the required role is rejected.
+- [ ] A role from another team does not count.
+
+### Document
+
+- The difference between application roles and staffing roles.
+- Example staffing roles in the system.
+
+## Phase 7 - Schedule Publication
+
+Goal: turn a draft schedule into an official schedule visible to employees.
+
+### Understand
+
+- The schedule lifecycle.
+- Why employees cannot see drafts.
+- Why editing a published schedule requires reopening it.
+
+### Implement
+
+- [ ] Add `publish`.
+- [ ] Add `reopen`.
+- [ ] Add `publicationNumber`.
+- [ ] Block direct editing of published schedules.
+- [ ] Return a report before publication.
+- [ ] Allow publication with unfilled shifts only after explicit confirmation.
+
+### Verify
+
+- [ ] A new schedule starts as `DRAFT`.
+- [ ] After publication, employees can see the schedule.
+- [ ] After publication, managers cannot edit until reopening.
+- [ ] Republishing increments `publicationNumber`.
+
+### Document
+
+- A short state diagram for `Schedule`.
+- Which actions are allowed in each state.
+
+## Phase 8 - Basic Frontend
+
+Goal: build a minimal React interface connected to the backend.
+
+### Understand
+
+- How React calls a REST API.
+- How login state is stored.
+- How employee screens and manager screens are separated.
+
+### Implement
+
+- [ ] Login screen.
+- [ ] Role-based navigation.
+- [ ] Schedule view.
+- [ ] Manager schedule creation screen.
+- [ ] Manager shift creation screen.
+- [ ] Simple manual assignment screen.
+- [ ] Display backend errors clearly.
+
+### Verify
+
+- [ ] Successful login navigates to the correct area.
+- [ ] Employees can view published schedules.
+- [ ] Managers can create shifts.
+- [ ] Assignment errors are displayed clearly.
+
+### Document
+
+- Existing screens.
+- For each screen: who can use it and what it does.
+
+## Phase 9 - Transfer And Swap Requests
+
+Goal: allow employees to transfer a shift or request a shift swap.
+
+### Understand
+
+- The difference between transfer and swap.
+- What a state machine is.
+- Why all assignment rules must be checked again at final approval time.
+
+### Implement
+
+- [ ] Create `SwapRequest`.
+- [ ] Start with transfer only.
+- [ ] Add statuses: `PENDING_EMPLOYEE`, `APPROVED`, `REJECTED`, `CANCELLED`, `INVALIDATED`.
+- [ ] Allow the target employee to approve or reject.
+- [ ] Run assignment validations before final approval.
+- [ ] Move the assignment to the target employee after transfer approval.
+- [ ] Add full swap.
+- [ ] Add manager approval according to team policy.
+
+### Verify
+
+- [ ] An employee can create a transfer request.
+- [ ] The target employee can approve it.
+- [ ] Another employee cannot approve a request not addressed to them.
+- [ ] A request becomes invalidated if assignment is no longer possible.
+- [ ] A swap exchanges two assignments.
+
+### Document
+
+- Request statuses and transitions.
+- Transfer and swap examples.
+
+## Phase 10 - Templates And Automatic Assignment
+
+Goal: generate shifts from templates and offer automatic assignment.
+
+### Understand
+
+- What a shift template is.
+- What a template slot is.
+- How template slots generate shifts over a date range.
+- Why automatic assignment does not need to find a globally optimal solution.
+
+### Implement
+
+- [ ] Create `ShiftTemplate`.
+- [ ] Create `TemplateSlot`.
+- [ ] Allow managers to create templates.
+- [ ] Allow managers to create slots.
+- [ ] Generate shifts from a template.
+- [ ] Implement basic automatic assignment.
+- [ ] Rank employees by fewer assigned hours.
+- [ ] Return a report of unassigned shifts.
+
+### Verify
+
+- [ ] A template creates shifts on the expected dates.
+- [ ] Automatic assignment assigns only eligible employees.
+- [ ] A shift remains unfilled if no employee is eligible.
+- [ ] The report explains what was not assigned.
+
+### Document
+
+- The automatic assignment algorithm.
+- The algorithm limitations.
+
+## Phase 11 - Notifications And JMS
+
+Goal: add internal notifications and satisfy the JMS requirement.
+
+### Understand
+
+- What asynchronous messaging means.
+- The difference between saving a notification and sending an event.
+- What a transactional outbox is.
+- Why JMS does not communicate directly with the browser.
+
+### Implement
+
+- [ ] Create `Notification`.
+- [ ] Create a basic notification screen.
+- [ ] Create direct notifications when a schedule is published.
+- [ ] Create `NotificationOutbox`.
+- [ ] Add a dispatcher that sends outbox events to JMS.
+- [ ] Add a consumer that creates notifications.
+- [ ] Ensure idempotency with `eventId`.
+
+### Verify
+
+- [ ] Publishing a schedule creates a notification.
+- [ ] A user sees only personal notifications.
+- [ ] A notification can be marked as read.
+- [ ] Reprocessing the same event does not create duplicates.
+
+### Document
+
+- Event flow: publish schedule -> outbox -> JMS -> notification.
+- Existing notification types.
+
+## Phase 12 - Testing, Hardening, And Submission
+
+Goal: make the project ready for submission and presentation.
+
+### Understand
+
+- The difference between unit tests and integration tests.
+- Why concurrency tests matter in this project.
+- How to explain the code during the presentation.
+
+### Implement
+
+- [ ] Unit tests for assignment rules.
+- [ ] Unit tests for overlap and rest calculations.
+- [ ] Repository integration tests.
+- [ ] Basic security tests.
+- [ ] Unified error handling with `ControllerAdvice`.
+- [ ] Basic logging.
+- [ ] Seed data for the demo.
+
+### Verify
+
+- [ ] All tests pass.
+- [ ] The project can be run on a clean computer using the installation guide.
+- [ ] A full demo script exists.
+- [ ] All central screens work.
+
+### Document
+
+- Updated design document.
+- User guide.
+- Installation guide.
+- Explanation of central classes and functions.
+
+## Progress Log Template
+
+Use this template at the end of every completed step:
+
+```text
+Date:
+Phase:
+Implemented:
+Main files/classes:
+How it was tested:
+Still open:
+```
+
+## Progress Log
+
+### 2026-06-26
+
+- Created the initial implementation plan.
+- Decided to start with a small MVP: login, teams, schedules, shifts, and manual assignment.
+- `spec-revised.md` will be the main specification source.
+- Created the initial backend in `shift-management-backend`.
+- Added `pom.xml`, main application class, `SecurityConfig`, `HealthController`, `application.yml`, and `compose.yml`.
+- The backend has not been executed yet because Java, Maven, Gradle, and Docker are not currently available in the terminal.
