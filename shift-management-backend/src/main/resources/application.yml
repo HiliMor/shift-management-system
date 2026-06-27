@@ -9,11 +9,15 @@ spring:
 
   jpa:
     hibernate:
-      ddl-auto: none
+      ddl-auto: validate
     open-in-view: false
     properties:
       hibernate:
         format_sql: true
+
+app:
+  seed:
+    enabled: true
 
 server:
   port: 8080

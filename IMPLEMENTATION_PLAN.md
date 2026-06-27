@@ -103,20 +103,20 @@ Goal: build the foundation of the system: users, teams, employee membership, and
 
 ### Implement
 
-- [ ] Create `User`.
-- [ ] Create `Team`.
-- [ ] Create `TeamMember`.
-- [ ] Create `TeamManager`.
-- [ ] Create `ApplicationRole`.
-- [ ] Create repositories for these entities.
-- [ ] Add initial seed data for development.
+- [x] Create `User`.
+- [x] Create `Team`.
+- [x] Create `TeamMember`.
+- [x] Create `TeamManager`.
+- [x] Create `ApplicationRole`.
+- [x] Create repositories for these entities.
+- [x] Add initial seed data for development.
 
 ### Verify
 
-- [ ] Users can be saved.
-- [ ] Teams can be saved.
-- [ ] An employee can be assigned to a team.
-- [ ] A manager can be assigned to a team.
+- [x] Users can be saved.
+- [x] Teams can be saved.
+- [x] An employee can be assigned to a team.
+- [x] A manager can be assigned to a team.
 - [ ] Duplicate team membership is blocked.
 
 ### Document
@@ -517,3 +517,16 @@ Still open:
 - Created the initial backend in `shift-management-backend`.
 - Added `pom.xml`, main application class, `SecurityConfig`, `HealthController`, `application.yml`, and `compose.yml`.
 - The backend has not been executed yet because Java, Maven, Gradle, and Docker are not currently available in the terminal.
+
+### 2026-06-27
+
+- Added Phase 1 domain model: `User`, `Team`, `TeamMember`, and `TeamManager`.
+- Added enums: `ApplicationRole` and `SwapApprovalPolicy`.
+- Added repositories for users, teams, team members, and team managers.
+- Added Flyway migration `V1__create_users_and_teams.sql`.
+- Changed Hibernate from schema creation to schema validation with `ddl-auto: validate`.
+- Added development seed data for `manager1`, `employee1`, `employee2`, and the `Operations` team.
+- Verified `mvn test` succeeds.
+- Verified the Spring Boot app starts on port `8081` when `8080` is busy.
+- Verified `GET /api/health` returns `UP`.
+- Verified seed users exist in PostgreSQL.
