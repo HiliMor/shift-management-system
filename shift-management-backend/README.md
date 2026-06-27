@@ -15,11 +15,13 @@ Implemented:
 - Initial user and team domain model.
 - Spring Data repositories for users, teams, team members, and team managers.
 - Development seed data.
+- JWT-based login.
+- Authenticated current-user endpoint: `GET /api/auth/me`.
 
 Not implemented yet:
 
-- Login and JWT.
 - Schedules, shifts, and assignments.
+- Team-scoped authorization for manager actions.
 
 ## Requirements
 
@@ -66,13 +68,47 @@ Expected response:
 }
 ```
 
+## Authentication Endpoints
+
+Login:
+
+```bash
+curl -X POST http://localhost:8080/api/auth/login \
+  -H 'Content-Type: application/json' \
+  -d '{"username":"manager1","password":"password"}'
+```
+
+The response contains a bearer token:
+
+```json
+{
+  "tokenType": "Bearer",
+  "accessToken": "...",
+  "expiresInSeconds": 3600,
+  "user": {
+    "id": 1,
+    "username": "manager1",
+    "fullName": "Demo Manager",
+    "applicationRole": "MANAGER"
+  }
+}
+```
+
+Check the current authenticated user:
+
+```bash
+curl http://localhost:8080/api/auth/me \
+  -H "Authorization: Bearer <TOKEN>"
+```
+
 ## Important Notes
 
 - `/api/health` is public.
-- All other endpoints are currently protected by Spring Security.
-- Real login is not implemented yet. Spring Security may print a generated development password on startup.
+- `/api/auth/login` is public.
+- All other endpoints are protected by JWT authentication.
 - Database tables are created by Flyway migrations under `src/main/resources/db/migration`.
 - Hibernate is configured with `ddl-auto: validate`, so it validates that the Java entities match the database schema instead of creating tables automatically.
+- The JWT secret in `application.yml` is for local development only and must be replaced before production use.
 
 ## Development Seed Data
 
@@ -86,7 +122,7 @@ Seed users:
 | employee1 | EMPLOYEE | password |
 | employee2 | EMPLOYEE | password |
 
-These users are not connected to real login yet. They are stored so the database model can be tested and reused in the next phase.
+These users can be used with `POST /api/auth/login`.
 
 Seed team:
 

@@ -137,18 +137,18 @@ Goal: allow users to log in and make sure each user can access only authorized d
 
 ### Implement
 
-- [ ] Store encrypted passwords.
-- [ ] Implement `POST /api/auth/login`.
-- [ ] Return a JWT after successful login.
-- [ ] Protect every endpoint except login and health.
+- [x] Store encrypted passwords.
+- [x] Implement `POST /api/auth/login`.
+- [x] Return a JWT after successful login.
+- [x] Protect every endpoint except login and health.
 - [ ] Add basic role checks.
-- [ ] Add login request and response DTOs.
+- [x] Add login request and response DTOs.
 
 ### Verify
 
-- [ ] A valid user receives a token.
-- [ ] An invalid password returns an error.
-- [ ] A request without a token is rejected.
+- [x] A valid user receives a token.
+- [x] An invalid password returns an error.
+- [x] A request without a token is rejected.
 - [ ] An employee cannot access manager actions.
 - [ ] A manager can access manager actions only for managed teams.
 
@@ -530,3 +530,21 @@ Still open:
 - Verified the Spring Boot app starts on port `8081` when `8080` is busy.
 - Verified `GET /api/health` returns `UP`.
 - Verified seed users exist in PostgreSQL.
+
+### 2026-06-27 - Phase 2 Start
+
+- Added JWT dependencies with JJWT.
+- Added JWT configuration under `app.jwt`.
+- Added `JwtService` for token creation and parsing.
+- Added `JwtAuthenticationFilter` to read bearer tokens.
+- Replaced temporary HTTP Basic security with stateless JWT security.
+- Added `AuthController`, `AuthService`, `LoginRequest`, and `LoginResponse`.
+- Added `POST /api/auth/login`.
+- Added `GET /api/auth/me` for checking the current authenticated user.
+- Verified `mvn test` succeeds.
+- Verified `GET /api/health` is public.
+- Verified `GET /api/auth/me` returns `401` without a token.
+- Verified invalid login returns `401`.
+- Verified `manager1/password` can log in and access `/api/auth/me`.
+- Verified `employee1/password` can log in and returns role `EMPLOYEE`.
+- Role-specific manager endpoint checks are still open because manager endpoints do not exist yet.
