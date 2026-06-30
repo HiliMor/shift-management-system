@@ -192,6 +192,63 @@ Goal: allow managers to create schedules and define shifts.
 - The `schedules` and `shifts` tables.
 - The endpoints added in this phase.
 
+### Phase 3 Design Decisions
+
+`Schedule` represents a team's plan for an inclusive date range.
+
+Initial fields:
+
+- `id`
+- `team`
+- `startDate`
+- `endDate`
+- `status`
+- `publicationNumber`
+- `publishedAt`
+- `version`
+
+`ScheduleStatus` values:
+
+- `DRAFT`
+- `PUBLISHED`
+
+Rules for this phase:
+
+- New schedules start as `DRAFT`.
+- `endDate` must not be before `startDate`.
+- Managers may create schedules only for teams they manage.
+- Employees should not see draft schedules.
+- Publish/reopen behavior is planned for Phase 7, but the fields are included now because they are part of the core schedule lifecycle.
+
+`Shift` represents one actual shift inside a schedule.
+
+Initial fields:
+
+- `id`
+- `schedule`
+- `startTime`
+- `endTime`
+- `description`
+- `requiredWorkers`
+- `minRestHours`
+- `version`
+
+Rules for this phase:
+
+- `endTime` must be after `startTime`.
+- `requiredWorkers` must be positive.
+- `minRestHours` must be non-negative.
+- Managers may create, update, and delete shifts only inside draft schedules for teams they manage.
+- Shift times will be stored as `Instant` values in the backend. The team's `timeZone` will later be used by the frontend for display.
+
+Deferred from Phase 3:
+
+- `templateSlot` reference, because templates are Phase 10.
+- `parentShift` reference and split-shift workflow, because split support can be added after basic shift CRUD.
+- `requiredStaffingRole`, because staffing roles are Phase 6.
+- Assignment counts and capacity indicators, because assignments are Phase 4.
+- Publish/reopen endpoints, because the full schedule lifecycle is Phase 7.
+
 ## Phase 4 - Manual Assignment
 
 Goal: allow managers to assign employees to shifts with the first business rules.
@@ -548,3 +605,11 @@ Still open:
 - Verified `manager1/password` can log in and access `/api/auth/me`.
 - Verified `employee1/password` can log in and returns role `EMPLOYEE`.
 - Role-specific manager endpoint checks are still open because manager endpoints do not exist yet.
+
+### 2026-06-30 - Phase 3 Planning
+
+- Reviewed Phase 2 status and confirmed that role-specific checks remain open until manager endpoints exist.
+- Reviewed schedule lifecycle, `schedules` table, `shifts` table, and schedule/shift API requirements from `spec-revised.md`.
+- Added Phase 3 design decisions for `Schedule`, `Shift`, and `ScheduleStatus`.
+- Decided to keep Phase 3 focused on basic schedules and shift CRUD.
+- Deferred template slots, split shifts, staffing-role requirements, assignment capacity indicators, and publish/reopen workflows to later phases.
