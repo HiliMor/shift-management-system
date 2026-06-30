@@ -17,10 +17,12 @@ Implemented:
 - Development seed data.
 - JWT-based login.
 - Authenticated current-user endpoint: `GET /api/auth/me`.
+- Initial schedule domain model.
 
 Not implemented yet:
 
-- Schedules, shifts, and assignments.
+- Schedule API endpoints.
+- Shifts and assignments.
 - Team-scoped authorization for manager actions.
 
 ## Requirements

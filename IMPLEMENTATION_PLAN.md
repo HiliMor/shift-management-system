@@ -1,6 +1,6 @@
 # Implementation Plan - Shift Management System
 
-Last updated: 2026-06-26
+Last updated: 2026-06-30
 
 This document is the working implementation plan for the project.  
 The goal is to build the system in small, understandable steps, while keeping each part easy to explain during the final presentation.
@@ -74,7 +74,7 @@ Goal: create a clean foundation for development.
 - [ ] Create an empty React frontend project.
 - [x] Configure local PostgreSQL.
 - [x] Configure `application.yml`.
-- [ ] Verify that the backend starts.
+- [x] Verify that the backend starts.
 - [ ] Verify that the frontend starts.
 
 ### Verify
@@ -82,7 +82,7 @@ Goal: create a clean foundation for development.
 - [ ] Backend runs without errors.
 - [ ] Frontend runs without errors.
 - [x] A simple health endpoint exists: `GET /api/health`.
-- [ ] The health endpoint can be opened in the browser or tested with Postman.
+- [x] The health endpoint can be opened in the browser or tested with Postman.
 
 ### Document
 
@@ -171,9 +171,9 @@ Goal: allow managers to create schedules and define shifts.
 
 ### Implement
 
-- [ ] Create `Schedule`.
+- [x] Create `Schedule`.
 - [ ] Create `Shift`.
-- [ ] Create `ScheduleStatus`.
+- [x] Create `ScheduleStatus`.
 - [ ] Allow managers to create draft schedules.
 - [ ] Allow managers to create shifts.
 - [ ] Allow managers to edit shifts.
@@ -613,3 +613,16 @@ Still open:
 - Added Phase 3 design decisions for `Schedule`, `Shift`, and `ScheduleStatus`.
 - Decided to keep Phase 3 focused on basic schedules and shift CRUD.
 - Deferred template slots, split shifts, staffing-role requirements, assignment capacity indicators, and publish/reopen workflows to later phases.
+
+### 2026-06-30 - Phase 3 Start
+
+- Added `ScheduleStatus` with `DRAFT` and `PUBLISHED`.
+- Added `Schedule` entity linked to `Team`.
+- Added `ScheduleRepository`.
+- Added Flyway migration `V2__create_schedules.sql`.
+- Added a focused unit test for the default schedule state and date-range validation.
+- Verified `mvn test` succeeds.
+- Verified the Spring Boot app starts on port `8081`.
+- Verified Flyway migrated the database to version 2 and created the `schedules` table.
+- Verified `GET /api/health` returns `UP` after the migration.
+- Kept schedule creation endpoints for the next Phase 3 step.
