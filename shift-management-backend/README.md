@@ -20,11 +20,13 @@ Implemented:
 - Initial schedule domain model.
 - Schedule creation endpoint: `POST /api/schedules`.
 - Initial shift domain model.
+- Shift creation endpoint: `POST /api/schedules/{scheduleId}/shifts`.
 
 Not implemented yet:
 
 - Schedule list, update, delete, publish, and reopen endpoints.
-- Shift API endpoints and assignments.
+- Shift list, update, and delete endpoints.
+- Assignments.
 - Team-scoped authorization for manager actions.
 
 ## Requirements
@@ -132,6 +134,32 @@ Expected response:
 ```
 
 Only managers assigned to the requested team can create schedules for that team.
+
+Create a shift inside a draft schedule:
+
+```bash
+curl -X POST http://localhost:8080/api/schedules/1/shifts \
+  -H 'Content-Type: application/json' \
+  -H "Authorization: Bearer <TOKEN>" \
+  -d '{"startTime":"2026-07-05T06:00:00Z","endTime":"2026-07-05T14:00:00Z","description":"Morning shift","requiredWorkers":2,"minRestHours":8}'
+```
+
+Expected response:
+
+```json
+{
+  "id": 1,
+  "scheduleId": 1,
+  "startTime": "2026-07-05T06:00:00Z",
+  "endTime": "2026-07-05T14:00:00Z",
+  "description": "Morning shift",
+  "requiredWorkers": 2,
+  "minRestHours": 8
+}
+```
+
+Only managers assigned to the schedule's team can create shifts.
+Shifts can be created only while the schedule is still `DRAFT`.
 
 ## Important Notes
 

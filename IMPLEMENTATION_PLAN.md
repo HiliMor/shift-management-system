@@ -175,7 +175,7 @@ Goal: allow managers to create schedules and define shifts.
 - [x] Create `Shift`.
 - [x] Create `ScheduleStatus`.
 - [x] Allow managers to create draft schedules.
-- [ ] Allow managers to create shifts.
+- [x] Allow managers to create shifts.
 - [ ] Allow managers to edit shifts.
 - [ ] Allow managers to delete shifts.
 - [x] Validate that `endTime` is after `startTime`.
@@ -654,3 +654,20 @@ Still open:
 - Verified the Spring Boot app starts on port `8081`.
 - Verified Flyway migrated the database to version 3 and created the `shifts` table.
 - Kept shift creation endpoints for the next Phase 3 step.
+
+### 2026-07-05 - Phase 3 Shift API
+
+- Added `CreateShiftRequest`.
+- Added `ShiftResponse`.
+- Added `ShiftService`.
+- Added `ShiftController`.
+- Added `POST /api/schedules/{scheduleId}/shifts` for creating shifts inside draft schedules.
+- Added team-manager authorization for shift creation.
+- Added validation that shift `endTime` must be after `startTime`.
+- Added validation that shifts can be created only while the schedule is `DRAFT`.
+- Added service tests for successful creation, unmanaged-schedule rejection, published-schedule rejection, and invalid time-range rejection.
+- Verified `mvn test` succeeds.
+- Verified the Spring Boot app starts on port `8081`.
+- Verified `POST /api/schedules/{scheduleId}/shifts` returns `201` for `manager1`.
+- Verified `POST /api/schedules/{scheduleId}/shifts` returns `403` for `employee1`.
+- Verified invalid shift times return `400`.
