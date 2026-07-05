@@ -1,9 +1,12 @@
 package com.hilimor.shiftmanagement.schedule;
 
+import java.util.List;
+
 import jakarta.validation.Valid;
 
 import org.springframework.http.HttpStatus;
 import org.springframework.security.core.Authentication;
+import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
@@ -29,5 +32,10 @@ public class ShiftController {
             @Valid @RequestBody CreateShiftRequest request
     ) {
         return shiftService.createShift(authentication.getName(), scheduleId, request);
+    }
+
+    @GetMapping
+    public List<ShiftResponse> listShifts(Authentication authentication, @PathVariable Long scheduleId) {
+        return shiftService.listShifts(authentication.getName(), scheduleId);
     }
 }

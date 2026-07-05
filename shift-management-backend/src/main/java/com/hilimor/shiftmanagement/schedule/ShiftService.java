@@ -1,5 +1,7 @@
 package com.hilimor.shiftmanagement.schedule;
 
+import java.util.List;
+
 import com.hilimor.shiftmanagement.team.TeamManagerRepository;
 
 import org.springframework.http.HttpStatus;
@@ -30,13 +32,7 @@ public class ShiftService {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Shift end time must be after start time");
         }
 
-        Schedule schedule = scheduleRepository.findById(scheduleId)
-                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Schedule not found"));
-
-        Long teamId = schedule.getTeam().getId();
-        if (!teamManagerRepository.existsByManager_UsernameAndTeam_Id(username, teamId)) {
-            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Only a team manager can create shifts for this schedule");
-        }
+        Schedule schedule = managedSchedule(username, scheduleId);
 
         if (schedule.getStatus() != ScheduleStatus.DRAFT) {
             throw new ResponseStatusException(HttpStatus.CONFLICT, "Shifts can be created only in draft schedules");
@@ -53,5 +49,27 @@ public class ShiftService {
         Shift savedShift = shiftRepository.save(shift);
 
         return ShiftResponse.from(savedShift);
+    }
+
+    @Transactional(readOnly = true)
+    public List<ShiftResponse> listShifts(String username, Long scheduleId) {
+        managedSchedule(username, scheduleId);
+
+        return shiftRepository.findBySchedule_IdOrderByStartTime(scheduleId)
+                .stream()
+                .map(ShiftResponse::from)
+                .toList();
+    }
+
+    private Schedule managedSchedule(String username, Long scheduleId) {
+        Schedule schedule = scheduleRepository.findById(scheduleId)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Schedule not found"));
+
+        Long teamId = schedule.getTeam().getId();
+        if (!teamManagerRepository.existsByManager_UsernameAndTeam_Id(username, teamId)) {
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Only a team manager can access shifts for this schedule");
+        }
+
+        return schedule;
     }
 }

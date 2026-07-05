@@ -9,6 +9,7 @@ import static org.mockito.Mockito.when;
 
 import java.time.Instant;
 import java.time.LocalDate;
+import java.util.List;
 import java.util.Optional;
 
 import org.junit.jupiter.api.Test;
@@ -117,6 +118,43 @@ class ShiftServiceTest {
                         assertThat(exception.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST));
 
         verify(shiftRepository, never()).save(any());
+    }
+
+    @Test
+    void listShiftsReturnsShiftsForManagedSchedule() {
+        Schedule schedule = schedule(ScheduleStatus.DRAFT);
+        Shift shift = new Shift(
+                schedule,
+                Instant.parse("2026-07-06T06:00:00Z"),
+                Instant.parse("2026-07-06T14:00:00Z"),
+                "Morning shift",
+                2,
+                8
+        );
+        ReflectionTestUtils.setField(shift, "id", 20L);
+
+        when(scheduleRepository.findById(10L)).thenReturn(Optional.of(schedule));
+        when(teamManagerRepository.existsByManager_UsernameAndTeam_Id("manager1", 1L)).thenReturn(true);
+        when(shiftRepository.findBySchedule_IdOrderByStartTime(10L)).thenReturn(List.of(shift));
+
+        List<ShiftResponse> responses = shiftService.listShifts("manager1", 10L);
+
+        assertThat(responses).hasSize(1);
+        assertThat(responses.get(0).id()).isEqualTo(20L);
+        assertThat(responses.get(0).scheduleId()).isEqualTo(10L);
+        assertThat(responses.get(0).description()).isEqualTo("Morning shift");
+    }
+
+    @Test
+    void listShiftsRejectsUnmanagedSchedule() {
+        Schedule schedule = schedule(ScheduleStatus.DRAFT);
+
+        when(scheduleRepository.findById(10L)).thenReturn(Optional.of(schedule));
+        when(teamManagerRepository.existsByManager_UsernameAndTeam_Id("manager2", 1L)).thenReturn(false);
+
+        assertThatThrownBy(() -> shiftService.listShifts("manager2", 10L))
+                .isInstanceOfSatisfying(ResponseStatusException.class, exception ->
+                        assertThat(exception.getStatusCode()).isEqualTo(HttpStatus.FORBIDDEN));
     }
 
     private CreateShiftRequest validRequest() {
