@@ -1,0 +1,74 @@
+package com.hilimor.shiftmanagement.schedule;
+
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatIllegalArgumentException;
+
+import java.time.Instant;
+import java.time.LocalDate;
+
+import org.junit.jupiter.api.Test;
+
+import com.hilimor.shiftmanagement.team.SwapApprovalPolicy;
+import com.hilimor.shiftmanagement.team.Team;
+
+class ShiftTest {
+
+    @Test
+    void newShiftStoresScheduleTimesAndRequirements() {
+        Schedule schedule = schedule();
+        Instant startTime = Instant.parse("2026-07-06T06:00:00Z");
+        Instant endTime = Instant.parse("2026-07-06T14:00:00Z");
+
+        Shift shift = new Shift(schedule, startTime, endTime, "Morning shift", 2, 8);
+
+        assertThat(shift.getSchedule()).isSameAs(schedule);
+        assertThat(shift.getStartTime()).isEqualTo(startTime);
+        assertThat(shift.getEndTime()).isEqualTo(endTime);
+        assertThat(shift.getDescription()).isEqualTo("Morning shift");
+        assertThat(shift.getRequiredWorkers()).isEqualTo(2);
+        assertThat(shift.getMinRestHours()).isEqualTo(8);
+    }
+
+    @Test
+    void endTimeMustBeAfterStartTime() {
+        Instant startTime = Instant.parse("2026-07-06T06:00:00Z");
+
+        assertThatIllegalArgumentException()
+                .isThrownBy(() -> new Shift(
+                        schedule(),
+                        startTime,
+                        startTime,
+                        "Invalid shift",
+                        1,
+                        8));
+    }
+
+    @Test
+    void requiredWorkersMustBePositive() {
+        assertThatIllegalArgumentException()
+                .isThrownBy(() -> new Shift(
+                        schedule(),
+                        Instant.parse("2026-07-06T06:00:00Z"),
+                        Instant.parse("2026-07-06T14:00:00Z"),
+                        "Invalid shift",
+                        0,
+                        8));
+    }
+
+    @Test
+    void minimumRestHoursMustNotBeNegative() {
+        assertThatIllegalArgumentException()
+                .isThrownBy(() -> new Shift(
+                        schedule(),
+                        Instant.parse("2026-07-06T06:00:00Z"),
+                        Instant.parse("2026-07-06T14:00:00Z"),
+                        "Invalid shift",
+                        1,
+                        -1));
+    }
+
+    private Schedule schedule() {
+        Team team = new Team("Operations", SwapApprovalPolicy.MANAGER, 8, "Asia/Jerusalem");
+        return new Schedule(team, LocalDate.of(2026, 7, 6), LocalDate.of(2026, 7, 12));
+    }
+}

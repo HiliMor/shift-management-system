@@ -19,11 +19,12 @@ Implemented:
 - Authenticated current-user endpoint: `GET /api/auth/me`.
 - Initial schedule domain model.
 - Schedule creation endpoint: `POST /api/schedules`.
+- Initial shift domain model.
 
 Not implemented yet:
 
 - Schedule list, update, delete, publish, and reopen endpoints.
-- Shifts and assignments.
+- Shift API endpoints and assignments.
 - Team-scoped authorization for manager actions.
 
 ## Requirements
