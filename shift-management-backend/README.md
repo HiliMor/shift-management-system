@@ -22,11 +22,12 @@ Implemented:
 - Initial shift domain model.
 - Shift creation endpoint: `POST /api/schedules/{scheduleId}/shifts`.
 - Shift list endpoint: `GET /api/schedules/{scheduleId}/shifts`.
+- Shift update endpoint: `PUT /api/schedules/{scheduleId}/shifts/{shiftId}`.
 
 Not implemented yet:
 
 - Schedule list, update, delete, publish, and reopen endpoints.
-- Shift list, update, and delete endpoints.
+- Shift delete endpoint.
 - Assignments.
 - Team-scoped authorization for manager actions.
 
@@ -186,6 +187,32 @@ Expected response:
 ```
 
 Only managers assigned to the schedule's team can list shifts for now.
+
+Update a shift inside a draft schedule:
+
+```bash
+curl -X PUT http://localhost:8080/api/schedules/1/shifts/1 \
+  -H 'Content-Type: application/json' \
+  -H "Authorization: Bearer <TOKEN>" \
+  -d '{"startTime":"2026-07-05T14:00:00Z","endTime":"2026-07-05T22:00:00Z","description":"Evening shift","requiredWorkers":3,"minRestHours":10}'
+```
+
+Expected response:
+
+```json
+{
+  "id": 1,
+  "scheduleId": 1,
+  "startTime": "2026-07-05T14:00:00Z",
+  "endTime": "2026-07-05T22:00:00Z",
+  "description": "Evening shift",
+  "requiredWorkers": 3,
+  "minRestHours": 10
+}
+```
+
+Only managers assigned to the schedule's team can update shifts.
+Shifts can be updated only while the schedule is still `DRAFT`.
 
 ## Important Notes
 

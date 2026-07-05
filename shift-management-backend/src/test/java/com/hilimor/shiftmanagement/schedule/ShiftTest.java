@@ -67,6 +67,32 @@ class ShiftTest {
                         -1));
     }
 
+    @Test
+    void updateDetailsChangesEditableFields() {
+        Shift shift = new Shift(
+                schedule(),
+                Instant.parse("2026-07-06T06:00:00Z"),
+                Instant.parse("2026-07-06T14:00:00Z"),
+                "Morning shift",
+                2,
+                8
+        );
+
+        shift.updateDetails(
+                Instant.parse("2026-07-06T14:00:00Z"),
+                Instant.parse("2026-07-06T22:00:00Z"),
+                "Evening shift",
+                3,
+                10
+        );
+
+        assertThat(shift.getStartTime()).isEqualTo(Instant.parse("2026-07-06T14:00:00Z"));
+        assertThat(shift.getEndTime()).isEqualTo(Instant.parse("2026-07-06T22:00:00Z"));
+        assertThat(shift.getDescription()).isEqualTo("Evening shift");
+        assertThat(shift.getRequiredWorkers()).isEqualTo(3);
+        assertThat(shift.getMinRestHours()).isEqualTo(10);
+    }
+
     private Schedule schedule() {
         Team team = new Team("Operations", SwapApprovalPolicy.MANAGER, 8, "Asia/Jerusalem");
         return new Schedule(team, LocalDate.of(2026, 7, 6), LocalDate.of(2026, 7, 12));

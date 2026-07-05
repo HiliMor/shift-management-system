@@ -57,6 +57,18 @@ public class Shift {
             int minRestHours
     ) {
         Objects.requireNonNull(schedule, "schedule must not be null");
+
+        this.schedule = schedule;
+        updateDetails(startTime, endTime, description, requiredWorkers, minRestHours);
+    }
+
+    public void updateDetails(
+            Instant startTime,
+            Instant endTime,
+            String description,
+            int requiredWorkers,
+            int minRestHours
+    ) {
         Objects.requireNonNull(startTime, "startTime must not be null");
         Objects.requireNonNull(endTime, "endTime must not be null");
 
@@ -70,7 +82,6 @@ public class Shift {
             throw new IllegalArgumentException("Shift minimum rest hours must not be negative");
         }
 
-        this.schedule = schedule;
         this.startTime = startTime;
         this.endTime = endTime;
         this.description = description;

@@ -177,7 +177,7 @@ Goal: allow managers to create schedules and define shifts.
 - [x] Allow managers to create draft schedules.
 - [x] Allow managers to list shifts.
 - [x] Allow managers to create shifts.
-- [ ] Allow managers to edit shifts.
+- [x] Allow managers to edit shifts.
 - [ ] Allow managers to delete shifts.
 - [x] Validate that `endTime` is after `startTime`.
 
@@ -186,7 +186,7 @@ Goal: allow managers to create schedules and define shifts.
 - [x] A manager can create a schedule for a managed team.
 - [x] A manager cannot create a schedule for an unmanaged team.
 - [x] A shift cannot end before it starts.
-- [ ] An employee cannot edit shifts.
+- [x] An employee cannot edit shifts.
 
 ### Document
 
@@ -664,11 +664,13 @@ Still open:
 - Added `ShiftController`.
 - Added `POST /api/schedules/{scheduleId}/shifts` for creating shifts inside draft schedules.
 - Added `GET /api/schedules/{scheduleId}/shifts` for listing shifts in a schedule.
+- Added `PUT /api/schedules/{scheduleId}/shifts/{shiftId}` for updating shifts inside draft schedules.
 - Added team-manager authorization for shift creation.
 - Added team-manager authorization for shift listing.
+- Added team-manager authorization for shift updates.
 - Added validation that shift `endTime` must be after `startTime`.
-- Added validation that shifts can be created only while the schedule is `DRAFT`.
-- Added service tests for successful creation, managed schedule listing, unmanaged-schedule rejection, published-schedule rejection, and invalid time-range rejection.
+- Added validation that shifts can be created and updated only while the schedule is `DRAFT`.
+- Added service tests for successful creation, managed schedule listing, successful update, unmanaged-schedule rejection, published-schedule rejection, wrong-schedule rejection, and invalid time-range rejection.
 - Verified `mvn test` succeeds.
 - Verified the Spring Boot app starts on port `8081`.
 - Verified `POST /api/schedules/{scheduleId}/shifts` returns `201` for `manager1`.
@@ -676,3 +678,6 @@ Still open:
 - Verified invalid shift times return `400`.
 - Verified `GET /api/schedules/{scheduleId}/shifts` returns the created shift for `manager1`.
 - Verified `GET /api/schedules/{scheduleId}/shifts` returns `403` for `employee1`.
+- Verified `PUT /api/schedules/{scheduleId}/shifts/{shiftId}` returns updated shift details for `manager1`.
+- Verified `PUT /api/schedules/{scheduleId}/shifts/{shiftId}` returns `403` for `employee1`.
+- Verified invalid shift update times return `400`.

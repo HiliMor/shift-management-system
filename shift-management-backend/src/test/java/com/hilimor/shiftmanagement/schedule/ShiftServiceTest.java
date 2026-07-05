@@ -157,6 +157,76 @@ class ShiftServiceTest {
                         assertThat(exception.getStatusCode()).isEqualTo(HttpStatus.FORBIDDEN));
     }
 
+    @Test
+    void updateShiftChangesShiftForManagedDraftSchedule() {
+        Schedule schedule = schedule(ScheduleStatus.DRAFT);
+        Shift shift = shift(schedule);
+        UpdateShiftRequest request = new UpdateShiftRequest(
+                Instant.parse("2026-07-06T14:00:00Z"),
+                Instant.parse("2026-07-06T22:00:00Z"),
+                "Evening shift",
+                3,
+                10
+        );
+
+        when(scheduleRepository.findById(10L)).thenReturn(Optional.of(schedule));
+        when(teamManagerRepository.existsByManager_UsernameAndTeam_Id("manager1", 1L)).thenReturn(true);
+        when(shiftRepository.findById(20L)).thenReturn(Optional.of(shift));
+
+        ShiftResponse response = shiftService.updateShift("manager1", 10L, 20L, request);
+
+        assertThat(response.id()).isEqualTo(20L);
+        assertThat(response.scheduleId()).isEqualTo(10L);
+        assertThat(response.startTime()).isEqualTo(Instant.parse("2026-07-06T14:00:00Z"));
+        assertThat(response.endTime()).isEqualTo(Instant.parse("2026-07-06T22:00:00Z"));
+        assertThat(response.description()).isEqualTo("Evening shift");
+        assertThat(response.requiredWorkers()).isEqualTo(3);
+        assertThat(response.minRestHours()).isEqualTo(10);
+    }
+
+    @Test
+    void updateShiftRejectsPublishedSchedule() {
+        Schedule schedule = schedule(ScheduleStatus.PUBLISHED);
+
+        when(scheduleRepository.findById(10L)).thenReturn(Optional.of(schedule));
+        when(teamManagerRepository.existsByManager_UsernameAndTeam_Id("manager1", 1L)).thenReturn(true);
+
+        assertThatThrownBy(() -> shiftService.updateShift("manager1", 10L, 20L, validUpdateRequest()))
+                .isInstanceOfSatisfying(ResponseStatusException.class, exception ->
+                        assertThat(exception.getStatusCode()).isEqualTo(HttpStatus.CONFLICT));
+    }
+
+    @Test
+    void updateShiftRejectsShiftFromAnotherSchedule() {
+        Schedule schedule = schedule(ScheduleStatus.DRAFT);
+        Schedule otherSchedule = schedule(ScheduleStatus.DRAFT);
+        ReflectionTestUtils.setField(otherSchedule, "id", 99L);
+        Shift shift = shift(otherSchedule);
+
+        when(scheduleRepository.findById(10L)).thenReturn(Optional.of(schedule));
+        when(teamManagerRepository.existsByManager_UsernameAndTeam_Id("manager1", 1L)).thenReturn(true);
+        when(shiftRepository.findById(20L)).thenReturn(Optional.of(shift));
+
+        assertThatThrownBy(() -> shiftService.updateShift("manager1", 10L, 20L, validUpdateRequest()))
+                .isInstanceOfSatisfying(ResponseStatusException.class, exception ->
+                        assertThat(exception.getStatusCode()).isEqualTo(HttpStatus.NOT_FOUND));
+    }
+
+    @Test
+    void updateShiftRejectsInvalidTimeRange() {
+        UpdateShiftRequest request = new UpdateShiftRequest(
+                Instant.parse("2026-07-06T22:00:00Z"),
+                Instant.parse("2026-07-06T14:00:00Z"),
+                "Invalid shift",
+                3,
+                10
+        );
+
+        assertThatThrownBy(() -> shiftService.updateShift("manager1", 10L, 20L, request))
+                .isInstanceOfSatisfying(ResponseStatusException.class, exception ->
+                        assertThat(exception.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST));
+    }
+
     private CreateShiftRequest validRequest() {
         return new CreateShiftRequest(
                 Instant.parse("2026-07-06T06:00:00Z"),
@@ -165,6 +235,29 @@ class ShiftServiceTest {
                 2,
                 8
         );
+    }
+
+    private UpdateShiftRequest validUpdateRequest() {
+        return new UpdateShiftRequest(
+                Instant.parse("2026-07-06T14:00:00Z"),
+                Instant.parse("2026-07-06T22:00:00Z"),
+                "Evening shift",
+                3,
+                10
+        );
+    }
+
+    private Shift shift(Schedule schedule) {
+        Shift shift = new Shift(
+                schedule,
+                Instant.parse("2026-07-06T06:00:00Z"),
+                Instant.parse("2026-07-06T14:00:00Z"),
+                "Morning shift",
+                2,
+                8
+        );
+        ReflectionTestUtils.setField(shift, "id", 20L);
+        return shift;
     }
 
     private Schedule schedule(ScheduleStatus status) {

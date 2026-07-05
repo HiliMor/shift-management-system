@@ -1,6 +1,7 @@
 package com.hilimor.shiftmanagement.schedule;
 
 import java.util.List;
+import java.util.Objects;
 
 import com.hilimor.shiftmanagement.team.TeamManagerRepository;
 
@@ -59,6 +60,36 @@ public class ShiftService {
                 .stream()
                 .map(ShiftResponse::from)
                 .toList();
+    }
+
+    @Transactional
+    public ShiftResponse updateShift(String username, Long scheduleId, Long shiftId, UpdateShiftRequest request) {
+        if (!request.endTime().isAfter(request.startTime())) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Shift end time must be after start time");
+        }
+
+        Schedule schedule = managedSchedule(username, scheduleId);
+
+        if (schedule.getStatus() != ScheduleStatus.DRAFT) {
+            throw new ResponseStatusException(HttpStatus.CONFLICT, "Shifts can be updated only in draft schedules");
+        }
+
+        Shift shift = shiftRepository.findById(shiftId)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Shift not found"));
+
+        if (!Objects.equals(shift.getSchedule().getId(), scheduleId)) {
+            throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Shift not found");
+        }
+
+        shift.updateDetails(
+                request.startTime(),
+                request.endTime(),
+                request.description(),
+                request.requiredWorkers(),
+                request.minRestHours()
+        );
+
+        return ShiftResponse.from(shift);
     }
 
     private Schedule managedSchedule(String username, Long scheduleId) {
