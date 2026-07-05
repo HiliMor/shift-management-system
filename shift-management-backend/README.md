@@ -18,10 +18,11 @@ Implemented:
 - JWT-based login.
 - Authenticated current-user endpoint: `GET /api/auth/me`.
 - Initial schedule domain model.
+- Schedule creation endpoint: `POST /api/schedules`.
 
 Not implemented yet:
 
-- Schedule API endpoints.
+- Schedule list, update, delete, publish, and reopen endpoints.
 - Shifts and assignments.
 - Team-scoped authorization for manager actions.
 
@@ -102,6 +103,34 @@ Check the current authenticated user:
 curl http://localhost:8080/api/auth/me \
   -H "Authorization: Bearer <TOKEN>"
 ```
+
+## Schedule Endpoints
+
+Create a draft schedule for a managed team:
+
+```bash
+curl -X POST http://localhost:8080/api/schedules \
+  -H 'Content-Type: application/json' \
+  -H "Authorization: Bearer <TOKEN>" \
+  -d '{"teamId":1,"startDate":"2026-07-05","endDate":"2026-07-11"}'
+```
+
+Expected response:
+
+```json
+{
+  "id": 1,
+  "teamId": 1,
+  "teamName": "Operations",
+  "startDate": "2026-07-05",
+  "endDate": "2026-07-11",
+  "status": "DRAFT",
+  "publicationNumber": 0,
+  "publishedAt": null
+}
+```
+
+Only managers assigned to the requested team can create schedules for that team.
 
 ## Important Notes
 

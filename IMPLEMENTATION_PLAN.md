@@ -1,6 +1,6 @@
 # Implementation Plan - Shift Management System
 
-Last updated: 2026-06-30
+Last updated: 2026-07-05
 
 This document is the working implementation plan for the project.  
 The goal is to build the system in small, understandable steps, while keeping each part easy to explain during the final presentation.
@@ -174,7 +174,7 @@ Goal: allow managers to create schedules and define shifts.
 - [x] Create `Schedule`.
 - [ ] Create `Shift`.
 - [x] Create `ScheduleStatus`.
-- [ ] Allow managers to create draft schedules.
+- [x] Allow managers to create draft schedules.
 - [ ] Allow managers to create shifts.
 - [ ] Allow managers to edit shifts.
 - [ ] Allow managers to delete shifts.
@@ -182,8 +182,8 @@ Goal: allow managers to create schedules and define shifts.
 
 ### Verify
 
-- [ ] A manager can create a schedule for a managed team.
-- [ ] A manager cannot create a schedule for an unmanaged team.
+- [x] A manager can create a schedule for a managed team.
+- [x] A manager cannot create a schedule for an unmanaged team.
 - [ ] A shift cannot end before it starts.
 - [ ] An employee cannot edit shifts.
 
@@ -626,3 +626,19 @@ Still open:
 - Verified Flyway migrated the database to version 2 and created the `schedules` table.
 - Verified `GET /api/health` returns `UP` after the migration.
 - Kept schedule creation endpoints for the next Phase 3 step.
+
+### 2026-07-05 - Phase 3 Schedule API
+
+- Added `CreateScheduleRequest`.
+- Added `ScheduleResponse`.
+- Added `ScheduleService`.
+- Added `ScheduleController`.
+- Added `POST /api/schedules` for creating draft schedules.
+- Added team-manager authorization for schedule creation.
+- Allowed Spring Boot's technical `/error` path through security so business errors return the correct status codes.
+- Added service tests for successful creation, unmanaged-team rejection, and invalid date-range rejection.
+- Verified `mvn test` succeeds.
+- Verified the Spring Boot app starts on port `8081`.
+- Verified `POST /api/schedules` returns `201` for `manager1`.
+- Verified `POST /api/schedules` returns `403` for `employee1`.
+- Verified invalid schedule dates return `400`.
