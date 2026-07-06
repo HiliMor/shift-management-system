@@ -1,4 +1,4 @@
-package com.hilimor.shiftmanagement.schedule;
+package com.hilimor.shiftmanagement.shift;
 
 import java.time.Instant;
 
@@ -7,11 +7,11 @@ import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Positive;
 import jakarta.validation.constraints.Size;
 
-public record CreateShiftRequest(
+public record UpdateShiftRequest(
         @NotNull Instant startTime,
         @NotNull Instant endTime,
         @Size(max = 500) String description,
-        @Positive int requiredWorkers,
-        @Min(0) int minRestHours
+        @NotNull @Positive Integer requiredWorkers,
+        @NotNull @Min(0) Integer minRestHours
 ) {
 }

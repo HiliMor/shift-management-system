@@ -1,8 +1,11 @@
-package com.hilimor.shiftmanagement.schedule;
+package com.hilimor.shiftmanagement.shift;
 
 import java.util.List;
 import java.util.Objects;
 
+import com.hilimor.shiftmanagement.schedule.Schedule;
+import com.hilimor.shiftmanagement.schedule.ScheduleRepository;
+import com.hilimor.shiftmanagement.schedule.ScheduleStatus;
 import com.hilimor.shiftmanagement.team.TeamManagerRepository;
 
 import org.springframework.http.HttpStatus;

@@ -1,4 +1,4 @@
-package com.hilimor.shiftmanagement.schedule;
+package com.hilimor.shiftmanagement.shift;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatIllegalArgumentException;
@@ -8,6 +8,7 @@ import java.time.LocalDate;
 
 import org.junit.jupiter.api.Test;
 
+import com.hilimor.shiftmanagement.schedule.Schedule;
 import com.hilimor.shiftmanagement.team.SwapApprovalPolicy;
 import com.hilimor.shiftmanagement.team.Team;
 

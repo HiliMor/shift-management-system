@@ -686,3 +686,12 @@ Still open:
 - Verified `DELETE /api/schedules/{scheduleId}/shifts/{shiftId}` returns `204` for `manager1`.
 - Verified `DELETE /api/schedules/{scheduleId}/shifts/{shiftId}` returns `403` for `employee1`.
 - Verified deleted shifts no longer appear in `GET /api/schedules/{scheduleId}/shifts`.
+
+### 2026-07-06 - Shift Package Organization
+
+- Moved shift-related classes from `schedule` to a dedicated `shift` package.
+- Moved shift-related tests from `schedule` to a dedicated `shift` test package.
+- Kept existing shift endpoints and behavior unchanged.
+- Verified `mvn test` succeeds.
+- Verified the Spring Boot app starts on port `8081`.
+- Verified schedule creation, shift creation, and shift listing still work after the package move.

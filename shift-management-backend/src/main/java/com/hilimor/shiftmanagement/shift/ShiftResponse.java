@@ -1,4 +1,4 @@
-package com.hilimor.shiftmanagement.schedule;
+package com.hilimor.shiftmanagement.shift;
 
 import java.time.Instant;
 

@@ -1,7 +1,9 @@
-package com.hilimor.shiftmanagement.schedule;
+package com.hilimor.shiftmanagement.shift;
 
 import java.time.Instant;
 import java.util.Objects;
+
+import com.hilimor.shiftmanagement.schedule.Schedule;
 
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
