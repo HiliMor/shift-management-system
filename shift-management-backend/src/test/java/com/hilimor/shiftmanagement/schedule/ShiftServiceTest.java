@@ -227,6 +227,66 @@ class ShiftServiceTest {
                         assertThat(exception.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST));
     }
 
+    @Test
+    void deleteShiftRemovesShiftForManagedDraftSchedule() {
+        Schedule schedule = schedule(ScheduleStatus.DRAFT);
+        Shift shift = shift(schedule);
+
+        when(scheduleRepository.findById(10L)).thenReturn(Optional.of(schedule));
+        when(teamManagerRepository.existsByManager_UsernameAndTeam_Id("manager1", 1L)).thenReturn(true);
+        when(shiftRepository.findById(20L)).thenReturn(Optional.of(shift));
+
+        shiftService.deleteShift("manager1", 10L, 20L);
+
+        verify(shiftRepository).delete(shift);
+    }
+
+    @Test
+    void deleteShiftRejectsUnmanagedSchedule() {
+        Schedule schedule = schedule(ScheduleStatus.DRAFT);
+
+        when(scheduleRepository.findById(10L)).thenReturn(Optional.of(schedule));
+        when(teamManagerRepository.existsByManager_UsernameAndTeam_Id("manager2", 1L)).thenReturn(false);
+
+        assertThatThrownBy(() -> shiftService.deleteShift("manager2", 10L, 20L))
+                .isInstanceOfSatisfying(ResponseStatusException.class, exception ->
+                        assertThat(exception.getStatusCode()).isEqualTo(HttpStatus.FORBIDDEN));
+
+        verify(shiftRepository, never()).delete(any());
+    }
+
+    @Test
+    void deleteShiftRejectsPublishedSchedule() {
+        Schedule schedule = schedule(ScheduleStatus.PUBLISHED);
+
+        when(scheduleRepository.findById(10L)).thenReturn(Optional.of(schedule));
+        when(teamManagerRepository.existsByManager_UsernameAndTeam_Id("manager1", 1L)).thenReturn(true);
+
+        assertThatThrownBy(() -> shiftService.deleteShift("manager1", 10L, 20L))
+                .isInstanceOfSatisfying(ResponseStatusException.class, exception ->
+                        assertThat(exception.getStatusCode()).isEqualTo(HttpStatus.CONFLICT));
+
+        verify(shiftRepository, never()).delete(any());
+    }
+
+    @Test
+    void deleteShiftRejectsShiftFromAnotherSchedule() {
+        Schedule schedule = schedule(ScheduleStatus.DRAFT);
+        Schedule otherSchedule = schedule(ScheduleStatus.DRAFT);
+        ReflectionTestUtils.setField(otherSchedule, "id", 99L);
+        Shift shift = shift(otherSchedule);
+
+        when(scheduleRepository.findById(10L)).thenReturn(Optional.of(schedule));
+        when(teamManagerRepository.existsByManager_UsernameAndTeam_Id("manager1", 1L)).thenReturn(true);
+        when(shiftRepository.findById(20L)).thenReturn(Optional.of(shift));
+
+        assertThatThrownBy(() -> shiftService.deleteShift("manager1", 10L, 20L))
+                .isInstanceOfSatisfying(ResponseStatusException.class, exception ->
+                        assertThat(exception.getStatusCode()).isEqualTo(HttpStatus.NOT_FOUND));
+
+        verify(shiftRepository, never()).delete(any());
+    }
+
     private CreateShiftRequest validRequest() {
         return new CreateShiftRequest(
                 Instant.parse("2026-07-06T06:00:00Z"),

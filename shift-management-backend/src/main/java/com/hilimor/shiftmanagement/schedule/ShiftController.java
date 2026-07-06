@@ -6,6 +6,7 @@ import jakarta.validation.Valid;
 
 import org.springframework.http.HttpStatus;
 import org.springframework.security.core.Authentication;
+import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -48,5 +49,15 @@ public class ShiftController {
             @Valid @RequestBody UpdateShiftRequest request
     ) {
         return shiftService.updateShift(authentication.getName(), scheduleId, shiftId, request);
+    }
+
+    @DeleteMapping("/{shiftId}")
+    @ResponseStatus(HttpStatus.NO_CONTENT)
+    public void deleteShift(
+            Authentication authentication,
+            @PathVariable Long scheduleId,
+            @PathVariable Long shiftId
+    ) {
+        shiftService.deleteShift(authentication.getName(), scheduleId, shiftId);
     }
 }

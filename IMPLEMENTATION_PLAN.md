@@ -178,7 +178,7 @@ Goal: allow managers to create schedules and define shifts.
 - [x] Allow managers to list shifts.
 - [x] Allow managers to create shifts.
 - [x] Allow managers to edit shifts.
-- [ ] Allow managers to delete shifts.
+- [x] Allow managers to delete shifts.
 - [x] Validate that `endTime` is after `startTime`.
 
 ### Verify
@@ -665,12 +665,14 @@ Still open:
 - Added `POST /api/schedules/{scheduleId}/shifts` for creating shifts inside draft schedules.
 - Added `GET /api/schedules/{scheduleId}/shifts` for listing shifts in a schedule.
 - Added `PUT /api/schedules/{scheduleId}/shifts/{shiftId}` for updating shifts inside draft schedules.
+- Added `DELETE /api/schedules/{scheduleId}/shifts/{shiftId}` for deleting shifts inside draft schedules.
 - Added team-manager authorization for shift creation.
 - Added team-manager authorization for shift listing.
 - Added team-manager authorization for shift updates.
+- Added team-manager authorization for shift deletion.
 - Added validation that shift `endTime` must be after `startTime`.
-- Added validation that shifts can be created and updated only while the schedule is `DRAFT`.
-- Added service tests for successful creation, managed schedule listing, successful update, unmanaged-schedule rejection, published-schedule rejection, wrong-schedule rejection, and invalid time-range rejection.
+- Added validation that shifts can be created, updated, and deleted only while the schedule is `DRAFT`.
+- Added service tests for successful creation, managed schedule listing, successful update, successful deletion, unmanaged-schedule rejection, published-schedule rejection, wrong-schedule rejection, and invalid time-range rejection.
 - Verified `mvn test` succeeds.
 - Verified the Spring Boot app starts on port `8081`.
 - Verified `POST /api/schedules/{scheduleId}/shifts` returns `201` for `manager1`.
@@ -681,3 +683,6 @@ Still open:
 - Verified `PUT /api/schedules/{scheduleId}/shifts/{shiftId}` returns updated shift details for `manager1`.
 - Verified `PUT /api/schedules/{scheduleId}/shifts/{shiftId}` returns `403` for `employee1`.
 - Verified invalid shift update times return `400`.
+- Verified `DELETE /api/schedules/{scheduleId}/shifts/{shiftId}` returns `204` for `manager1`.
+- Verified `DELETE /api/schedules/{scheduleId}/shifts/{shiftId}` returns `403` for `employee1`.
+- Verified deleted shifts no longer appear in `GET /api/schedules/{scheduleId}/shifts`.

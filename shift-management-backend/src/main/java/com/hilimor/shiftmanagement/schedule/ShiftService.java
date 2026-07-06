@@ -92,6 +92,24 @@ public class ShiftService {
         return ShiftResponse.from(shift);
     }
 
+    @Transactional
+    public void deleteShift(String username, Long scheduleId, Long shiftId) {
+        Schedule schedule = managedSchedule(username, scheduleId);
+
+        if (schedule.getStatus() != ScheduleStatus.DRAFT) {
+            throw new ResponseStatusException(HttpStatus.CONFLICT, "Shifts can be deleted only in draft schedules");
+        }
+
+        Shift shift = shiftRepository.findById(shiftId)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Shift not found"));
+
+        if (!Objects.equals(shift.getSchedule().getId(), scheduleId)) {
+            throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Shift not found");
+        }
+
+        shiftRepository.delete(shift);
+    }
+
     private Schedule managedSchedule(String username, Long scheduleId) {
         Schedule schedule = scheduleRepository.findById(scheduleId)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Schedule not found"));

@@ -23,11 +23,11 @@ Implemented:
 - Shift creation endpoint: `POST /api/schedules/{scheduleId}/shifts`.
 - Shift list endpoint: `GET /api/schedules/{scheduleId}/shifts`.
 - Shift update endpoint: `PUT /api/schedules/{scheduleId}/shifts/{shiftId}`.
+- Shift delete endpoint: `DELETE /api/schedules/{scheduleId}/shifts/{shiftId}`.
 
 Not implemented yet:
 
 - Schedule list, update, delete, publish, and reopen endpoints.
-- Shift delete endpoint.
 - Assignments.
 - Team-scoped authorization for manager actions.
 
@@ -213,6 +213,22 @@ Expected response:
 
 Only managers assigned to the schedule's team can update shifts.
 Shifts can be updated only while the schedule is still `DRAFT`.
+
+Delete a shift from a draft schedule:
+
+```bash
+curl -X DELETE http://localhost:8080/api/schedules/1/shifts/1 \
+  -H "Authorization: Bearer <TOKEN>"
+```
+
+Expected response:
+
+```text
+204 No Content
+```
+
+Only managers assigned to the schedule's team can delete shifts.
+Shifts can be deleted only while the schedule is still `DRAFT`.
 
 ## Important Notes
 
