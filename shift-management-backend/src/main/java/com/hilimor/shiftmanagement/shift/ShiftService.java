@@ -1,5 +1,8 @@
 package com.hilimor.shiftmanagement.shift;
 
+import java.time.Instant;
+import java.time.LocalDate;
+import java.time.ZoneId;
 import java.util.List;
 import java.util.Objects;
 
@@ -41,6 +44,7 @@ public class ShiftService {
         if (schedule.getStatus() != ScheduleStatus.DRAFT) {
             throw new ResponseStatusException(HttpStatus.CONFLICT, "Shifts can be created only in draft schedules");
         }
+        validateShiftWithinSchedule(schedule, request.startTime(), request.endTime());
 
         Shift shift = new Shift(
                 schedule,
@@ -83,6 +87,7 @@ public class ShiftService {
         if (!Objects.equals(shift.getSchedule().getId(), scheduleId)) {
             throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Shift not found");
         }
+        validateShiftWithinSchedule(schedule, request.startTime(), request.endTime());
 
         shift.updateDetails(
                 request.startTime(),
@@ -123,5 +128,15 @@ public class ShiftService {
         }
 
         return schedule;
+    }
+
+    private void validateShiftWithinSchedule(Schedule schedule, Instant startTime, Instant endTime) {
+        ZoneId zoneId = ZoneId.of(schedule.getTeam().getTimeZone());
+        LocalDate shiftStartDate = startTime.atZone(zoneId).toLocalDate();
+        LocalDate shiftEndDate = endTime.minusNanos(1).atZone(zoneId).toLocalDate();
+
+        if (shiftStartDate.isBefore(schedule.getStartDate()) || shiftEndDate.isAfter(schedule.getEndDate())) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Shift must be within the schedule date range");
+        }
     }
 }

@@ -237,6 +237,7 @@ Initial fields:
 Rules for this phase:
 
 - `endTime` must be after `startTime`.
+- Shift dates must be inside the schedule date range, using the team's time zone.
 - `requiredWorkers` must be positive.
 - `minRestHours` must be non-negative.
 - Managers may create, update, and delete shifts only inside draft schedules for teams they manage.
@@ -671,6 +672,7 @@ Still open:
 - Added team-manager authorization for shift updates.
 - Added team-manager authorization for shift deletion.
 - Added validation that shift `endTime` must be after `startTime`.
+- Added validation that shift dates must be inside the schedule date range using the team's time zone.
 - Added validation that shifts can be created, updated, and deleted only while the schedule is `DRAFT`.
 - Added service tests for successful creation, managed schedule listing, successful update, successful deletion, unmanaged-schedule rejection, published-schedule rejection, wrong-schedule rejection, and invalid time-range rejection.
 - Verified `mvn test` succeeds.
@@ -686,6 +688,18 @@ Still open:
 - Verified `DELETE /api/schedules/{scheduleId}/shifts/{shiftId}` returns `204` for `manager1`.
 - Verified `DELETE /api/schedules/{scheduleId}/shifts/{shiftId}` returns `403` for `employee1`.
 - Verified deleted shifts no longer appear in `GET /api/schedules/{scheduleId}/shifts`.
+
+### 2026-07-08 - Phase 3 Shift Date-Range Validation
+
+- Added validation that created and updated shifts must fit inside the schedule date range.
+- The validation uses the team's `timeZone` when converting shift `Instant` values to local dates.
+- Treated `endTime` as the exclusive end of the shift, so a shift may end exactly at midnight after the schedule's last date.
+- Added tests for shifts before the schedule, after the schedule, and the midnight boundary case.
+- Verified `mvn test` succeeds.
+- Verified the Spring Boot app starts on port `8081`.
+- Verified valid shift creation returns `201`.
+- Verified shift creation before the schedule range returns `400`.
+- Verified shift update after the schedule range returns `400`.
 
 ### 2026-07-06 - Shift Package Organization
 

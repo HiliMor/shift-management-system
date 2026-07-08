@@ -124,6 +124,47 @@ class ShiftServiceTest {
     }
 
     @Test
+    void createShiftRejectsShiftBeforeScheduleDateRange() {
+        Schedule schedule = schedule(ScheduleStatus.DRAFT);
+        CreateShiftRequest request = new CreateShiftRequest(
+                Instant.parse("2026-07-05T18:00:00Z"),
+                Instant.parse("2026-07-05T20:30:00Z"),
+                "Before schedule",
+                2,
+                8
+        );
+
+        when(scheduleRepository.findById(10L)).thenReturn(Optional.of(schedule));
+        when(teamManagerRepository.existsByManager_UsernameAndTeam_Id("manager1", 1L)).thenReturn(true);
+
+        assertThatThrownBy(() -> shiftService.createShift("manager1", 10L, request))
+                .isInstanceOfSatisfying(ResponseStatusException.class, exception ->
+                        assertThat(exception.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST));
+
+        verify(shiftRepository, never()).save(any());
+    }
+
+    @Test
+    void createShiftAllowsShiftEndingAtMidnightAfterScheduleEndDate() {
+        Schedule schedule = schedule(ScheduleStatus.DRAFT);
+        CreateShiftRequest request = new CreateShiftRequest(
+                Instant.parse("2026-07-12T12:00:00Z"),
+                Instant.parse("2026-07-12T21:00:00Z"),
+                "Last day shift",
+                2,
+                8
+        );
+
+        when(scheduleRepository.findById(10L)).thenReturn(Optional.of(schedule));
+        when(teamManagerRepository.existsByManager_UsernameAndTeam_Id("manager1", 1L)).thenReturn(true);
+        when(shiftRepository.save(any(Shift.class))).thenAnswer(invocation -> invocation.getArgument(0));
+
+        ShiftResponse response = shiftService.createShift("manager1", 10L, request);
+
+        assertThat(response.description()).isEqualTo("Last day shift");
+    }
+
+    @Test
     void listShiftsReturnsShiftsForManagedSchedule() {
         Schedule schedule = schedule(ScheduleStatus.DRAFT);
         Shift shift = new Shift(
@@ -224,6 +265,27 @@ class ShiftServiceTest {
                 3,
                 10
         );
+
+        assertThatThrownBy(() -> shiftService.updateShift("manager1", 10L, 20L, request))
+                .isInstanceOfSatisfying(ResponseStatusException.class, exception ->
+                        assertThat(exception.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST));
+    }
+
+    @Test
+    void updateShiftRejectsShiftAfterScheduleDateRange() {
+        Schedule schedule = schedule(ScheduleStatus.DRAFT);
+        Shift shift = shift(schedule);
+        UpdateShiftRequest request = new UpdateShiftRequest(
+                Instant.parse("2026-07-12T21:00:00Z"),
+                Instant.parse("2026-07-13T05:00:00Z"),
+                "After schedule",
+                3,
+                10
+        );
+
+        when(scheduleRepository.findById(10L)).thenReturn(Optional.of(schedule));
+        when(teamManagerRepository.existsByManager_UsernameAndTeam_Id("manager1", 1L)).thenReturn(true);
+        when(shiftRepository.findById(20L)).thenReturn(Optional.of(shift));
 
         assertThatThrownBy(() -> shiftService.updateShift("manager1", 10L, 20L, request))
                 .isInstanceOfSatisfying(ResponseStatusException.class, exception ->

@@ -162,6 +162,7 @@ Expected response:
 
 Only managers assigned to the schedule's team can create shifts.
 Shifts can be created only while the schedule is still `DRAFT`.
+Shift dates must be inside the schedule date range according to the team's time zone.
 
 List shifts in a schedule:
 
@@ -213,6 +214,7 @@ Expected response:
 
 Only managers assigned to the schedule's team can update shifts.
 Shifts can be updated only while the schedule is still `DRAFT`.
+Updated shift dates must stay inside the schedule date range according to the team's time zone.
 
 Delete a shift from a draft schedule:
 
