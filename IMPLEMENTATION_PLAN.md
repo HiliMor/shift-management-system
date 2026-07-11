@@ -1,6 +1,6 @@
 # Implementation Plan - Shift Management System
 
-Last updated: 2026-07-05
+Last updated: 2026-07-11
 
 This document is the working implementation plan for the project.  
 The goal is to build the system in small, understandable steps, while keeping each part easy to explain during the final presentation.
@@ -267,30 +267,91 @@ This is a central phase. Work slowly and keep it easy to explain.
 
 ### Implement
 
-- [ ] Create `Assignment`.
-- [ ] Add a unique constraint on employee and shift.
-- [ ] Create `AssignmentService`.
-- [ ] Implement `POST /api/assignments`.
-- [ ] Validate team membership.
-- [ ] Validate shift capacity.
-- [ ] Validate overlapping assignments.
-- [ ] Validate minimum rest.
-- [ ] Return a unified error response when validation fails.
+- [x] Create `Assignment`.
+- [x] Add a unique constraint on employee and shift.
+- [x] Create `AssignmentService`.
+- [x] Implement `POST /api/assignments`.
+- [x] Validate team membership.
+- [x] Validate shift capacity.
+- [x] Validate overlapping assignments.
+- [x] Validate minimum rest.
+- [x] Return a unified error response when validation fails.
 
 ### Verify
 
-- [ ] A valid assignment is saved.
-- [ ] A non-team employee cannot be assigned.
-- [ ] An employee cannot be assigned twice to the same shift.
-- [ ] An employee cannot be assigned to overlapping shifts.
-- [ ] An employee cannot be assigned without enough rest.
-- [ ] The error message is clear.
+- [x] A valid assignment is saved.
+- [x] A non-team employee cannot be assigned.
+- [x] An employee cannot be assigned twice to the same shift.
+- [x] An employee cannot be assigned to overlapping shifts.
+- [x] An employee cannot be assigned without enough rest.
+- [x] The error message is clear.
 
 ### Document
 
-- The assignment validation order.
-- Examples of successful and failed assignments.
-- Where the business logic lives.
+- [x] The assignment validation order.
+- [x] Examples of successful and failed assignments.
+- [x] Where the business logic lives.
+
+### Phase 4 Design Decisions
+
+`Assignment` represents one employee assigned to one shift.
+
+Initial fields:
+
+- `id`
+- `shift`
+- `employee`
+- `assignedAt`
+- `version`
+
+Initial endpoint:
+
+- `POST /api/assignments`
+
+Initial request body:
+
+```json
+{
+  "shiftId": 1,
+  "employeeId": 2
+}
+```
+
+Rules for this phase:
+
+- Only a manager of the shift's team may create assignments.
+- Assignments can be created only while the schedule is `DRAFT`.
+- The employee must be an active member of the shift's team.
+- The same employee cannot be assigned twice to the same shift.
+- A shift cannot exceed `requiredWorkers`.
+- Overlap checks use the half-open range rule from the specification.
+- Rest checks compare the nearest previous and next assignments across all teams.
+- The required rest between adjacent shifts is `max(previous.minRestHours, next.minRestHours)`.
+
+Current assignment validation error shape:
+
+```json
+{
+  "code": "SHIFT_CAPACITY",
+  "message": "Shift has no available assignment slots"
+}
+```
+
+Stable assignment validation codes added in this phase:
+
+- `SCHEDULE_NOT_DRAFT`
+- `TEAM_MEMBERSHIP`
+- `DUPLICATE_ASSIGNMENT`
+- `SHIFT_CAPACITY`
+- `SHIFT_OVERLAP`
+- `MINIMUM_REST`
+
+Deferred from Phase 4:
+
+- Assignment list, delete, and move endpoints.
+- Availability constraint checks, because availability is Phase 5.
+- Staffing-role checks, because staffing roles are Phase 6.
+- Full scheduling concurrency protection, which will be revisited before automatic assignment and swaps.
 
 ## Phase 5 - Availability Constraints
 

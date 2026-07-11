@@ -24,11 +24,17 @@ Implemented:
 - Shift list endpoint: `GET /api/schedules/{scheduleId}/shifts`.
 - Shift update endpoint: `PUT /api/schedules/{scheduleId}/shifts/{shiftId}`.
 - Shift delete endpoint: `DELETE /api/schedules/{scheduleId}/shifts/{shiftId}`.
+- Initial assignment domain model.
+- Manual assignment endpoint: `POST /api/assignments`.
+- Assignment validation for team membership, duplicate assignment, shift capacity, overlap, and minimum rest.
 
 Not implemented yet:
 
 - Schedule list, update, delete, publish, and reopen endpoints.
-- Assignments.
+- Assignment list, delete, and transfer endpoints.
+- Availability constraints.
+- Staffing roles.
+- Automatic assignment.
 - Team-scoped authorization for manager actions.
 
 ## Requirements
@@ -231,6 +237,50 @@ Expected response:
 
 Only managers assigned to the schedule's team can delete shifts.
 Shifts can be deleted only while the schedule is still `DRAFT`.
+
+## Assignment Endpoints
+
+Create a manual assignment:
+
+```bash
+curl -X POST http://localhost:8080/api/assignments \
+  -H 'Content-Type: application/json' \
+  -H "Authorization: Bearer <TOKEN>" \
+  -d '{"shiftId":1,"employeeId":2}'
+```
+
+Expected response:
+
+```json
+{
+  "id": 1,
+  "shiftId": 1,
+  "employeeId": 2,
+  "employeeUsername": "employee1",
+  "employeeFullName": "Demo Employee",
+  "assignedAt": "2026-07-11T07:17:41.000000Z"
+}
+```
+
+Only managers assigned to the shift's team can create assignments.
+Assignments can be created only while the schedule is still `DRAFT`.
+
+The assignment service currently validates, in order:
+
+1. The employee is an active member of the shift's team.
+2. The employee is not already assigned to the same shift.
+3. The shift still has available capacity.
+4. The employee has no overlapping assignment in any team.
+5. The employee has enough rest before and after the shift.
+
+Scheduling validation failures return a stable error code:
+
+```json
+{
+  "code": "SHIFT_OVERLAP",
+  "message": "Employee already has an overlapping assignment"
+}
+```
 
 ## Important Notes
 
