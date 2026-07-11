@@ -774,3 +774,34 @@ Still open:
 - Verified `mvn test` succeeds.
 - Verified the Spring Boot app starts on port `8081`.
 - Verified schedule creation, shift creation, and shift listing still work after the package move.
+
+### 2026-07-11 - Phase 4 Manual Assignment
+
+- Added `Assignment` entity linked to `Shift` and `User`.
+- Added Flyway migration `V4__create_assignments.sql`.
+- Added `AssignmentRepository`.
+- Added `CreateAssignmentRequest` and `AssignmentResponse`.
+- Added `AssignmentService`.
+- Added `AssignmentController`.
+- Added `POST /api/assignments` for creating manual assignments.
+- Added stable assignment validation error responses with `code` and `message`.
+- Added team-manager authorization for assignment creation.
+- Added validation that assignments can be created only while the schedule is `DRAFT`.
+- Added validation that the assigned employee is an active member of the shift's team.
+- Added validation that the same employee cannot be assigned twice to the same shift.
+- Added validation that a shift cannot exceed `requiredWorkers`.
+- Added overlap validation across the employee's assignments in all teams.
+- Added minimum-rest validation against the nearest previous and next assignments.
+- Added service tests for successful assignment creation, unmanaged-team rejection, published-schedule rejection, team-membership rejection, duplicate assignment rejection, capacity rejection, overlap rejection, and minimum-rest rejection.
+- Verified `mvn test` succeeds.
+
+### 2026-07-11 - Phase 4 Assignment Workflow Completion
+
+- Added root `README.md` for the repository.
+- Added `GET /api/schedules/{scheduleId}/assignments` for listing assignments in a schedule.
+- Added `DELETE /api/assignments/{assignmentId}` for deleting assignments from draft schedules.
+- Added team-manager authorization for assignment listing and deletion.
+- Added validation that assignments can be deleted only while the schedule is `DRAFT`.
+- Added service tests for managed schedule listing, unmanaged schedule listing rejection, successful deletion, unmanaged deletion rejection, and published-schedule deletion rejection.
+- Updated `README.md`, `shift-management-backend/README.md`, and the Phase 4 plan to match the current assignment workflow.
+- Verified `mvn test` succeeds.
