@@ -307,6 +307,8 @@ Initial fields:
 Initial endpoint:
 
 - `POST /api/assignments`
+- `GET /api/schedules/{scheduleId}/assignments`
+- `DELETE /api/assignments/{assignmentId}`
 
 Initial request body:
 
@@ -321,6 +323,8 @@ Rules for this phase:
 
 - Only a manager of the shift's team may create assignments.
 - Assignments can be created only while the schedule is `DRAFT`.
+- Only a manager of the schedule's team may list assignments for that schedule.
+- Assignments can be deleted only while the schedule is `DRAFT`.
 - The employee must be an active member of the shift's team.
 - The same employee cannot be assigned twice to the same shift.
 - A shift cannot exceed `requiredWorkers`.
@@ -348,7 +352,7 @@ Stable assignment validation codes added in this phase:
 
 Deferred from Phase 4:
 
-- Assignment list, delete, and move endpoints.
+- Assignment move endpoint.
 - Availability constraint checks, because availability is Phase 5.
 - Staffing-role checks, because staffing roles are Phase 6.
 - Full scheduling concurrency protection, which will be revisited before automatic assignment and swaps.

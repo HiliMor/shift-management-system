@@ -26,12 +26,14 @@ Implemented:
 - Shift delete endpoint: `DELETE /api/schedules/{scheduleId}/shifts/{shiftId}`.
 - Initial assignment domain model.
 - Manual assignment endpoint: `POST /api/assignments`.
+- Assignment list endpoint: `GET /api/schedules/{scheduleId}/assignments`.
+- Assignment delete endpoint: `DELETE /api/assignments/{assignmentId}`.
 - Assignment validation for team membership, duplicate assignment, shift capacity, overlap, and minimum rest.
 
 Not implemented yet:
 
 - Schedule list, update, delete, publish, and reopen endpoints.
-- Assignment list, delete, and transfer endpoints.
+- Assignment transfer endpoints.
 - Availability constraints.
 - Staffing roles.
 - Automatic assignment.
@@ -264,6 +266,46 @@ Expected response:
 
 Only managers assigned to the shift's team can create assignments.
 Assignments can be created only while the schedule is still `DRAFT`.
+
+List all assignments in a schedule:
+
+```bash
+curl http://localhost:8080/api/schedules/1/assignments \
+  -H "Authorization: Bearer <TOKEN>"
+```
+
+Expected response:
+
+```json
+[
+  {
+    "id": 1,
+    "shiftId": 1,
+    "employeeId": 2,
+    "employeeUsername": "employee1",
+    "employeeFullName": "Demo Employee",
+    "assignedAt": "2026-07-11T07:17:41.000000Z"
+  }
+]
+```
+
+Only managers assigned to the schedule's team can list assignments for that schedule.
+
+Delete an assignment from a draft schedule:
+
+```bash
+curl -X DELETE http://localhost:8080/api/assignments/1 \
+  -H "Authorization: Bearer <TOKEN>"
+```
+
+Expected response:
+
+```text
+204 No Content
+```
+
+Only managers assigned to the assignment's team can delete assignments.
+Assignments can be deleted only while the schedule is still `DRAFT`.
 
 The assignment service currently validates, in order:
 
