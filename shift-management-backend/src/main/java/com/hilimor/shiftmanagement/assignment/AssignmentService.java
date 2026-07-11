@@ -2,8 +2,10 @@ package com.hilimor.shiftmanagement.assignment;
 
 import java.time.Duration;
 import java.time.Instant;
+import java.util.List;
 
 import com.hilimor.shiftmanagement.schedule.Schedule;
+import com.hilimor.shiftmanagement.schedule.ScheduleRepository;
 import com.hilimor.shiftmanagement.schedule.ScheduleStatus;
 import com.hilimor.shiftmanagement.shift.Shift;
 import com.hilimor.shiftmanagement.shift.ShiftRepository;
@@ -21,6 +23,7 @@ import org.springframework.web.server.ResponseStatusException;
 public class AssignmentService {
 
     private final AssignmentRepository assignmentRepository;
+    private final ScheduleRepository scheduleRepository;
     private final ShiftRepository shiftRepository;
     private final UserRepository userRepository;
     private final TeamMemberRepository teamMemberRepository;
@@ -28,12 +31,14 @@ public class AssignmentService {
 
     public AssignmentService(
             AssignmentRepository assignmentRepository,
+            ScheduleRepository scheduleRepository,
             ShiftRepository shiftRepository,
             UserRepository userRepository,
             TeamMemberRepository teamMemberRepository,
             TeamManagerRepository teamManagerRepository
     ) {
         this.assignmentRepository = assignmentRepository;
+        this.scheduleRepository = scheduleRepository;
         this.shiftRepository = shiftRepository;
         this.userRepository = userRepository;
         this.teamMemberRepository = teamMemberRepository;
@@ -46,11 +51,7 @@ public class AssignmentService {
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Shift not found"));
 
         Schedule schedule = shift.getSchedule();
-        Long teamId = schedule.getTeam().getId();
-
-        if (!teamManagerRepository.existsByManager_UsernameAndTeam_Id(managerUsername, teamId)) {
-            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Only a team manager can assign employees to this shift");
-        }
+        Long teamId = requireManagedSchedule(managerUsername, schedule, "Only a team manager can assign employees to this shift");
 
         if (schedule.getStatus() != ScheduleStatus.DRAFT) {
             throw conflict("SCHEDULE_NOT_DRAFT", "Employees can be assigned only while the schedule is a draft");
@@ -69,6 +70,43 @@ public class AssignmentService {
         Assignment savedAssignment = assignmentRepository.save(assignment);
 
         return AssignmentResponse.from(savedAssignment);
+    }
+
+    @Transactional(readOnly = true)
+    public List<AssignmentResponse> listScheduleAssignments(String managerUsername, Long scheduleId) {
+        Schedule schedule = scheduleRepository.findById(scheduleId)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Schedule not found"));
+
+        requireManagedSchedule(managerUsername, schedule, "Only a team manager can view assignments for this schedule");
+
+        return assignmentRepository.findByShift_Schedule_IdOrderByShift_StartTimeAscEmployee_FullNameAsc(scheduleId)
+                .stream()
+                .map(AssignmentResponse::from)
+                .toList();
+    }
+
+    @Transactional
+    public void deleteAssignment(String managerUsername, Long assignmentId) {
+        Assignment assignment = assignmentRepository.findById(assignmentId)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Assignment not found"));
+
+        Schedule schedule = assignment.getShift().getSchedule();
+        requireManagedSchedule(managerUsername, schedule, "Only a team manager can delete this assignment");
+
+        if (schedule.getStatus() != ScheduleStatus.DRAFT) {
+            throw conflict("SCHEDULE_NOT_DRAFT", "Assignments can be deleted only while the schedule is a draft");
+        }
+
+        assignmentRepository.delete(assignment);
+    }
+
+    private Long requireManagedSchedule(String managerUsername, Schedule schedule, String errorMessage) {
+        Long teamId = schedule.getTeam().getId();
+        if (!teamManagerRepository.existsByManager_UsernameAndTeam_Id(managerUsername, teamId)) {
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, errorMessage);
+        }
+
+        return teamId;
     }
 
     private void validateTeamMembership(Long employeeId, Long teamId) {

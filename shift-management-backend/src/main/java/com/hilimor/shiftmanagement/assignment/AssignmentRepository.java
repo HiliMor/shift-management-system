@@ -12,6 +12,8 @@ public interface AssignmentRepository extends JpaRepository<Assignment, Long> {
 
     long countByShift_Id(Long shiftId);
 
+    List<Assignment> findByShift_Schedule_IdOrderByShift_StartTimeAscEmployee_FullNameAsc(Long scheduleId);
+
     List<Assignment> findByEmployee_IdAndShift_StartTimeLessThanAndShift_EndTimeGreaterThan(
             Long employeeId,
             Instant endTime,
