@@ -372,8 +372,8 @@ Goal: allow employees to declare unavailable time ranges and prevent conflicting
 - [x] Create `AvailabilityConstraint`.
 - [x] Create `AvailabilityConstraintRepository`.
 - [x] Add a database migration for availability constraints.
-- [ ] Allow an employee to create a constraint.
-- [ ] Allow an employee to view personal constraints.
+- [x] Allow an employee to create a constraint.
+- [x] Allow an employee to view personal constraints.
 - [ ] Allow an employee to delete personal constraints.
 - [ ] Block a constraint that overlaps an existing assignment.
 - [ ] Add constraint validation to assignment creation.
@@ -381,8 +381,8 @@ Goal: allow employees to declare unavailable time ranges and prevent conflicting
 ### Verify
 
 - [ ] An employee can create a full-day constraint.
-- [ ] An employee can create a time-range constraint.
-- [ ] An employee cannot view another employee's constraints.
+- [x] An employee can create a time-range constraint.
+- [x] An employee cannot view another employee's constraints.
 - [ ] A manager cannot assign an employee during an unavailable time range.
 - [x] Invalid time ranges are rejected by the domain model.
 
@@ -413,9 +413,20 @@ Rules for the persistence step:
 - Full-day constraints will be stored as the start of the local day through the start of the next local day.
 - Constraint overlap uses the same half-open range formula as assignment overlap.
 
-Deferred from the first Phase 5 step:
+Initial endpoints:
 
-- Employee create, list, and delete endpoints.
+- `POST /api/availability-constraints`
+- `GET /api/availability-constraints/me`
+
+Rules for the first API step:
+
+- A user creates availability constraints only for the authenticated account.
+- A user lists only the authenticated account's own constraints.
+- Invalid time ranges return `400 Bad Request`.
+
+Deferred from the first Phase 5 API steps:
+
+- Employee delete endpoint.
 - Blocking constraints that overlap existing assignments.
 - Blocking assignments that overlap existing constraints.
 
@@ -848,3 +859,17 @@ Still open:
 - Added repository methods for personal constraint listing and future overlap checks.
 - Added entity tests for valid constraint creation, invalid time range rejection, and required employee validation.
 - Updated `README.md`, `shift-management-backend/README.md`, and the Phase 5 plan to show that only the persistence model has been implemented so far.
+- Verified `mvn test` succeeds.
+
+### 2026-07-12 - Phase 5 Availability Constraint API Start
+
+- Added `CreateAvailabilityConstraintRequest`.
+- Added `AvailabilityConstraintResponse`.
+- Added `AvailabilityConstraintService`.
+- Added `AvailabilityConstraintController`.
+- Added `POST /api/availability-constraints` for creating a personal availability constraint.
+- Added `GET /api/availability-constraints/me` for listing the authenticated user's constraints.
+- Added service validation that constraint `endTime` must be after `startTime`.
+- Added service tests for successful personal constraint creation, invalid time-range rejection, and personal constraint listing.
+- Updated `README.md`, `shift-management-backend/README.md`, and the Phase 5 plan to show that create/list are implemented while delete and assignment validation are still open.
+- Verified `mvn test` succeeds.

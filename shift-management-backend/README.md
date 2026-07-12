@@ -30,12 +30,14 @@ Implemented:
 - Assignment delete endpoint: `DELETE /api/assignments/{assignmentId}`.
 - Assignment validation for team membership, duplicate assignment, shift capacity, overlap, and minimum rest.
 - Initial availability constraint domain model.
+- Availability constraint creation endpoint: `POST /api/availability-constraints`.
+- Personal availability constraint list endpoint: `GET /api/availability-constraints/me`.
 
 Not implemented yet:
 
 - Schedule list, update, delete, publish, and reopen endpoints.
 - Assignment transfer endpoints.
-- Availability constraint endpoints.
+- Availability constraint delete endpoint.
 - Assignment validation against availability constraints.
 - Staffing roles.
 - Automatic assignment.
@@ -325,6 +327,56 @@ Scheduling validation failures return a stable error code:
   "message": "Employee already has an overlapping assignment"
 }
 ```
+
+## Availability Constraint Endpoints
+
+Create a personal availability constraint:
+
+```bash
+curl -X POST http://localhost:8080/api/availability-constraints \
+  -H 'Content-Type: application/json' \
+  -H "Authorization: Bearer <TOKEN>" \
+  -d '{"startTime":"2026-07-13T06:00:00Z","endTime":"2026-07-13T14:00:00Z","reason":"Doctor appointment"}'
+```
+
+Expected response:
+
+```json
+{
+  "id": 1,
+  "employeeId": 2,
+  "startTime": "2026-07-13T06:00:00Z",
+  "endTime": "2026-07-13T14:00:00Z",
+  "reason": "Doctor appointment",
+  "createdAt": "2026-07-12T19:25:58.000000Z"
+}
+```
+
+The authenticated user creates availability constraints only for their own account.
+
+List personal availability constraints:
+
+```bash
+curl http://localhost:8080/api/availability-constraints/me \
+  -H "Authorization: Bearer <TOKEN>"
+```
+
+Expected response:
+
+```json
+[
+  {
+    "id": 1,
+    "employeeId": 2,
+    "startTime": "2026-07-13T06:00:00Z",
+    "endTime": "2026-07-13T14:00:00Z",
+    "reason": "Doctor appointment",
+    "createdAt": "2026-07-12T19:25:58.000000Z"
+  }
+]
+```
+
+Availability constraints are not yet checked during assignment creation.
 
 ## Important Notes
 

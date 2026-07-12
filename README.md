@@ -23,10 +23,11 @@ Implemented:
 - Manual assignment create, list, and delete operations.
 - Assignment validations for team membership, duplicate assignments, shift capacity, overlap, and minimum rest.
 - Availability constraint persistence model.
+- Availability constraint create and personal list operations.
 
 Planned next:
 
-- Availability constraint create, list, and delete API.
+- Availability constraint delete API.
 - Assignment validation against availability constraints.
 - Schedule publication and reopening.
 - Basic React frontend.
