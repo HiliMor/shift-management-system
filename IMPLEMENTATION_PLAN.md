@@ -1,6 +1,6 @@
 # Implementation Plan - Shift Management System
 
-Last updated: 2026-07-11
+Last updated: 2026-07-12
 
 This document is the working implementation plan for the project.  
 The goal is to build the system in small, understandable steps, while keeping each part easy to explain during the final presentation.
@@ -369,7 +369,9 @@ Goal: allow employees to declare unavailable time ranges and prevent conflicting
 
 ### Implement
 
-- [ ] Create `AvailabilityConstraint`.
+- [x] Create `AvailabilityConstraint`.
+- [x] Create `AvailabilityConstraintRepository`.
+- [x] Add a database migration for availability constraints.
 - [ ] Allow an employee to create a constraint.
 - [ ] Allow an employee to view personal constraints.
 - [ ] Allow an employee to delete personal constraints.
@@ -382,12 +384,40 @@ Goal: allow employees to declare unavailable time ranges and prevent conflicting
 - [ ] An employee can create a time-range constraint.
 - [ ] An employee cannot view another employee's constraints.
 - [ ] A manager cannot assign an employee during an unavailable time range.
-- [ ] Invalid time ranges are rejected.
+- [x] Invalid time ranges are rejected by the domain model.
 
 ### Document
 
 - How a full-day constraint is stored.
 - How constraint and shift overlap is checked.
+
+### Phase 5 Design Decisions
+
+An `AvailabilityConstraint` represents employee unavailability.
+
+Initial fields:
+
+- `id`
+- `employee`
+- `startTime`
+- `endTime`
+- `reason`
+- `createdAt`
+- `version`
+
+Rules for the persistence step:
+
+- Time ranges are stored as `Instant` values, matching shifts and assignments.
+- `endTime` must be after `startTime`.
+- `reason` is optional and limited to 500 characters.
+- Full-day constraints will be stored as the start of the local day through the start of the next local day.
+- Constraint overlap uses the same half-open range formula as assignment overlap.
+
+Deferred from the first Phase 5 step:
+
+- Employee create, list, and delete endpoints.
+- Blocking constraints that overlap existing assignments.
+- Blocking assignments that overlap existing constraints.
 
 ## Phase 6 - Staffing Roles
 
@@ -805,3 +835,16 @@ Still open:
 - Added service tests for managed schedule listing, unmanaged schedule listing rejection, successful deletion, unmanaged deletion rejection, and published-schedule deletion rejection.
 - Updated `README.md`, `shift-management-backend/README.md`, and the Phase 4 plan to match the current assignment workflow.
 - Verified `mvn test` succeeds.
+
+### 2026-07-12 - Phase 5 Availability Constraint Persistence
+
+- Started Phase 5 with a small persistence-only step.
+- Added `AvailabilityConstraint` entity linked to `User`.
+- Added `AvailabilityConstraintRepository`.
+- Added Flyway migration `V5__create_availability_constraints.sql`.
+- Stored availability constraint time ranges as `Instant` values.
+- Added optional `reason` and required `createdAt` fields.
+- Added validation that constraint `endTime` must be after `startTime`.
+- Added repository methods for personal constraint listing and future overlap checks.
+- Added entity tests for valid constraint creation, invalid time range rejection, and required employee validation.
+- Updated `README.md`, `shift-management-backend/README.md`, and the Phase 5 plan to show that only the persistence model has been implemented so far.

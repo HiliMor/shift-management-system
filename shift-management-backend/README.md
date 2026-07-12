@@ -29,12 +29,14 @@ Implemented:
 - Assignment list endpoint: `GET /api/schedules/{scheduleId}/assignments`.
 - Assignment delete endpoint: `DELETE /api/assignments/{assignmentId}`.
 - Assignment validation for team membership, duplicate assignment, shift capacity, overlap, and minimum rest.
+- Initial availability constraint domain model.
 
 Not implemented yet:
 
 - Schedule list, update, delete, publish, and reopen endpoints.
 - Assignment transfer endpoints.
-- Availability constraints.
+- Availability constraint endpoints.
+- Assignment validation against availability constraints.
 - Staffing roles.
 - Automatic assignment.
 - Team-scoped authorization for manager actions.
