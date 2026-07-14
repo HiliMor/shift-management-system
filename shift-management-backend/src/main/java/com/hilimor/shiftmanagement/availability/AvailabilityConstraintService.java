@@ -2,6 +2,7 @@ package com.hilimor.shiftmanagement.availability;
 
 import java.time.Instant;
 import java.util.List;
+import java.util.Objects;
 
 import com.hilimor.shiftmanagement.user.User;
 import com.hilimor.shiftmanagement.user.UserRepository;
@@ -56,6 +57,19 @@ public class AvailabilityConstraintService {
                 .stream()
                 .map(AvailabilityConstraintResponse::from)
                 .toList();
+    }
+
+    @Transactional
+    public void deleteMyConstraint(String username, Long constraintId) {
+        User employee = currentUser(username);
+        AvailabilityConstraint constraint = availabilityConstraintRepository.findById(constraintId)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Availability constraint not found"));
+
+        if (!Objects.equals(constraint.getEmployee().getId(), employee.getId())) {
+            throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Availability constraint not found");
+        }
+
+        availabilityConstraintRepository.delete(constraint);
     }
 
     private User currentUser(String username) {
