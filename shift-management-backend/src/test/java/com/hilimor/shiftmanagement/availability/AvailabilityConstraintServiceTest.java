@@ -94,6 +94,48 @@ class AvailabilityConstraintServiceTest {
         assertThat(responses.get(0).reason()).isEqualTo("Doctor appointment");
     }
 
+    @Test
+    void deleteMyConstraintDeletesCurrentUsersConstraint() {
+        User employee = employee();
+        AvailabilityConstraint constraint = constraint(employee);
+
+        when(userRepository.findByUsername("employee1")).thenReturn(Optional.of(employee));
+        when(availabilityConstraintRepository.findById(40L)).thenReturn(Optional.of(constraint));
+
+        availabilityConstraintService.deleteMyConstraint("employee1", 40L);
+
+        verify(availabilityConstraintRepository).delete(constraint);
+    }
+
+    @Test
+    void deleteMyConstraintRejectsMissingConstraint() {
+        User employee = employee();
+
+        when(userRepository.findByUsername("employee1")).thenReturn(Optional.of(employee));
+        when(availabilityConstraintRepository.findById(99L)).thenReturn(Optional.empty());
+
+        assertThatThrownBy(() -> availabilityConstraintService.deleteMyConstraint("employee1", 99L))
+                .isInstanceOfSatisfying(ResponseStatusException.class, exception ->
+                        assertThat(exception.getStatusCode()).isEqualTo(HttpStatus.NOT_FOUND));
+
+        verify(availabilityConstraintRepository, never()).delete(any());
+    }
+
+    @Test
+    void deleteMyConstraintRejectsAnotherUsersConstraint() {
+        User employee = employee();
+        AvailabilityConstraint constraint = constraint(otherEmployee());
+
+        when(userRepository.findByUsername("employee1")).thenReturn(Optional.of(employee));
+        when(availabilityConstraintRepository.findById(40L)).thenReturn(Optional.of(constraint));
+
+        assertThatThrownBy(() -> availabilityConstraintService.deleteMyConstraint("employee1", 40L))
+                .isInstanceOfSatisfying(ResponseStatusException.class, exception ->
+                        assertThat(exception.getStatusCode()).isEqualTo(HttpStatus.NOT_FOUND));
+
+        verify(availabilityConstraintRepository, never()).delete(any());
+    }
+
     private CreateAvailabilityConstraintRequest validRequest() {
         return new CreateAvailabilityConstraintRequest(
                 Instant.parse("2026-07-13T06:00:00Z"),
@@ -123,6 +165,18 @@ class AvailabilityConstraintServiceTest {
                 ApplicationRole.EMPLOYEE
         );
         ReflectionTestUtils.setField(employee, "id", 2L);
+        return employee;
+    }
+
+    private User otherEmployee() {
+        User employee = new User(
+                "employee2",
+                "password-hash",
+                "Other Employee",
+                "employee2@example.com",
+                ApplicationRole.EMPLOYEE
+        );
+        ReflectionTestUtils.setField(employee, "id", 3L);
         return employee;
     }
 }
