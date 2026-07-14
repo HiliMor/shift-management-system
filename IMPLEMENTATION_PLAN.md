@@ -1,6 +1,6 @@
 # Implementation Plan - Shift Management System
 
-Last updated: 2026-07-12
+Last updated: 2026-07-14
 
 This document is the working implementation plan for the project.  
 The goal is to build the system in small, understandable steps, while keeping each part easy to explain during the final presentation.
@@ -374,7 +374,7 @@ Goal: allow employees to declare unavailable time ranges and prevent conflicting
 - [x] Add a database migration for availability constraints.
 - [x] Allow an employee to create a constraint.
 - [x] Allow an employee to view personal constraints.
-- [ ] Allow an employee to delete personal constraints.
+- [x] Allow an employee to delete personal constraints.
 - [ ] Block a constraint that overlaps an existing assignment.
 - [ ] Add constraint validation to assignment creation.
 
@@ -417,16 +417,18 @@ Initial endpoints:
 
 - `POST /api/availability-constraints`
 - `GET /api/availability-constraints/me`
+- `DELETE /api/availability-constraints/{constraintId}`
 
 Rules for the first API step:
 
 - A user creates availability constraints only for the authenticated account.
 - A user lists only the authenticated account's own constraints.
+- A user deletes only the authenticated account's own constraints.
+- Deleting another user's constraint returns `404 Not Found`.
 - Invalid time ranges return `400 Bad Request`.
 
 Deferred from the first Phase 5 API steps:
 
-- Employee delete endpoint.
 - Blocking constraints that overlap existing assignments.
 - Blocking assignments that overlap existing constraints.
 
@@ -872,4 +874,13 @@ Still open:
 - Added service validation that constraint `endTime` must be after `startTime`.
 - Added service tests for successful personal constraint creation, invalid time-range rejection, and personal constraint listing.
 - Updated `README.md`, `shift-management-backend/README.md`, and the Phase 5 plan to show that create/list are implemented while delete and assignment validation are still open.
+- Verified `mvn test` succeeds.
+
+### 2026-07-14 - Phase 5 Availability Constraint Delete
+
+- Added `DELETE /api/availability-constraints/{constraintId}` for deleting a personal availability constraint.
+- Added service ownership validation so users can delete only their own constraints.
+- Returned `404 Not Found` when a constraint does not exist or belongs to another user.
+- Added service tests for successful deletion, missing constraint rejection, and other-user constraint rejection.
+- Updated `README.md`, `shift-management-backend/README.md`, and the Phase 5 plan to show that personal create, list, and delete are implemented.
 - Verified `mvn test` succeeds.

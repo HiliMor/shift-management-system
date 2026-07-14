@@ -32,12 +32,12 @@ Implemented:
 - Initial availability constraint domain model.
 - Availability constraint creation endpoint: `POST /api/availability-constraints`.
 - Personal availability constraint list endpoint: `GET /api/availability-constraints/me`.
+- Availability constraint delete endpoint: `DELETE /api/availability-constraints/{constraintId}`.
 
 Not implemented yet:
 
 - Schedule list, update, delete, publish, and reopen endpoints.
 - Assignment transfer endpoints.
-- Availability constraint delete endpoint.
 - Assignment validation against availability constraints.
 - Staffing roles.
 - Automatic assignment.
@@ -375,6 +375,22 @@ Expected response:
   }
 ]
 ```
+
+Delete a personal availability constraint:
+
+```bash
+curl -X DELETE http://localhost:8080/api/availability-constraints/1 \
+  -H "Authorization: Bearer <TOKEN>"
+```
+
+Expected response:
+
+```text
+204 No Content
+```
+
+The authenticated user can delete only their own availability constraints.
+Deleting a missing constraint, or another user's constraint, returns `404`.
 
 Availability constraints are not yet checked during assignment creation.
 
