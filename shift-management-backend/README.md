@@ -33,6 +33,7 @@ Implemented:
 - Availability constraint creation endpoint: `POST /api/availability-constraints`.
 - Personal availability constraint list endpoint: `GET /api/availability-constraints/me`.
 - Availability constraint delete endpoint: `DELETE /api/availability-constraints/{constraintId}`.
+- Availability constraint creation is rejected when it overlaps an existing assignment.
 
 Not implemented yet:
 
@@ -353,6 +354,7 @@ Expected response:
 ```
 
 The authenticated user creates availability constraints only for their own account.
+Creating an availability constraint that overlaps one of the authenticated user's existing assignments returns `409 Conflict`.
 
 List personal availability constraints:
 

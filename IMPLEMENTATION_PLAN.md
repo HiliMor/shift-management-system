@@ -1,6 +1,6 @@
 # Implementation Plan - Shift Management System
 
-Last updated: 2026-07-14
+Last updated: 2026-07-15
 
 This document is the working implementation plan for the project.  
 The goal is to build the system in small, understandable steps, while keeping each part easy to explain during the final presentation.
@@ -375,7 +375,7 @@ Goal: allow employees to declare unavailable time ranges and prevent conflicting
 - [x] Allow an employee to create a constraint.
 - [x] Allow an employee to view personal constraints.
 - [x] Allow an employee to delete personal constraints.
-- [ ] Block a constraint that overlaps an existing assignment.
+- [x] Block a constraint that overlaps an existing assignment.
 - [ ] Add constraint validation to assignment creation.
 
 ### Verify
@@ -383,6 +383,7 @@ Goal: allow employees to declare unavailable time ranges and prevent conflicting
 - [ ] An employee can create a full-day constraint.
 - [x] An employee can create a time-range constraint.
 - [x] An employee cannot view another employee's constraints.
+- [x] An employee cannot create a constraint that overlaps an existing assignment.
 - [ ] A manager cannot assign an employee during an unavailable time range.
 - [x] Invalid time ranges are rejected by the domain model.
 
@@ -426,10 +427,10 @@ Rules for the first API step:
 - A user deletes only the authenticated account's own constraints.
 - Deleting another user's constraint returns `404 Not Found`.
 - Invalid time ranges return `400 Bad Request`.
+- Creating a constraint that overlaps one of the authenticated user's existing assignments returns `409 Conflict`.
 
-Deferred from the first Phase 5 API steps:
+Still deferred from the current Phase 5 API steps:
 
-- Blocking constraints that overlap existing assignments.
 - Blocking assignments that overlap existing constraints.
 
 ## Phase 6 - Staffing Roles
@@ -884,3 +885,12 @@ Still open:
 - Added service tests for successful deletion, missing constraint rejection, and other-user constraint rejection.
 - Updated `README.md`, `shift-management-backend/README.md`, and the Phase 5 plan to show that personal create, list, and delete are implemented.
 - Verified `mvn test` succeeds.
+
+### 2026-07-15 - Phase 5 Availability Constraint Assignment Overlap
+
+- Added validation that a user cannot create an availability constraint overlapping one of their existing assignments.
+- Reused the assignment overlap query based on the half-open range rule.
+- Returned `409 Conflict` when a new availability constraint conflicts with an existing assignment.
+- Added a service test for rejecting availability constraints that overlap existing assignments.
+- Updated `README.md`, `shift-management-backend/README.md`, and the Phase 5 plan to show that this direction of availability validation is implemented.
+- Verified `mvn -Dtest=AvailabilityConstraintServiceTest test` succeeds outside the Codex sandbox.

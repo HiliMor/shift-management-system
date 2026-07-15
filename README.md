@@ -24,6 +24,7 @@ Implemented:
 - Assignment validations for team membership, duplicate assignments, shift capacity, overlap, and minimum rest.
 - Availability constraint persistence model.
 - Availability constraint create, personal list, and delete operations.
+- Availability constraint creation is rejected when it overlaps an existing assignment.
 
 Planned next:
 
