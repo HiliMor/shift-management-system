@@ -28,18 +28,18 @@ Implemented:
 - Manual assignment endpoint: `POST /api/assignments`.
 - Assignment list endpoint: `GET /api/schedules/{scheduleId}/assignments`.
 - Assignment delete endpoint: `DELETE /api/assignments/{assignmentId}`.
-- Assignment validation for team membership, duplicate assignment, shift capacity, overlap, and minimum rest.
+- Assignment validation for team membership, duplicate assignment, shift capacity, availability constraints, overlap, and minimum rest.
 - Initial availability constraint domain model.
 - Availability constraint creation endpoint: `POST /api/availability-constraints`.
 - Personal availability constraint list endpoint: `GET /api/availability-constraints/me`.
 - Availability constraint delete endpoint: `DELETE /api/availability-constraints/{constraintId}`.
 - Availability constraint creation is rejected when it overlaps an existing assignment.
+- Assignment creation is rejected when it overlaps an employee availability constraint.
 
 Not implemented yet:
 
 - Schedule list, update, delete, publish, and reopen endpoints.
 - Assignment transfer endpoints.
-- Assignment validation against availability constraints.
 - Staffing roles.
 - Automatic assignment.
 - Team-scoped authorization for manager actions.
@@ -317,15 +317,16 @@ The assignment service currently validates, in order:
 1. The employee is an active member of the shift's team.
 2. The employee is not already assigned to the same shift.
 3. The shift still has available capacity.
-4. The employee has no overlapping assignment in any team.
-5. The employee has enough rest before and after the shift.
+4. The employee has no overlapping availability constraint.
+5. The employee has no overlapping assignment in any team.
+6. The employee has enough rest before and after the shift.
 
 Scheduling validation failures return a stable error code:
 
 ```json
 {
-  "code": "SHIFT_OVERLAP",
-  "message": "Employee already has an overlapping assignment"
+  "code": "AVAILABILITY_CONFLICT",
+  "message": "Employee is unavailable during this shift"
 }
 ```
 
@@ -394,7 +395,7 @@ Expected response:
 The authenticated user can delete only their own availability constraints.
 Deleting a missing constraint, or another user's constraint, returns `404`.
 
-Availability constraints are not yet checked during assignment creation.
+Availability constraints are checked during assignment creation.
 
 ## Important Notes
 

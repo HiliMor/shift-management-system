@@ -347,6 +347,7 @@ Stable assignment validation codes added in this phase:
 - `TEAM_MEMBERSHIP`
 - `DUPLICATE_ASSIGNMENT`
 - `SHIFT_CAPACITY`
+- `AVAILABILITY_CONFLICT`
 - `SHIFT_OVERLAP`
 - `MINIMUM_REST`
 
@@ -376,7 +377,7 @@ Goal: allow employees to declare unavailable time ranges and prevent conflicting
 - [x] Allow an employee to view personal constraints.
 - [x] Allow an employee to delete personal constraints.
 - [x] Block a constraint that overlaps an existing assignment.
-- [ ] Add constraint validation to assignment creation.
+- [x] Add constraint validation to assignment creation.
 
 ### Verify
 
@@ -384,7 +385,7 @@ Goal: allow employees to declare unavailable time ranges and prevent conflicting
 - [x] An employee can create a time-range constraint.
 - [x] An employee cannot view another employee's constraints.
 - [x] An employee cannot create a constraint that overlaps an existing assignment.
-- [ ] A manager cannot assign an employee during an unavailable time range.
+- [x] A manager cannot assign an employee during an unavailable time range.
 - [x] Invalid time ranges are rejected by the domain model.
 
 ### Document
@@ -428,10 +429,7 @@ Rules for the first API step:
 - Deleting another user's constraint returns `404 Not Found`.
 - Invalid time ranges return `400 Bad Request`.
 - Creating a constraint that overlaps one of the authenticated user's existing assignments returns `409 Conflict`.
-
-Still deferred from the current Phase 5 API steps:
-
-- Blocking assignments that overlap existing constraints.
+- Creating an assignment that overlaps one of the employee's availability constraints returns `409 Conflict` with code `AVAILABILITY_CONFLICT`.
 
 ## Phase 6 - Staffing Roles
 
@@ -894,3 +892,12 @@ Still open:
 - Added a service test for rejecting availability constraints that overlap existing assignments.
 - Updated `README.md`, `shift-management-backend/README.md`, and the Phase 5 plan to show that this direction of availability validation is implemented.
 - Verified `mvn -Dtest=AvailabilityConstraintServiceTest test` succeeds outside the Codex sandbox.
+
+### 2026-07-15 - Phase 5 Assignment Availability Validation
+
+- Added validation that a manager cannot assign an employee to a shift overlapping the employee's availability constraints.
+- Added stable assignment validation code `AVAILABILITY_CONFLICT`.
+- Kept the validation in `AssignmentService`, before assignment overlap and minimum-rest checks.
+- Added a service test for rejecting assignment creation when the employee is unavailable.
+- Updated `README.md`, `shift-management-backend/README.md`, and the Phase 5 plan to show that assignment validation against availability constraints is implemented.
+- Verified `mvn -Dtest=AssignmentServiceTest test` succeeds outside the Codex sandbox.
