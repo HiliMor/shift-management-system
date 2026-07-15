@@ -12,6 +12,8 @@ import java.time.LocalDate;
 import java.util.List;
 import java.util.Optional;
 
+import com.hilimor.shiftmanagement.availability.AvailabilityConstraint;
+import com.hilimor.shiftmanagement.availability.AvailabilityConstraintRepository;
 import com.hilimor.shiftmanagement.schedule.Schedule;
 import com.hilimor.shiftmanagement.schedule.ScheduleRepository;
 import com.hilimor.shiftmanagement.schedule.ScheduleStatus;
@@ -51,6 +53,9 @@ class AssignmentServiceTest {
     private UserRepository userRepository;
 
     @Mock
+    private AvailabilityConstraintRepository availabilityConstraintRepository;
+
+    @Mock
     private TeamMemberRepository teamMemberRepository;
 
     @Mock
@@ -70,6 +75,11 @@ class AssignmentServiceTest {
         when(teamMemberRepository.existsByUser_IdAndTeam_IdAndActiveTrue(2L, 1L)).thenReturn(true);
         when(assignmentRepository.existsByShift_IdAndEmployee_Id(20L, 2L)).thenReturn(false);
         when(assignmentRepository.countByShift_Id(20L)).thenReturn(0L);
+        when(availabilityConstraintRepository.findByEmployee_IdAndStartTimeLessThanAndEndTimeGreaterThan(
+                2L,
+                shift.getEndTime(),
+                shift.getStartTime()
+        )).thenReturn(List.of());
         when(assignmentRepository.findByEmployee_IdAndShift_StartTimeLessThanAndShift_EndTimeGreaterThan(
                 2L,
                 shift.getEndTime(),
@@ -183,6 +193,28 @@ class AssignmentServiceTest {
     }
 
     @Test
+    void createAssignmentRejectsAvailabilityConflict() {
+        Shift shift = shift(schedule(ScheduleStatus.DRAFT), 20L);
+        User employee = employee();
+
+        when(shiftRepository.findById(20L)).thenReturn(Optional.of(shift));
+        when(teamManagerRepository.existsByManager_UsernameAndTeam_Id("manager1", 1L)).thenReturn(true);
+        when(userRepository.findById(2L)).thenReturn(Optional.of(employee));
+        when(teamMemberRepository.existsByUser_IdAndTeam_IdAndActiveTrue(2L, 1L)).thenReturn(true);
+        when(assignmentRepository.existsByShift_IdAndEmployee_Id(20L, 2L)).thenReturn(false);
+        when(assignmentRepository.countByShift_Id(20L)).thenReturn(0L);
+        when(availabilityConstraintRepository.findByEmployee_IdAndStartTimeLessThanAndEndTimeGreaterThan(
+                2L,
+                shift.getEndTime(),
+                shift.getStartTime()
+        )).thenReturn(List.of(availabilityConstraint(employee)));
+
+        assertAssignmentConflict("AVAILABILITY_CONFLICT");
+
+        verify(assignmentRepository, never()).save(any());
+    }
+
+    @Test
     void createAssignmentRejectsOverlappingAssignment() {
         Shift shift = shift(schedule(ScheduleStatus.DRAFT), 20L);
         User employee = employee();
@@ -194,6 +226,11 @@ class AssignmentServiceTest {
         when(teamMemberRepository.existsByUser_IdAndTeam_IdAndActiveTrue(2L, 1L)).thenReturn(true);
         when(assignmentRepository.existsByShift_IdAndEmployee_Id(20L, 2L)).thenReturn(false);
         when(assignmentRepository.countByShift_Id(20L)).thenReturn(0L);
+        when(availabilityConstraintRepository.findByEmployee_IdAndStartTimeLessThanAndEndTimeGreaterThan(
+                2L,
+                shift.getEndTime(),
+                shift.getStartTime()
+        )).thenReturn(List.of());
         when(assignmentRepository.findByEmployee_IdAndShift_StartTimeLessThanAndShift_EndTimeGreaterThan(
                 2L,
                 shift.getEndTime(),
@@ -225,6 +262,11 @@ class AssignmentServiceTest {
         when(teamMemberRepository.existsByUser_IdAndTeam_IdAndActiveTrue(2L, 1L)).thenReturn(true);
         when(assignmentRepository.existsByShift_IdAndEmployee_Id(20L, 2L)).thenReturn(false);
         when(assignmentRepository.countByShift_Id(20L)).thenReturn(0L);
+        when(availabilityConstraintRepository.findByEmployee_IdAndStartTimeLessThanAndEndTimeGreaterThan(
+                2L,
+                shift.getEndTime(),
+                shift.getStartTime()
+        )).thenReturn(List.of());
         when(assignmentRepository.findByEmployee_IdAndShift_StartTimeLessThanAndShift_EndTimeGreaterThan(
                 2L,
                 shift.getEndTime(),
@@ -260,6 +302,11 @@ class AssignmentServiceTest {
         when(teamMemberRepository.existsByUser_IdAndTeam_IdAndActiveTrue(2L, 1L)).thenReturn(true);
         when(assignmentRepository.existsByShift_IdAndEmployee_Id(20L, 2L)).thenReturn(false);
         when(assignmentRepository.countByShift_Id(20L)).thenReturn(0L);
+        when(availabilityConstraintRepository.findByEmployee_IdAndStartTimeLessThanAndEndTimeGreaterThan(
+                2L,
+                shift.getEndTime(),
+                shift.getStartTime()
+        )).thenReturn(List.of());
         when(assignmentRepository.findByEmployee_IdAndShift_StartTimeLessThanAndShift_EndTimeGreaterThan(
                 2L,
                 shift.getEndTime(),
@@ -372,6 +419,18 @@ class AssignmentServiceTest {
         Assignment assignment = new Assignment(shift, employee, Instant.parse("2026-07-05T10:00:00Z"));
         ReflectionTestUtils.setField(assignment, "id", 30L);
         return assignment;
+    }
+
+    private AvailabilityConstraint availabilityConstraint(User employee) {
+        AvailabilityConstraint constraint = new AvailabilityConstraint(
+                employee,
+                Instant.parse("2026-07-06T05:00:00Z"),
+                Instant.parse("2026-07-06T07:00:00Z"),
+                "Unavailable",
+                Instant.parse("2026-07-05T10:00:00Z")
+        );
+        ReflectionTestUtils.setField(constraint, "id", 40L);
+        return constraint;
     }
 
     private User employee() {

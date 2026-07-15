@@ -4,6 +4,7 @@ import java.time.Duration;
 import java.time.Instant;
 import java.util.List;
 
+import com.hilimor.shiftmanagement.availability.AvailabilityConstraintRepository;
 import com.hilimor.shiftmanagement.schedule.Schedule;
 import com.hilimor.shiftmanagement.schedule.ScheduleRepository;
 import com.hilimor.shiftmanagement.schedule.ScheduleStatus;
@@ -26,6 +27,7 @@ public class AssignmentService {
     private final ScheduleRepository scheduleRepository;
     private final ShiftRepository shiftRepository;
     private final UserRepository userRepository;
+    private final AvailabilityConstraintRepository availabilityConstraintRepository;
     private final TeamMemberRepository teamMemberRepository;
     private final TeamManagerRepository teamManagerRepository;
 
@@ -34,6 +36,7 @@ public class AssignmentService {
             ScheduleRepository scheduleRepository,
             ShiftRepository shiftRepository,
             UserRepository userRepository,
+            AvailabilityConstraintRepository availabilityConstraintRepository,
             TeamMemberRepository teamMemberRepository,
             TeamManagerRepository teamManagerRepository
     ) {
@@ -41,6 +44,7 @@ public class AssignmentService {
         this.scheduleRepository = scheduleRepository;
         this.shiftRepository = shiftRepository;
         this.userRepository = userRepository;
+        this.availabilityConstraintRepository = availabilityConstraintRepository;
         this.teamMemberRepository = teamMemberRepository;
         this.teamManagerRepository = teamManagerRepository;
     }
@@ -63,6 +67,7 @@ public class AssignmentService {
         validateTeamMembership(employee.getId(), teamId);
         validateNotAlreadyAssigned(shift.getId(), employee.getId());
         validateCapacity(shift);
+        validateAvailability(shift, employee.getId());
         validateNoOverlap(shift, employee.getId());
         validateMinimumRest(shift, employee.getId());
 
@@ -125,6 +130,20 @@ public class AssignmentService {
         long currentAssignments = assignmentRepository.countByShift_Id(shift.getId());
         if (currentAssignments >= shift.getRequiredWorkers()) {
             throw conflict("SHIFT_CAPACITY", "Shift has no available assignment slots");
+        }
+    }
+
+    private void validateAvailability(Shift shift, Long employeeId) {
+        boolean hasUnavailableOverlap = !availabilityConstraintRepository
+                .findByEmployee_IdAndStartTimeLessThanAndEndTimeGreaterThan(
+                        employeeId,
+                        shift.getEndTime(),
+                        shift.getStartTime()
+                )
+                .isEmpty();
+
+        if (hasUnavailableOverlap) {
+            throw conflict("AVAILABILITY_CONFLICT", "Employee is unavailable during this shift");
         }
     }
 
