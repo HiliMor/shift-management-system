@@ -3,6 +3,7 @@ package com.hilimor.shiftmanagement.availability;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -11,6 +12,8 @@ import java.time.Instant;
 import java.util.List;
 import java.util.Optional;
 
+import com.hilimor.shiftmanagement.assignment.Assignment;
+import com.hilimor.shiftmanagement.assignment.AssignmentRepository;
 import com.hilimor.shiftmanagement.user.ApplicationRole;
 import com.hilimor.shiftmanagement.user.User;
 import com.hilimor.shiftmanagement.user.UserRepository;
@@ -32,6 +35,9 @@ class AvailabilityConstraintServiceTest {
     private AvailabilityConstraintRepository availabilityConstraintRepository;
 
     @Mock
+    private AssignmentRepository assignmentRepository;
+
+    @Mock
     private UserRepository userRepository;
 
     @InjectMocks
@@ -43,6 +49,11 @@ class AvailabilityConstraintServiceTest {
         CreateAvailabilityConstraintRequest request = validRequest();
 
         when(userRepository.findByUsername("employee1")).thenReturn(Optional.of(employee));
+        when(assignmentRepository.findByEmployee_IdAndShift_StartTimeLessThanAndShift_EndTimeGreaterThan(
+                2L,
+                request.endTime(),
+                request.startTime()
+        )).thenReturn(List.of());
         when(availabilityConstraintRepository.save(any(AvailabilityConstraint.class))).thenAnswer(invocation -> {
             AvailabilityConstraint constraint = invocation.getArgument(0);
             ReflectionTestUtils.setField(constraint, "id", 40L);
@@ -74,6 +85,25 @@ class AvailabilityConstraintServiceTest {
         assertThatThrownBy(() -> availabilityConstraintService.createConstraint("employee1", request))
                 .isInstanceOfSatisfying(ResponseStatusException.class, exception ->
                         assertThat(exception.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST));
+
+        verify(availabilityConstraintRepository, never()).save(any());
+    }
+
+    @Test
+    void createConstraintRejectsExistingAssignmentOverlap() {
+        User employee = employee();
+        CreateAvailabilityConstraintRequest request = validRequest();
+
+        when(userRepository.findByUsername("employee1")).thenReturn(Optional.of(employee));
+        when(assignmentRepository.findByEmployee_IdAndShift_StartTimeLessThanAndShift_EndTimeGreaterThan(
+                2L,
+                request.endTime(),
+                request.startTime()
+        )).thenReturn(List.of(mock(Assignment.class)));
+
+        assertThatThrownBy(() -> availabilityConstraintService.createConstraint("employee1", request))
+                .isInstanceOfSatisfying(ResponseStatusException.class, exception ->
+                        assertThat(exception.getStatusCode()).isEqualTo(HttpStatus.CONFLICT));
 
         verify(availabilityConstraintRepository, never()).save(any());
     }

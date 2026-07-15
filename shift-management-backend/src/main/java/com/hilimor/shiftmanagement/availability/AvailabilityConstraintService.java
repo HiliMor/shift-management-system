@@ -4,6 +4,7 @@ import java.time.Instant;
 import java.util.List;
 import java.util.Objects;
 
+import com.hilimor.shiftmanagement.assignment.AssignmentRepository;
 import com.hilimor.shiftmanagement.user.User;
 import com.hilimor.shiftmanagement.user.UserRepository;
 
@@ -16,13 +17,16 @@ import org.springframework.web.server.ResponseStatusException;
 public class AvailabilityConstraintService {
 
     private final AvailabilityConstraintRepository availabilityConstraintRepository;
+    private final AssignmentRepository assignmentRepository;
     private final UserRepository userRepository;
 
     public AvailabilityConstraintService(
             AvailabilityConstraintRepository availabilityConstraintRepository,
+            AssignmentRepository assignmentRepository,
             UserRepository userRepository
     ) {
         this.availabilityConstraintRepository = availabilityConstraintRepository;
+        this.assignmentRepository = assignmentRepository;
         this.userRepository = userRepository;
     }
 
@@ -36,6 +40,8 @@ public class AvailabilityConstraintService {
         }
 
         User employee = currentUser(username);
+        validateNoAssignedShiftOverlap(employee.getId(), request.startTime(), request.endTime());
+
         AvailabilityConstraint constraint = new AvailabilityConstraint(
                 employee,
                 request.startTime(),
@@ -70,6 +76,23 @@ public class AvailabilityConstraintService {
         }
 
         availabilityConstraintRepository.delete(constraint);
+    }
+
+    private void validateNoAssignedShiftOverlap(Long employeeId, Instant startTime, Instant endTime) {
+        boolean hasAssignmentOverlap = !assignmentRepository
+                .findByEmployee_IdAndShift_StartTimeLessThanAndShift_EndTimeGreaterThan(
+                        employeeId,
+                        endTime,
+                        startTime
+                )
+                .isEmpty();
+
+        if (hasAssignmentOverlap) {
+            throw new ResponseStatusException(
+                    HttpStatus.CONFLICT,
+                    "Availability constraint overlaps an existing assignment"
+            );
+        }
     }
 
     private User currentUser(String username) {
