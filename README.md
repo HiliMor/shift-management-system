@@ -45,6 +45,12 @@ Backend setup, run instructions, and API examples are documented in:
 shift-management-backend/README.md
 ```
 
+The current backend component architecture is documented in:
+
+```text
+docs/current-backend-architecture.md
+```
+
 ## Development Approach
 
 The project is built in small phases. Each phase adds a limited piece of
