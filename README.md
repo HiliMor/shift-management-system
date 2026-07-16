@@ -4,7 +4,7 @@ A course project for managing employee shifts across teams.
 
 The project is being implemented gradually. The current focus is a working
 Spring Boot backend with authentication, teams, schedules, shifts, manual
-assignment rules, and availability constraint support.
+assignment rules, availability constraint support, and staffing role persistence.
 
 ## Repository Structure
 
@@ -26,9 +26,11 @@ Implemented:
 - Availability constraint create, personal list, and delete operations.
 - Availability constraint creation is rejected when it overlaps an existing assignment.
 - Assignment creation is rejected when it overlaps an employee availability constraint.
+- Initial staffing role persistence model.
 
 Planned next:
 
+- Staffing role API and assignment to team members.
 - Schedule publication and reopening.
 - Basic React frontend.
 - Swap and transfer requests.

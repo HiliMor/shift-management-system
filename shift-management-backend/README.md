@@ -35,12 +35,13 @@ Implemented:
 - Availability constraint delete endpoint: `DELETE /api/availability-constraints/{constraintId}`.
 - Availability constraint creation is rejected when it overlaps an existing assignment.
 - Assignment creation is rejected when it overlaps an employee availability constraint.
+- Initial staffing role persistence model.
 
 Not implemented yet:
 
 - Schedule list, update, delete, publish, and reopen endpoints.
 - Assignment transfer endpoints.
-- Staffing roles.
+- Staffing role API and assignment to team members.
 - Automatic assignment.
 - Team-scoped authorization for manager actions.
 
@@ -396,6 +397,23 @@ The authenticated user can delete only their own availability constraints.
 Deleting a missing constraint, or another user's constraint, returns `404`.
 
 Availability constraints are checked during assignment creation.
+
+## Staffing Roles
+
+Staffing role persistence has started, but there are no staffing role API endpoints yet.
+
+A staffing role is a team-specific professional scheduling role, such as `Shift Supervisor` or `Entrance Guard`.
+It is different from `ApplicationRole`:
+
+- `ApplicationRole` controls broad system permissions, such as `MANAGER` or `EMPLOYEE`.
+- `StaffingRole` describes what work an employee is qualified to cover inside one team.
+
+Current persistence rules:
+
+- Each staffing role belongs to one team.
+- Role names are required and trimmed by the domain model.
+- A team cannot have two staffing roles with the same name.
+- Different teams may use the same staffing role name independently.
 
 ## Important Notes
 

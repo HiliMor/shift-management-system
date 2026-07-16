@@ -75,6 +75,35 @@ class AvailabilityConstraintServiceTest {
     }
 
     @Test
+    void createConstraintAcceptsFullDayRange() {
+        User employee = employee();
+        CreateAvailabilityConstraintRequest request = new CreateAvailabilityConstraintRequest(
+                Instant.parse("2026-07-20T00:00:00Z"),
+                Instant.parse("2026-07-21T00:00:00Z"),
+                "Full day unavailable"
+        );
+
+        when(userRepository.findByUsername("employee1")).thenReturn(Optional.of(employee));
+        when(assignmentRepository.findByEmployee_IdAndShift_StartTimeLessThanAndShift_EndTimeGreaterThan(
+                2L,
+                request.endTime(),
+                request.startTime()
+        )).thenReturn(List.of());
+        when(availabilityConstraintRepository.save(any(AvailabilityConstraint.class))).thenAnswer(invocation -> {
+            AvailabilityConstraint constraint = invocation.getArgument(0);
+            ReflectionTestUtils.setField(constraint, "id", 41L);
+            return constraint;
+        });
+
+        AvailabilityConstraintResponse response = availabilityConstraintService.createConstraint("employee1", request);
+
+        assertThat(response.id()).isEqualTo(41L);
+        assertThat(response.startTime()).isEqualTo(Instant.parse("2026-07-20T00:00:00Z"));
+        assertThat(response.endTime()).isEqualTo(Instant.parse("2026-07-21T00:00:00Z"));
+        assertThat(response.reason()).isEqualTo("Full day unavailable");
+    }
+
+    @Test
     void createConstraintRejectsInvalidTimeRange() {
         CreateAvailabilityConstraintRequest request = new CreateAvailabilityConstraintRequest(
                 Instant.parse("2026-07-13T14:00:00Z"),

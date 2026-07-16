@@ -381,7 +381,7 @@ Goal: allow employees to declare unavailable time ranges and prevent conflicting
 
 ### Verify
 
-- [ ] An employee can create a full-day constraint.
+- [x] An employee can create a full-day constraint.
 - [x] An employee can create a time-range constraint.
 - [x] An employee cannot view another employee's constraints.
 - [x] An employee cannot create a constraint that overlaps an existing assignment.
@@ -443,7 +443,7 @@ Goal: support professional scheduling roles such as shift supervisor or entrance
 
 ### Implement
 
-- [ ] Create `StaffingRole`.
+- [x] Create `StaffingRole`.
 - [ ] Connect team members to staffing roles.
 - [ ] Allow managers to create team staffing roles.
 - [ ] Allow managers to assign staffing roles to employees.
@@ -461,6 +461,37 @@ Goal: support professional scheduling roles such as shift supervisor or entrance
 
 - The difference between application roles and staffing roles.
 - Example staffing roles in the system.
+
+### Phase 6 Design Decisions
+
+`StaffingRole` represents a team-specific professional role used for scheduling.
+
+It is different from `ApplicationRole`:
+
+- `ApplicationRole` controls broad system permissions, such as `MANAGER` or `EMPLOYEE`.
+- `StaffingRole` describes what work an employee is qualified to cover inside one team, such as `Shift Supervisor` or `Entrance Guard`.
+
+Initial fields:
+
+- `id`
+- `team`
+- `name`
+- `description`
+- `version`
+
+Initial persistence rules:
+
+- A staffing role belongs to exactly one team.
+- The role name is required and trimmed by the domain model.
+- The same team cannot have two staffing roles with the same name.
+- Different teams may use the same role name independently.
+
+Deferred from the first Phase 6 step:
+
+- Staffing role create/list API.
+- Assigning staffing roles to team members.
+- Required staffing roles on shifts.
+- Assignment validation based on required staffing roles.
 
 ## Phase 7 - Schedule Publication
 
@@ -901,3 +932,18 @@ Still open:
 - Added a service test for rejecting assignment creation when the employee is unavailable.
 - Updated `README.md`, `shift-management-backend/README.md`, and the Phase 5 plan to show that assignment validation against availability constraints is implemented.
 - Verified `mvn -Dtest=AssignmentServiceTest test` succeeds outside the Codex sandbox.
+
+### 2026-07-16 - Phase 6 Staffing Role Persistence
+
+- Added a permanent service test that verifies full-day availability constraints can be created.
+- Started Phase 6 with a persistence-only step.
+- Added `StaffingRole` entity linked to `Team`.
+- Added `StaffingRoleRepository`.
+- Added Flyway migration `V6__create_staffing_roles.sql`.
+- Added role name trimming and blank-name validation in the domain model.
+- Added a unique database constraint for role names inside the same team.
+- Added entity tests for valid role creation, name trimming, blank-name rejection, and required team validation.
+- Updated `README.md`, `shift-management-backend/README.md`, and the Phase 6 plan to show that only the staffing role persistence model has been implemented so far.
+- Verified `mvn -Dtest=StaffingRoleTest,AvailabilityConstraintServiceTest test` succeeds outside the Codex sandbox.
+- Verified `mvn test` succeeds outside the Codex sandbox.
+- Verified Spring Boot starts against PostgreSQL and Flyway migrates the schema to `V6`.
