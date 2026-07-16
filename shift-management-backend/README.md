@@ -36,12 +36,13 @@ Implemented:
 - Availability constraint creation is rejected when it overlaps an existing assignment.
 - Assignment creation is rejected when it overlaps an employee availability constraint.
 - Initial staffing role persistence model.
+- Staffing role assignment persistence between team members and staffing roles.
 
 Not implemented yet:
 
 - Schedule list, update, delete, publish, and reopen endpoints.
 - Assignment transfer endpoints.
-- Staffing role API and assignment to team members.
+- Staffing role API endpoints.
 - Automatic assignment.
 - Team-scoped authorization for manager actions.
 
@@ -414,6 +415,9 @@ Current persistence rules:
 - Role names are required and trimmed by the domain model.
 - A team cannot have two staffing roles with the same name.
 - Different teams may use the same staffing role name independently.
+- Staffing roles can be connected to team members.
+- A team member can receive only staffing roles from the same team.
+- The same staffing role cannot be assigned twice to the same team member.
 
 ## Important Notes
 

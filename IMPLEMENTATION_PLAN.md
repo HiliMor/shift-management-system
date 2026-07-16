@@ -444,7 +444,7 @@ Goal: support professional scheduling roles such as shift supervisor or entrance
 ### Implement
 
 - [x] Create `StaffingRole`.
-- [ ] Connect team members to staffing roles.
+- [x] Connect team members to staffing roles.
 - [ ] Allow managers to create team staffing roles.
 - [ ] Allow managers to assign staffing roles to employees.
 - [ ] Add an optional required staffing role to shifts.
@@ -479,17 +479,29 @@ Initial fields:
 - `description`
 - `version`
 
+`TeamMemberStaffingRole` represents one staffing role assigned to one team member.
+
+Initial fields:
+
+- `id`
+- `teamMember`
+- `staffingRole`
+- `assignedAt`
+- `version`
+
 Initial persistence rules:
 
 - A staffing role belongs to exactly one team.
 - The role name is required and trimmed by the domain model.
 - The same team cannot have two staffing roles with the same name.
 - Different teams may use the same role name independently.
+- A team member can be connected to staffing roles only from the same team.
+- The same staffing role cannot be assigned twice to the same team member.
 
 Deferred from the first Phase 6 step:
 
 - Staffing role create/list API.
-- Assigning staffing roles to team members.
+- Staffing role assignment API.
 - Required staffing roles on shifts.
 - Assignment validation based on required staffing roles.
 
@@ -947,3 +959,17 @@ Still open:
 - Verified `mvn -Dtest=StaffingRoleTest,AvailabilityConstraintServiceTest test` succeeds outside the Codex sandbox.
 - Verified `mvn test` succeeds outside the Codex sandbox.
 - Verified Spring Boot starts against PostgreSQL and Flyway migrates the schema to `V6`.
+
+### 2026-07-16 - Phase 6 Team Member Staffing Role Persistence
+
+- Added `TeamMemberStaffingRole` entity linking `TeamMember` and `StaffingRole`.
+- Added `TeamMemberStaffingRoleRepository`.
+- Added Flyway migration `V7__create_team_member_staffing_roles.sql`.
+- Added `assignedAt` to record when a staffing role was assigned to a team member.
+- Added domain validation that a team member can receive only staffing roles from the same team.
+- Added a unique database constraint so the same staffing role cannot be assigned twice to the same team member.
+- Added entity tests for valid role assignment, cross-team rejection, and required fields.
+- Updated `README.md`, `shift-management-backend/README.md`, and the Phase 6 plan to show that role assignment persistence is implemented but API endpoints are still deferred.
+- Verified `mvn -Dtest=StaffingRoleTest,TeamMemberStaffingRoleTest test` succeeds.
+- Verified `mvn test` succeeds outside the Codex sandbox.
+- Verified Spring Boot starts against PostgreSQL and Flyway migrates the schema to `V7`.
