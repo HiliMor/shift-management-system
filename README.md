@@ -28,10 +28,11 @@ Implemented:
 - Assignment creation is rejected when it overlaps an employee availability constraint.
 - Initial staffing role persistence model.
 - Staffing role assignment persistence between team members and staffing roles.
+- Staffing role create and list operations.
 
 Planned next:
 
-- Staffing role API endpoints.
+- Staffing role assignment API endpoints.
 - Schedule publication and reopening.
 - Basic React frontend.
 - Swap and transfer requests.

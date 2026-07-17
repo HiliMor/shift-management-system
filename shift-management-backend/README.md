@@ -37,12 +37,14 @@ Implemented:
 - Assignment creation is rejected when it overlaps an employee availability constraint.
 - Initial staffing role persistence model.
 - Staffing role assignment persistence between team members and staffing roles.
+- Staffing role create endpoint: `POST /api/teams/{teamId}/staffing-roles`.
+- Staffing role list endpoint: `GET /api/teams/{teamId}/staffing-roles`.
 
 Not implemented yet:
 
 - Schedule list, update, delete, publish, and reopen endpoints.
 - Assignment transfer endpoints.
-- Staffing role API endpoints.
+- Staffing role assignment API endpoints.
 - Automatic assignment.
 - Team-scoped authorization for manager actions.
 
@@ -401,8 +403,6 @@ Availability constraints are checked during assignment creation.
 
 ## Staffing Roles
 
-Staffing role persistence has started, but there are no staffing role API endpoints yet.
-
 A staffing role is a team-specific professional scheduling role, such as `Shift Supervisor` or `Entrance Guard`.
 It is different from `ApplicationRole`:
 
@@ -418,6 +418,50 @@ Current persistence rules:
 - Staffing roles can be connected to team members.
 - A team member can receive only staffing roles from the same team.
 - The same staffing role cannot be assigned twice to the same team member.
+
+Create a staffing role for a managed team:
+
+```bash
+curl -X POST http://localhost:8080/api/teams/1/staffing-roles \
+  -H 'Content-Type: application/json' \
+  -H "Authorization: Bearer <TOKEN>" \
+  -d '{"name":"Shift Supervisor","description":"Can supervise a shift"}'
+```
+
+Expected response:
+
+```json
+{
+  "id": 1,
+  "teamId": 1,
+  "name": "Shift Supervisor",
+  "description": "Can supervise a shift"
+}
+```
+
+List staffing roles for a managed team:
+
+```bash
+curl http://localhost:8080/api/teams/1/staffing-roles \
+  -H "Authorization: Bearer <TOKEN>"
+```
+
+Expected response:
+
+```json
+[
+  {
+    "id": 1,
+    "teamId": 1,
+    "name": "Shift Supervisor",
+    "description": "Can supervise a shift"
+  }
+]
+```
+
+Only managers assigned to the requested team can create or list staffing roles.
+Creating a duplicate staffing role name in the same team returns `409 Conflict`.
+Staffing role assignment API endpoints are not implemented yet.
 
 ## Important Notes
 

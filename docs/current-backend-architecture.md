@@ -90,7 +90,7 @@ flowchart TD
 ```
 
 Not every package has every layer yet.
-For example, `staffing` currently has entities and repositories only, with no REST API yet.
+For example, `staffing` currently has create/list API endpoints for staffing roles, but no API yet for assigning roles to team members.
 
 ## Domain Model
 
@@ -205,6 +205,7 @@ flowchart TD
     shiftsApi["Shifts<br/>POST /api/schedules/{scheduleId}/shifts<br/>GET /api/schedules/{scheduleId}/shifts<br/>PUT /api/schedules/{scheduleId}/shifts/{shiftId}<br/>DELETE /api/schedules/{scheduleId}/shifts/{shiftId}"]
     assignmentsApi["Assignments<br/>POST /api/assignments<br/>GET /api/schedules/{scheduleId}/assignments<br/>DELETE /api/assignments/{assignmentId}"]
     availabilityApi["Availability Constraints<br/>POST /api/availability-constraints<br/>GET /api/availability-constraints/me<br/>DELETE /api/availability-constraints/{constraintId}"]
+    staffingApi["Staffing Roles<br/>POST /api/teams/{teamId}/staffing-roles<br/>GET /api/teams/{teamId}/staffing-roles"]
 
     api --> healthApi
     api --> authApi
@@ -212,10 +213,10 @@ flowchart TD
     api --> shiftsApi
     api --> assignmentsApi
     api --> availabilityApi
+    api --> staffingApi
 ```
 
-Staffing roles do not have API endpoints yet.
-They currently exist only as persistence components.
+Staffing role assignment API endpoints are not implemented yet.
 
 ## Main Request Flow Examples
 
@@ -312,6 +313,6 @@ flowchart LR
 | `shift` | Shift creation, listing, update, deletion, and schedule-range validation. |
 | `assignment` | Manual assignment creation/list/delete and business rule validation. |
 | `availability` | Employee unavailable time ranges and conflict checks with assignments. |
-| `staffing` | Team-specific professional roles and persistence for assigning those roles to team members. |
+| `staffing` | Team-specific professional roles, role create/list API, and persistence for assigning roles to team members. |
 | Flyway migrations | Versioned PostgreSQL schema changes. |
 | PostgreSQL | Persistent relational storage. |

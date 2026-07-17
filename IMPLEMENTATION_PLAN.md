@@ -445,14 +445,14 @@ Goal: support professional scheduling roles such as shift supervisor or entrance
 
 - [x] Create `StaffingRole`.
 - [x] Connect team members to staffing roles.
-- [ ] Allow managers to create team staffing roles.
+- [x] Allow managers to create team staffing roles.
 - [ ] Allow managers to assign staffing roles to employees.
 - [ ] Add an optional required staffing role to shifts.
 - [ ] Add staffing-role validation to assignment creation.
 
 ### Verify
 
-- [ ] A manager can create a staffing role for a managed team.
+- [x] A manager can create a staffing role for a managed team.
 - [ ] An employee with the required role can be assigned.
 - [ ] An employee without the required role is rejected.
 - [ ] A role from another team does not count.
@@ -500,10 +500,20 @@ Initial persistence rules:
 
 Deferred from the first Phase 6 step:
 
-- Staffing role create/list API.
 - Staffing role assignment API.
 - Required staffing roles on shifts.
 - Assignment validation based on required staffing roles.
+
+Initial endpoints:
+
+- `POST /api/teams/{teamId}/staffing-roles`
+- `GET /api/teams/{teamId}/staffing-roles`
+
+Rules for the first staffing role API step:
+
+- Only a manager of the requested team can create or list staffing roles.
+- Creating a duplicate staffing role name in the same team returns `409 Conflict`.
+- Role names are trimmed before duplicate checking and saving.
 
 ## Phase 7 - Schedule Publication
 
@@ -973,3 +983,20 @@ Still open:
 - Verified `mvn -Dtest=StaffingRoleTest,TeamMemberStaffingRoleTest test` succeeds.
 - Verified `mvn test` succeeds outside the Codex sandbox.
 - Verified Spring Boot starts against PostgreSQL and Flyway migrates the schema to `V7`.
+
+### 2026-07-17 - Phase 6 Staffing Role API Start
+
+- Added `CreateStaffingRoleRequest`.
+- Added `StaffingRoleResponse`.
+- Added `StaffingRoleService`.
+- Added `StaffingRoleController`.
+- Added `POST /api/teams/{teamId}/staffing-roles` for creating team staffing roles.
+- Added `GET /api/teams/{teamId}/staffing-roles` for listing team staffing roles.
+- Added manager authorization so only managers of the requested team can create or list staffing roles.
+- Added duplicate-name validation for staffing roles in the same team.
+- Trimmed role names before duplicate checking and saving.
+- Added service tests for successful creation, unmanaged-team rejection, missing-team rejection, duplicate-name rejection, successful list, and unmanaged-list rejection.
+- Updated `README.md`, `shift-management-backend/README.md`, `docs/current-backend-architecture.md`, and the Phase 6 plan to show that create/list API endpoints are implemented.
+- Verified `mvn -Dtest=StaffingRoleTest,TeamMemberStaffingRoleTest,StaffingRoleServiceTest test` succeeds outside the Codex sandbox.
+- Verified `mvn test` succeeds outside the Codex sandbox.
+- Verified Spring Boot starts against PostgreSQL and `GET /api/teams/1/staffing-roles` returns `200 OK` for `manager1`.
