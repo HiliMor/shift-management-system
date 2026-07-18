@@ -1,6 +1,6 @@
 # Implementation Plan - Shift Management System
 
-Last updated: 2026-07-15
+Last updated: 2026-07-18
 
 This document is the working implementation plan for the project.  
 The goal is to build the system in small, understandable steps, while keeping each part easy to explain during the final presentation.
@@ -446,13 +446,15 @@ Goal: support professional scheduling roles such as shift supervisor or entrance
 - [x] Create `StaffingRole`.
 - [x] Connect team members to staffing roles.
 - [x] Allow managers to create team staffing roles.
-- [ ] Allow managers to assign staffing roles to employees.
+- [x] Allow managers to assign staffing roles to employees.
 - [x] Add an optional required staffing role to shifts.
 - [ ] Add staffing-role validation to assignment creation.
 
 ### Verify
 
 - [x] A manager can create a staffing role for a managed team.
+- [x] A manager can assign a staffing role to an active team member.
+- [x] A manager cannot assign a role from another team to an employee.
 - [ ] An employee with the required role can be assigned.
 - [ ] An employee without the required role is rejected.
 - [ ] A role from another team does not count.
@@ -502,12 +504,11 @@ Initial persistence rules:
 - A required staffing role on a shift must belong to the schedule's team.
 - Assignment validation against required staffing roles is not implemented yet.
 
-Deferred from the first Phase 6 step:
+Still deferred from Phase 6:
 
-- Staffing role assignment API.
 - Assignment validation based on required staffing roles.
 
-Initial endpoints:
+Staffing role management endpoints:
 
 - `POST /api/teams/{teamId}/staffing-roles`
 - `GET /api/teams/{teamId}/staffing-roles`
@@ -517,6 +518,18 @@ Rules for the first staffing role API step:
 - Only a manager of the requested team can create or list staffing roles.
 - Creating a duplicate staffing role name in the same team returns `409 Conflict`.
 - Role names are trimmed before duplicate checking and saving.
+
+Employee staffing role endpoints:
+
+- `POST /api/teams/{teamId}/employees/{employeeId}/staffing-roles`
+- `GET /api/teams/{teamId}/employees/{employeeId}/staffing-roles`
+
+Rules for employee staffing role assignment:
+
+- Only a manager of the requested team can assign or list an employee's staffing roles for that team.
+- The employee must be an active member of the requested team.
+- The staffing role must belong to the requested team.
+- Assigning the same staffing role to the same team member twice returns `409 Conflict`.
 
 Rules for required staffing roles on shifts:
 
@@ -1024,3 +1037,22 @@ Still open:
 - Verified `mvn -Dtest=ShiftTest,ShiftServiceTest test` succeeds outside the Codex sandbox.
 - Verified `mvn test` succeeds outside the Codex sandbox.
 - Verified Spring Boot starts against PostgreSQL and Flyway migrates the schema to `V8`.
+
+### 2026-07-18 - Phase 6 Employee Staffing Role API
+
+- Added `AssignStaffingRoleRequest`.
+- Added `TeamMemberStaffingRoleResponse`.
+- Added `TeamMemberStaffingRoleService`.
+- Added `TeamMemberStaffingRoleController`.
+- Added `POST /api/teams/{teamId}/employees/{employeeId}/staffing-roles` for assigning a team staffing role to an active team member.
+- Added `GET /api/teams/{teamId}/employees/{employeeId}/staffing-roles` for listing an employee's staffing roles in a team.
+- Added manager authorization so only managers of the requested team can assign or list employee staffing roles.
+- Added validation that the employee must be an active member of the requested team.
+- Added validation that the assigned staffing role must belong to the requested team.
+- Added duplicate-assignment validation for employee staffing roles.
+- Added service tests for successful assignment, unmanaged-team rejection, missing active team member rejection, cross-team role rejection, duplicate role rejection, successful listing, and unmanaged-list rejection.
+- Updated `README.md`, `shift-management-backend/README.md`, `docs/current-backend-architecture.md`, and the Phase 6 plan.
+- Verified `mvn -Dtest=StaffingRoleTest,StaffingRoleServiceTest,TeamMemberStaffingRoleTest,TeamMemberStaffingRoleServiceTest test` succeeds outside the Codex sandbox.
+- Verified `mvn test` succeeds outside the Codex sandbox.
+- Verified Spring Boot starts against PostgreSQL with Flyway schema version `V8`.
+- Verified `GET /api/teams/1/employees/2/staffing-roles` returns `200 OK` for `manager1`.

@@ -30,10 +30,11 @@ Implemented:
 - Staffing role assignment persistence between team members and staffing roles.
 - Staffing role create and list operations.
 - Optional required staffing role on shifts.
+- Employee staffing role assignment and list operations.
 
 Planned next:
 
-- Staffing role assignment API endpoints.
+- Assignment validation against required staffing roles.
 - Schedule publication and reopening.
 - Basic React frontend.
 - Swap and transfer requests.

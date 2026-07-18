@@ -40,15 +40,16 @@ Implemented:
 - Staffing role create endpoint: `POST /api/teams/{teamId}/staffing-roles`.
 - Staffing role list endpoint: `GET /api/teams/{teamId}/staffing-roles`.
 - Optional required staffing role on shifts.
+- Employee staffing role assignment endpoint: `POST /api/teams/{teamId}/employees/{employeeId}/staffing-roles`.
+- Employee staffing role list endpoint: `GET /api/teams/{teamId}/employees/{employeeId}/staffing-roles`.
 
 Not implemented yet:
 
 - Schedule list, update, delete, publish, and reopen endpoints.
 - Assignment transfer endpoints.
-- Staffing role assignment API endpoints.
 - Assignment validation against required staffing roles.
 - Automatic assignment.
-- Team-scoped authorization for manager actions.
+- Remaining team-scoped authorization for future manager workflows.
 
 ## Requirements
 
@@ -473,7 +474,62 @@ Expected response:
 
 Only managers assigned to the requested team can create or list staffing roles.
 Creating a duplicate staffing role name in the same team returns `409 Conflict`.
-Staffing role assignment API endpoints are not implemented yet.
+
+Assign a staffing role to an active employee in a managed team:
+
+```bash
+curl -X POST http://localhost:8080/api/teams/1/employees/2/staffing-roles \
+  -H 'Content-Type: application/json' \
+  -H "Authorization: Bearer <TOKEN>" \
+  -d '{"staffingRoleId":1}'
+```
+
+Expected response:
+
+```json
+{
+  "id": 1,
+  "teamId": 1,
+  "teamMemberId": 1,
+  "employeeId": 2,
+  "employeeUsername": "employee1",
+  "employeeFullName": "Demo Employee",
+  "staffingRoleId": 1,
+  "staffingRoleName": "Shift Supervisor",
+  "assignedAt": "2026-07-18T07:43:40.000000Z"
+}
+```
+
+List an employee's staffing roles in a managed team:
+
+```bash
+curl http://localhost:8080/api/teams/1/employees/2/staffing-roles \
+  -H "Authorization: Bearer <TOKEN>"
+```
+
+Expected response:
+
+```json
+[
+  {
+    "id": 1,
+    "teamId": 1,
+    "teamMemberId": 1,
+    "employeeId": 2,
+    "employeeUsername": "employee1",
+    "employeeFullName": "Demo Employee",
+    "staffingRoleId": 1,
+    "staffingRoleName": "Shift Supervisor",
+    "assignedAt": "2026-07-18T07:43:40.000000Z"
+  }
+]
+```
+
+Only managers assigned to the requested team can assign or list employee staffing roles.
+The employee must be an active member of the requested team.
+The assigned staffing role must belong to the requested team.
+Assigning the same staffing role to the same team member twice returns `409 Conflict`.
+Assignment validation against required staffing roles is not implemented yet.
 
 ## Important Notes
 

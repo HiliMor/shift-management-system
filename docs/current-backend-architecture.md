@@ -40,7 +40,7 @@ flowchart TD
     shift["shift<br/>Shift CRUD inside schedules"]
     assignment["assignment<br/>Manual assignment workflow and validations"]
     availability["availability<br/>Employee unavailable time ranges"]
-    staffing["staffing<br/>Team staffing roles and member-role links"]
+    staffing["staffing<br/>Team staffing roles, member-role links, and role assignment API"]
 
     app --> config
     app --> health
@@ -90,7 +90,7 @@ flowchart TD
 ```
 
 Not every package has every layer yet.
-For example, `staffing` currently has create/list API endpoints for staffing roles, but no API yet for assigning roles to team members.
+For example, `staffing` currently supports role management and employee role assignment, but assignment creation does not yet validate required staffing roles.
 
 ## Domain Model
 
@@ -207,7 +207,7 @@ flowchart TD
     shiftsApi["Shifts<br/>POST /api/schedules/{scheduleId}/shifts<br/>GET /api/schedules/{scheduleId}/shifts<br/>PUT /api/schedules/{scheduleId}/shifts/{shiftId}<br/>DELETE /api/schedules/{scheduleId}/shifts/{shiftId}"]
     assignmentsApi["Assignments<br/>POST /api/assignments<br/>GET /api/schedules/{scheduleId}/assignments<br/>DELETE /api/assignments/{assignmentId}"]
     availabilityApi["Availability Constraints<br/>POST /api/availability-constraints<br/>GET /api/availability-constraints/me<br/>DELETE /api/availability-constraints/{constraintId}"]
-    staffingApi["Staffing Roles<br/>POST /api/teams/{teamId}/staffing-roles<br/>GET /api/teams/{teamId}/staffing-roles"]
+    staffingApi["Staffing Roles<br/>POST /api/teams/{teamId}/staffing-roles<br/>GET /api/teams/{teamId}/staffing-roles<br/>POST /api/teams/{teamId}/employees/{employeeId}/staffing-roles<br/>GET /api/teams/{teamId}/employees/{employeeId}/staffing-roles"]
 
     api --> healthApi
     api --> authApi
@@ -218,7 +218,7 @@ flowchart TD
     api --> staffingApi
 ```
 
-Staffing role assignment API endpoints are not implemented yet.
+Assignment creation does not yet validate required staffing roles.
 
 ## Main Request Flow Examples
 
@@ -316,6 +316,6 @@ flowchart LR
 | `shift` | Shift creation, listing, update, deletion, schedule-range validation, and optional required staffing role storage. |
 | `assignment` | Manual assignment creation/list/delete and business rule validation. |
 | `availability` | Employee unavailable time ranges and conflict checks with assignments. |
-| `staffing` | Team-specific professional roles, role create/list API, and persistence for assigning roles to team members. |
+| `staffing` | Team-specific professional roles, role create/list API, employee role assignment/list API, and persistence for assigning roles to team members. |
 | Flyway migrations | Versioned PostgreSQL schema changes. |
 | PostgreSQL | Persistent relational storage. |
