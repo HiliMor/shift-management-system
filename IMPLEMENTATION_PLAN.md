@@ -447,7 +447,7 @@ Goal: support professional scheduling roles such as shift supervisor or entrance
 - [x] Connect team members to staffing roles.
 - [x] Allow managers to create team staffing roles.
 - [ ] Allow managers to assign staffing roles to employees.
-- [ ] Add an optional required staffing role to shifts.
+- [x] Add an optional required staffing role to shifts.
 - [ ] Add staffing-role validation to assignment creation.
 
 ### Verify
@@ -497,11 +497,14 @@ Initial persistence rules:
 - Different teams may use the same role name independently.
 - A team member can be connected to staffing roles only from the same team.
 - The same staffing role cannot be assigned twice to the same team member.
+- A shift can optionally require one staffing role.
+- A shift without a required staffing role remains a general shift.
+- A required staffing role on a shift must belong to the schedule's team.
+- Assignment validation against required staffing roles is not implemented yet.
 
 Deferred from the first Phase 6 step:
 
 - Staffing role assignment API.
-- Required staffing roles on shifts.
 - Assignment validation based on required staffing roles.
 
 Initial endpoints:
@@ -514,6 +517,13 @@ Rules for the first staffing role API step:
 - Only a manager of the requested team can create or list staffing roles.
 - Creating a duplicate staffing role name in the same team returns `409 Conflict`.
 - Role names are trimmed before duplicate checking and saving.
+
+Rules for required staffing roles on shifts:
+
+- `requiredStaffingRoleId` is optional in shift create/update requests.
+- A missing or `null` `requiredStaffingRoleId` means the shift has no professional role requirement.
+- A non-null `requiredStaffingRoleId` must point to a staffing role from the schedule's team.
+- Shift responses include `requiredStaffingRoleId` and `requiredStaffingRoleName`.
 
 ## Phase 7 - Schedule Publication
 
@@ -1000,3 +1010,17 @@ Still open:
 - Verified `mvn -Dtest=StaffingRoleTest,TeamMemberStaffingRoleTest,StaffingRoleServiceTest test` succeeds outside the Codex sandbox.
 - Verified `mvn test` succeeds outside the Codex sandbox.
 - Verified Spring Boot starts against PostgreSQL and `GET /api/teams/1/staffing-roles` returns `200 OK` for `manager1`.
+
+### 2026-07-18 - Phase 6 Optional Required Staffing Role On Shifts
+
+- Added nullable `requiredStaffingRole` relation to `Shift`.
+- Added `requiredStaffingRoleId` to `CreateShiftRequest` and `UpdateShiftRequest`.
+- Kept shift create/update requests backward compatible by allowing missing or `null` required staffing role values.
+- Added `requiredStaffingRoleId` and `requiredStaffingRoleName` to `ShiftResponse`.
+- Added Flyway migration `V8__add_required_staffing_role_to_shifts.sql`.
+- Added service validation that a required staffing role must exist and belong to the schedule's team.
+- Added tests for shifts without role requirements, shifts with role requirements, missing role rejection, cross-team role rejection, and updating a shift role requirement.
+- Updated `README.md`, `shift-management-backend/README.md`, `docs/current-backend-architecture.md`, and the Phase 6 plan.
+- Verified `mvn -Dtest=ShiftTest,ShiftServiceTest test` succeeds outside the Codex sandbox.
+- Verified `mvn test` succeeds outside the Codex sandbox.
+- Verified Spring Boot starts against PostgreSQL and Flyway migrates the schema to `V8`.

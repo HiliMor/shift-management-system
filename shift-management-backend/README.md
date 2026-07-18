@@ -39,12 +39,14 @@ Implemented:
 - Staffing role assignment persistence between team members and staffing roles.
 - Staffing role create endpoint: `POST /api/teams/{teamId}/staffing-roles`.
 - Staffing role list endpoint: `GET /api/teams/{teamId}/staffing-roles`.
+- Optional required staffing role on shifts.
 
 Not implemented yet:
 
 - Schedule list, update, delete, publish, and reopen endpoints.
 - Assignment transfer endpoints.
 - Staffing role assignment API endpoints.
+- Assignment validation against required staffing roles.
 - Automatic assignment.
 - Team-scoped authorization for manager actions.
 
@@ -160,7 +162,7 @@ Create a shift inside a draft schedule:
 curl -X POST http://localhost:8080/api/schedules/1/shifts \
   -H 'Content-Type: application/json' \
   -H "Authorization: Bearer <TOKEN>" \
-  -d '{"startTime":"2026-07-05T06:00:00Z","endTime":"2026-07-05T14:00:00Z","description":"Morning shift","requiredWorkers":2,"minRestHours":8}'
+  -d '{"startTime":"2026-07-05T06:00:00Z","endTime":"2026-07-05T14:00:00Z","description":"Morning shift","requiredWorkers":2,"minRestHours":8,"requiredStaffingRoleId":null}'
 ```
 
 Expected response:
@@ -173,13 +175,18 @@ Expected response:
   "endTime": "2026-07-05T14:00:00Z",
   "description": "Morning shift",
   "requiredWorkers": 2,
-  "minRestHours": 8
+  "minRestHours": 8,
+  "requiredStaffingRoleId": null,
+  "requiredStaffingRoleName": null
 }
 ```
 
 Only managers assigned to the schedule's team can create shifts.
 Shifts can be created only while the schedule is still `DRAFT`.
 Shift dates must be inside the schedule date range according to the team's time zone.
+`requiredStaffingRoleId` is optional. A missing or `null` value means the shift has no professional role requirement.
+When `requiredStaffingRoleId` is provided, it must reference a staffing role from the schedule's team.
+Assignment validation against required staffing roles is not implemented yet.
 
 List shifts in a schedule:
 
@@ -199,7 +206,9 @@ Expected response:
     "endTime": "2026-07-05T14:00:00Z",
     "description": "Morning shift",
     "requiredWorkers": 2,
-    "minRestHours": 8
+    "minRestHours": 8,
+    "requiredStaffingRoleId": null,
+    "requiredStaffingRoleName": null
   }
 ]
 ```
@@ -212,7 +221,7 @@ Update a shift inside a draft schedule:
 curl -X PUT http://localhost:8080/api/schedules/1/shifts/1 \
   -H 'Content-Type: application/json' \
   -H "Authorization: Bearer <TOKEN>" \
-  -d '{"startTime":"2026-07-05T14:00:00Z","endTime":"2026-07-05T22:00:00Z","description":"Evening shift","requiredWorkers":3,"minRestHours":10}'
+  -d '{"startTime":"2026-07-05T14:00:00Z","endTime":"2026-07-05T22:00:00Z","description":"Evening shift","requiredWorkers":3,"minRestHours":10,"requiredStaffingRoleId":null}'
 ```
 
 Expected response:
@@ -225,13 +234,16 @@ Expected response:
   "endTime": "2026-07-05T22:00:00Z",
   "description": "Evening shift",
   "requiredWorkers": 3,
-  "minRestHours": 10
+  "minRestHours": 10,
+  "requiredStaffingRoleId": null,
+  "requiredStaffingRoleName": null
 }
 ```
 
 Only managers assigned to the schedule's team can update shifts.
 Shifts can be updated only while the schedule is still `DRAFT`.
 Updated shift dates must stay inside the schedule date range according to the team's time zone.
+Updating a shift with `requiredStaffingRoleId: null` clears the professional role requirement.
 
 Delete a shift from a draft schedule:
 

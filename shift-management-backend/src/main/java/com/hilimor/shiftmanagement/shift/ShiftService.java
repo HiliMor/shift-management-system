@@ -9,6 +9,8 @@ import java.util.Objects;
 import com.hilimor.shiftmanagement.schedule.Schedule;
 import com.hilimor.shiftmanagement.schedule.ScheduleRepository;
 import com.hilimor.shiftmanagement.schedule.ScheduleStatus;
+import com.hilimor.shiftmanagement.staffing.StaffingRole;
+import com.hilimor.shiftmanagement.staffing.StaffingRoleRepository;
 import com.hilimor.shiftmanagement.team.TeamManagerRepository;
 
 import org.springframework.http.HttpStatus;
@@ -22,15 +24,18 @@ public class ShiftService {
     private final ScheduleRepository scheduleRepository;
     private final ShiftRepository shiftRepository;
     private final TeamManagerRepository teamManagerRepository;
+    private final StaffingRoleRepository staffingRoleRepository;
 
     public ShiftService(
             ScheduleRepository scheduleRepository,
             ShiftRepository shiftRepository,
-            TeamManagerRepository teamManagerRepository
+            TeamManagerRepository teamManagerRepository,
+            StaffingRoleRepository staffingRoleRepository
     ) {
         this.scheduleRepository = scheduleRepository;
         this.shiftRepository = shiftRepository;
         this.teamManagerRepository = teamManagerRepository;
+        this.staffingRoleRepository = staffingRoleRepository;
     }
 
     @Transactional
@@ -45,6 +50,7 @@ public class ShiftService {
             throw new ResponseStatusException(HttpStatus.CONFLICT, "Shifts can be created only in draft schedules");
         }
         validateShiftWithinSchedule(schedule, request.startTime(), request.endTime());
+        StaffingRole requiredStaffingRole = requiredStaffingRole(schedule, request.requiredStaffingRoleId());
 
         Shift shift = new Shift(
                 schedule,
@@ -52,7 +58,8 @@ public class ShiftService {
                 request.endTime(),
                 request.description(),
                 request.requiredWorkers(),
-                request.minRestHours()
+                request.minRestHours(),
+                requiredStaffingRole
         );
         Shift savedShift = shiftRepository.save(shift);
 
@@ -88,13 +95,15 @@ public class ShiftService {
             throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Shift not found");
         }
         validateShiftWithinSchedule(schedule, request.startTime(), request.endTime());
+        StaffingRole requiredStaffingRole = requiredStaffingRole(schedule, request.requiredStaffingRoleId());
 
         shift.updateDetails(
                 request.startTime(),
                 request.endTime(),
                 request.description(),
                 request.requiredWorkers(),
-                request.minRestHours()
+                request.minRestHours(),
+                requiredStaffingRole
         );
 
         return ShiftResponse.from(shift);
@@ -138,5 +147,20 @@ public class ShiftService {
         if (shiftStartDate.isBefore(schedule.getStartDate()) || shiftEndDate.isAfter(schedule.getEndDate())) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Shift must be within the schedule date range");
         }
+    }
+
+    private StaffingRole requiredStaffingRole(Schedule schedule, Long requiredStaffingRoleId) {
+        if (requiredStaffingRoleId == null) {
+            return null;
+        }
+
+        StaffingRole staffingRole = staffingRoleRepository.findById(requiredStaffingRoleId)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Required staffing role not found"));
+
+        if (!Objects.equals(staffingRole.getTeam().getId(), schedule.getTeam().getId())) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Required staffing role must belong to the schedule team");
+        }
+
+        return staffingRole;
     }
 }

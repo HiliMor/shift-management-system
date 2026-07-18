@@ -9,6 +9,7 @@ import java.time.LocalDate;
 import org.junit.jupiter.api.Test;
 
 import com.hilimor.shiftmanagement.schedule.Schedule;
+import com.hilimor.shiftmanagement.staffing.StaffingRole;
 import com.hilimor.shiftmanagement.team.SwapApprovalPolicy;
 import com.hilimor.shiftmanagement.team.Team;
 
@@ -28,6 +29,25 @@ class ShiftTest {
         assertThat(shift.getDescription()).isEqualTo("Morning shift");
         assertThat(shift.getRequiredWorkers()).isEqualTo(2);
         assertThat(shift.getMinRestHours()).isEqualTo(8);
+        assertThat(shift.getRequiredStaffingRole()).isNull();
+    }
+
+    @Test
+    void newShiftCanStoreRequiredStaffingRole() {
+        Schedule schedule = schedule();
+        StaffingRole staffingRole = new StaffingRole(schedule.getTeam(), "Shift Supervisor", null);
+
+        Shift shift = new Shift(
+                schedule,
+                Instant.parse("2026-07-06T06:00:00Z"),
+                Instant.parse("2026-07-06T14:00:00Z"),
+                "Supervisor shift",
+                1,
+                8,
+                staffingRole
+        );
+
+        assertThat(shift.getRequiredStaffingRole()).isSameAs(staffingRole);
     }
 
     @Test
@@ -92,6 +112,7 @@ class ShiftTest {
         assertThat(shift.getDescription()).isEqualTo("Evening shift");
         assertThat(shift.getRequiredWorkers()).isEqualTo(3);
         assertThat(shift.getMinRestHours()).isEqualTo(10);
+        assertThat(shift.getRequiredStaffingRole()).isNull();
     }
 
     private Schedule schedule() {

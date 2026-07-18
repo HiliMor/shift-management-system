@@ -25,6 +25,8 @@ import org.springframework.web.server.ResponseStatusException;
 import com.hilimor.shiftmanagement.schedule.Schedule;
 import com.hilimor.shiftmanagement.schedule.ScheduleRepository;
 import com.hilimor.shiftmanagement.schedule.ScheduleStatus;
+import com.hilimor.shiftmanagement.staffing.StaffingRole;
+import com.hilimor.shiftmanagement.staffing.StaffingRoleRepository;
 import com.hilimor.shiftmanagement.team.SwapApprovalPolicy;
 import com.hilimor.shiftmanagement.team.Team;
 import com.hilimor.shiftmanagement.team.TeamManagerRepository;
@@ -40,6 +42,9 @@ class ShiftServiceTest {
 
     @Mock
     private TeamManagerRepository teamManagerRepository;
+
+    @Mock
+    private StaffingRoleRepository staffingRoleRepository;
 
     @InjectMocks
     private ShiftService shiftService;
@@ -72,10 +77,44 @@ class ShiftServiceTest {
         assertThat(response.description()).isEqualTo("Morning shift");
         assertThat(response.requiredWorkers()).isEqualTo(2);
         assertThat(response.minRestHours()).isEqualTo(8);
+        assertThat(response.requiredStaffingRoleId()).isNull();
+        assertThat(response.requiredStaffingRoleName()).isNull();
 
         ArgumentCaptor<Shift> captor = ArgumentCaptor.forClass(Shift.class);
         verify(shiftRepository).save(captor.capture());
         assertThat(captor.getValue().getSchedule()).isSameAs(schedule);
+    }
+
+    @Test
+    void createShiftCanRequireStaffingRoleFromScheduleTeam() {
+        Schedule schedule = schedule(ScheduleStatus.DRAFT);
+        StaffingRole staffingRole = staffingRole(schedule.getTeam(), 30L, "Shift Supervisor");
+        CreateShiftRequest request = new CreateShiftRequest(
+                Instant.parse("2026-07-06T06:00:00Z"),
+                Instant.parse("2026-07-06T14:00:00Z"),
+                "Supervisor shift",
+                1,
+                8,
+                30L
+        );
+
+        when(scheduleRepository.findById(10L)).thenReturn(Optional.of(schedule));
+        when(teamManagerRepository.existsByManager_UsernameAndTeam_Id("manager1", 1L)).thenReturn(true);
+        when(staffingRoleRepository.findById(30L)).thenReturn(Optional.of(staffingRole));
+        when(shiftRepository.save(any(Shift.class))).thenAnswer(invocation -> {
+            Shift shift = invocation.getArgument(0);
+            ReflectionTestUtils.setField(shift, "id", 20L);
+            return shift;
+        });
+
+        ShiftResponse response = shiftService.createShift("manager1", 10L, request);
+
+        assertThat(response.requiredStaffingRoleId()).isEqualTo(30L);
+        assertThat(response.requiredStaffingRoleName()).isEqualTo("Shift Supervisor");
+
+        ArgumentCaptor<Shift> captor = ArgumentCaptor.forClass(Shift.class);
+        verify(shiftRepository).save(captor.capture());
+        assertThat(captor.getValue().getRequiredStaffingRole()).isSameAs(staffingRole);
     }
 
     @Test
@@ -136,6 +175,55 @@ class ShiftServiceTest {
 
         when(scheduleRepository.findById(10L)).thenReturn(Optional.of(schedule));
         when(teamManagerRepository.existsByManager_UsernameAndTeam_Id("manager1", 1L)).thenReturn(true);
+
+        assertThatThrownBy(() -> shiftService.createShift("manager1", 10L, request))
+                .isInstanceOfSatisfying(ResponseStatusException.class, exception ->
+                        assertThat(exception.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST));
+
+        verify(shiftRepository, never()).save(any());
+    }
+
+    @Test
+    void createShiftRejectsMissingRequiredStaffingRole() {
+        Schedule schedule = schedule(ScheduleStatus.DRAFT);
+        CreateShiftRequest request = new CreateShiftRequest(
+                Instant.parse("2026-07-06T06:00:00Z"),
+                Instant.parse("2026-07-06T14:00:00Z"),
+                "Supervisor shift",
+                1,
+                8,
+                99L
+        );
+
+        when(scheduleRepository.findById(10L)).thenReturn(Optional.of(schedule));
+        when(teamManagerRepository.existsByManager_UsernameAndTeam_Id("manager1", 1L)).thenReturn(true);
+        when(staffingRoleRepository.findById(99L)).thenReturn(Optional.empty());
+
+        assertThatThrownBy(() -> shiftService.createShift("manager1", 10L, request))
+                .isInstanceOfSatisfying(ResponseStatusException.class, exception ->
+                        assertThat(exception.getStatusCode()).isEqualTo(HttpStatus.NOT_FOUND));
+
+        verify(shiftRepository, never()).save(any());
+    }
+
+    @Test
+    void createShiftRejectsRequiredStaffingRoleFromAnotherTeam() {
+        Schedule schedule = schedule(ScheduleStatus.DRAFT);
+        Team otherTeam = new Team("Support", SwapApprovalPolicy.MANAGER, 8, "Asia/Jerusalem");
+        ReflectionTestUtils.setField(otherTeam, "id", 2L);
+        StaffingRole staffingRole = staffingRole(otherTeam, 30L, "Shift Supervisor");
+        CreateShiftRequest request = new CreateShiftRequest(
+                Instant.parse("2026-07-06T06:00:00Z"),
+                Instant.parse("2026-07-06T14:00:00Z"),
+                "Supervisor shift",
+                1,
+                8,
+                30L
+        );
+
+        when(scheduleRepository.findById(10L)).thenReturn(Optional.of(schedule));
+        when(teamManagerRepository.existsByManager_UsernameAndTeam_Id("manager1", 1L)).thenReturn(true);
+        when(staffingRoleRepository.findById(30L)).thenReturn(Optional.of(staffingRole));
 
         assertThatThrownBy(() -> shiftService.createShift("manager1", 10L, request))
                 .isInstanceOfSatisfying(ResponseStatusException.class, exception ->
@@ -226,6 +314,34 @@ class ShiftServiceTest {
         assertThat(response.description()).isEqualTo("Evening shift");
         assertThat(response.requiredWorkers()).isEqualTo(3);
         assertThat(response.minRestHours()).isEqualTo(10);
+        assertThat(response.requiredStaffingRoleId()).isNull();
+        assertThat(response.requiredStaffingRoleName()).isNull();
+    }
+
+    @Test
+    void updateShiftCanSetRequiredStaffingRole() {
+        Schedule schedule = schedule(ScheduleStatus.DRAFT);
+        Shift shift = shift(schedule);
+        StaffingRole staffingRole = staffingRole(schedule.getTeam(), 30L, "Shift Supervisor");
+        UpdateShiftRequest request = new UpdateShiftRequest(
+                Instant.parse("2026-07-06T14:00:00Z"),
+                Instant.parse("2026-07-06T22:00:00Z"),
+                "Evening supervisor shift",
+                1,
+                10,
+                30L
+        );
+
+        when(scheduleRepository.findById(10L)).thenReturn(Optional.of(schedule));
+        when(teamManagerRepository.existsByManager_UsernameAndTeam_Id("manager1", 1L)).thenReturn(true);
+        when(shiftRepository.findById(20L)).thenReturn(Optional.of(shift));
+        when(staffingRoleRepository.findById(30L)).thenReturn(Optional.of(staffingRole));
+
+        ShiftResponse response = shiftService.updateShift("manager1", 10L, 20L, request);
+
+        assertThat(response.requiredStaffingRoleId()).isEqualTo(30L);
+        assertThat(response.requiredStaffingRoleName()).isEqualTo("Shift Supervisor");
+        assertThat(shift.getRequiredStaffingRole()).isSameAs(staffingRole);
     }
 
     @Test
@@ -383,6 +499,12 @@ class ShiftServiceTest {
         );
         ReflectionTestUtils.setField(shift, "id", 20L);
         return shift;
+    }
+
+    private StaffingRole staffingRole(Team team, Long id, String name) {
+        StaffingRole staffingRole = new StaffingRole(team, name, null);
+        ReflectionTestUtils.setField(staffingRole, "id", id);
+        return staffingRole;
     }
 
     private Schedule schedule(ScheduleStatus status) {

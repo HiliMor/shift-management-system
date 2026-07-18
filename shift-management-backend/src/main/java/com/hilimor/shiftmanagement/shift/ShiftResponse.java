@@ -9,10 +9,19 @@ public record ShiftResponse(
         Instant endTime,
         String description,
         int requiredWorkers,
-        int minRestHours
+        int minRestHours,
+        Long requiredStaffingRoleId,
+        String requiredStaffingRoleName
 ) {
 
     static ShiftResponse from(Shift shift) {
+        Long requiredStaffingRoleId = shift.getRequiredStaffingRole() == null
+                ? null
+                : shift.getRequiredStaffingRole().getId();
+        String requiredStaffingRoleName = shift.getRequiredStaffingRole() == null
+                ? null
+                : shift.getRequiredStaffingRole().getName();
+
         return new ShiftResponse(
                 shift.getId(),
                 shift.getSchedule().getId(),
@@ -20,7 +29,9 @@ public record ShiftResponse(
                 shift.getEndTime(),
                 shift.getDescription(),
                 shift.getRequiredWorkers(),
-                shift.getMinRestHours()
+                shift.getMinRestHours(),
+                requiredStaffingRoleId,
+                requiredStaffingRoleName
         );
     }
 }

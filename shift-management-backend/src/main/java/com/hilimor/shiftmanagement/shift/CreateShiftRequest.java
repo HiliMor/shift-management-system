@@ -12,6 +12,17 @@ public record CreateShiftRequest(
         @NotNull Instant endTime,
         @Size(max = 500) String description,
         @Positive int requiredWorkers,
-        @Min(0) int minRestHours
+        @Min(0) int minRestHours,
+        Long requiredStaffingRoleId
 ) {
+
+    public CreateShiftRequest(
+            Instant startTime,
+            Instant endTime,
+            String description,
+            int requiredWorkers,
+            int minRestHours
+    ) {
+        this(startTime, endTime, description, requiredWorkers, minRestHours, null);
+    }
 }

@@ -4,6 +4,7 @@ import java.time.Instant;
 import java.util.Objects;
 
 import com.hilimor.shiftmanagement.schedule.Schedule;
+import com.hilimor.shiftmanagement.staffing.StaffingRole;
 
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
@@ -43,6 +44,10 @@ public class Shift {
     @Column(name = "min_rest_hours", nullable = false)
     private int minRestHours;
 
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "required_staffing_role_id")
+    private StaffingRole requiredStaffingRole;
+
     @Version
     @Column(nullable = false)
     private Long version;
@@ -58,10 +63,22 @@ public class Shift {
             int requiredWorkers,
             int minRestHours
     ) {
+        this(schedule, startTime, endTime, description, requiredWorkers, minRestHours, null);
+    }
+
+    public Shift(
+            Schedule schedule,
+            Instant startTime,
+            Instant endTime,
+            String description,
+            int requiredWorkers,
+            int minRestHours,
+            StaffingRole requiredStaffingRole
+    ) {
         Objects.requireNonNull(schedule, "schedule must not be null");
 
         this.schedule = schedule;
-        updateDetails(startTime, endTime, description, requiredWorkers, minRestHours);
+        updateDetails(startTime, endTime, description, requiredWorkers, minRestHours, requiredStaffingRole);
     }
 
     public void updateDetails(
@@ -70,6 +87,17 @@ public class Shift {
             String description,
             int requiredWorkers,
             int minRestHours
+    ) {
+        updateDetails(startTime, endTime, description, requiredWorkers, minRestHours, null);
+    }
+
+    public void updateDetails(
+            Instant startTime,
+            Instant endTime,
+            String description,
+            int requiredWorkers,
+            int minRestHours,
+            StaffingRole requiredStaffingRole
     ) {
         Objects.requireNonNull(startTime, "startTime must not be null");
         Objects.requireNonNull(endTime, "endTime must not be null");
@@ -89,6 +117,7 @@ public class Shift {
         this.description = description;
         this.requiredWorkers = requiredWorkers;
         this.minRestHours = minRestHours;
+        this.requiredStaffingRole = requiredStaffingRole;
     }
 
     public Long getId() {
@@ -117,6 +146,10 @@ public class Shift {
 
     public int getMinRestHours() {
         return minRestHours;
+    }
+
+    public StaffingRole getRequiredStaffingRole() {
+        return requiredStaffingRole;
     }
 
     public Long getVersion() {

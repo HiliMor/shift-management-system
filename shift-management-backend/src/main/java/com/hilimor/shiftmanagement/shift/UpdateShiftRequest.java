@@ -12,6 +12,17 @@ public record UpdateShiftRequest(
         @NotNull Instant endTime,
         @Size(max = 500) String description,
         @NotNull @Positive Integer requiredWorkers,
-        @NotNull @Min(0) Integer minRestHours
+        @NotNull @Min(0) Integer minRestHours,
+        Long requiredStaffingRoleId
 ) {
+
+    public UpdateShiftRequest(
+            Instant startTime,
+            Instant endTime,
+            String description,
+            Integer requiredWorkers,
+            Integer minRestHours
+    ) {
+        this(startTime, endTime, description, requiredWorkers, minRestHours, null);
+    }
 }

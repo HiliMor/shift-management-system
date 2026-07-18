@@ -110,6 +110,7 @@ erDiagram
 
     TEAM_MEMBERS ||--o{ TEAM_MEMBER_STAFFING_ROLES : receives
     STAFFING_ROLES ||--o{ TEAM_MEMBER_STAFFING_ROLES : assigned
+    STAFFING_ROLES |o--o{ SHIFTS : may_be_required_by
 
     USERS {
         bigint id PK
@@ -160,6 +161,7 @@ erDiagram
         varchar description
         integer required_workers
         integer min_rest_hours
+        bigint required_staffing_role_id FK
     }
 
     ASSIGNMENTS {
@@ -296,8 +298,9 @@ flowchart LR
     v5["V5<br/>Availability constraints"]
     v6["V6<br/>Staffing roles"]
     v7["V7<br/>Team member staffing roles"]
+    v8["V8<br/>Required staffing role on shifts"]
 
-    v1 --> v2 --> v3 --> v4 --> v5 --> v6 --> v7
+    v1 --> v2 --> v3 --> v4 --> v5 --> v6 --> v7 --> v8
 ```
 
 ## Component Responsibilities
@@ -310,7 +313,7 @@ flowchart LR
 | `user` | User entity and broad application role such as `MANAGER` or `EMPLOYEE`. |
 | `team` | Teams, active team membership, and team managers. |
 | `schedule` | Draft schedule creation and schedule lifecycle state fields. |
-| `shift` | Shift creation, listing, update, deletion, and schedule-range validation. |
+| `shift` | Shift creation, listing, update, deletion, schedule-range validation, and optional required staffing role storage. |
 | `assignment` | Manual assignment creation/list/delete and business rule validation. |
 | `availability` | Employee unavailable time ranges and conflict checks with assignments. |
 | `staffing` | Team-specific professional roles, role create/list API, and persistence for assigning roles to team members. |
