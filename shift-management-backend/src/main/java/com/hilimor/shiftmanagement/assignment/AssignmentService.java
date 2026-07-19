@@ -10,6 +10,7 @@ import com.hilimor.shiftmanagement.schedule.ScheduleRepository;
 import com.hilimor.shiftmanagement.schedule.ScheduleStatus;
 import com.hilimor.shiftmanagement.shift.Shift;
 import com.hilimor.shiftmanagement.shift.ShiftRepository;
+import com.hilimor.shiftmanagement.staffing.TeamMemberStaffingRoleRepository;
 import com.hilimor.shiftmanagement.team.TeamManagerRepository;
 import com.hilimor.shiftmanagement.team.TeamMemberRepository;
 import com.hilimor.shiftmanagement.user.User;
@@ -30,6 +31,7 @@ public class AssignmentService {
     private final AvailabilityConstraintRepository availabilityConstraintRepository;
     private final TeamMemberRepository teamMemberRepository;
     private final TeamManagerRepository teamManagerRepository;
+    private final TeamMemberStaffingRoleRepository teamMemberStaffingRoleRepository;
 
     public AssignmentService(
             AssignmentRepository assignmentRepository,
@@ -38,7 +40,8 @@ public class AssignmentService {
             UserRepository userRepository,
             AvailabilityConstraintRepository availabilityConstraintRepository,
             TeamMemberRepository teamMemberRepository,
-            TeamManagerRepository teamManagerRepository
+            TeamManagerRepository teamManagerRepository,
+            TeamMemberStaffingRoleRepository teamMemberStaffingRoleRepository
     ) {
         this.assignmentRepository = assignmentRepository;
         this.scheduleRepository = scheduleRepository;
@@ -47,6 +50,7 @@ public class AssignmentService {
         this.availabilityConstraintRepository = availabilityConstraintRepository;
         this.teamMemberRepository = teamMemberRepository;
         this.teamManagerRepository = teamManagerRepository;
+        this.teamMemberStaffingRoleRepository = teamMemberStaffingRoleRepository;
     }
 
     @Transactional
@@ -65,6 +69,7 @@ public class AssignmentService {
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Employee not found"));
 
         validateTeamMembership(employee.getId(), teamId);
+        validateRequiredStaffingRole(shift, employee.getId(), teamId);
         validateNotAlreadyAssigned(shift.getId(), employee.getId());
         validateCapacity(shift);
         validateAvailability(shift, employee.getId());
@@ -117,6 +122,24 @@ public class AssignmentService {
     private void validateTeamMembership(Long employeeId, Long teamId) {
         if (!teamMemberRepository.existsByUser_IdAndTeam_IdAndActiveTrue(employeeId, teamId)) {
             throw conflict("TEAM_MEMBERSHIP", "Employee must be an active member of the shift team");
+        }
+    }
+
+    private void validateRequiredStaffingRole(Shift shift, Long employeeId, Long teamId) {
+        if (shift.getRequiredStaffingRole() == null) {
+            return;
+        }
+
+        Long staffingRoleId = shift.getRequiredStaffingRole().getId();
+        boolean hasRequiredRole = teamMemberStaffingRoleRepository
+                .existsByTeamMember_User_IdAndTeamMember_Team_IdAndStaffingRole_Id(
+                        employeeId,
+                        teamId,
+                        staffingRoleId
+                );
+
+        if (!hasRequiredRole) {
+            throw conflict("STAFFING_ROLE_REQUIRED", "Employee does not have the staffing role required for this shift");
         }
     }
 

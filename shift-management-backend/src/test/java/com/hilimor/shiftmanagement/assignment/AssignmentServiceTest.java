@@ -19,6 +19,8 @@ import com.hilimor.shiftmanagement.schedule.ScheduleRepository;
 import com.hilimor.shiftmanagement.schedule.ScheduleStatus;
 import com.hilimor.shiftmanagement.shift.Shift;
 import com.hilimor.shiftmanagement.shift.ShiftRepository;
+import com.hilimor.shiftmanagement.staffing.StaffingRole;
+import com.hilimor.shiftmanagement.staffing.TeamMemberStaffingRoleRepository;
 import com.hilimor.shiftmanagement.team.SwapApprovalPolicy;
 import com.hilimor.shiftmanagement.team.Team;
 import com.hilimor.shiftmanagement.team.TeamManagerRepository;
@@ -60,6 +62,9 @@ class AssignmentServiceTest {
 
     @Mock
     private TeamManagerRepository teamManagerRepository;
+
+    @Mock
+    private TeamMemberStaffingRoleRepository teamMemberStaffingRoleRepository;
 
     @InjectMocks
     private AssignmentService assignmentService;
@@ -112,6 +117,79 @@ class AssignmentServiceTest {
         verify(assignmentRepository).save(captor.capture());
         assertThat(captor.getValue().getShift()).isSameAs(shift);
         assertThat(captor.getValue().getEmployee()).isSameAs(employee);
+    }
+
+    @Test
+    void createAssignmentSavesAssignmentWhenEmployeeHasRequiredStaffingRole() {
+        Schedule schedule = schedule(ScheduleStatus.DRAFT);
+        StaffingRole requiredRole = staffingRole(schedule.getTeam(), 50L, "Shift Supervisor");
+        Shift shift = shift(schedule, 20L, requiredRole);
+        User employee = employee();
+
+        when(shiftRepository.findById(20L)).thenReturn(Optional.of(shift));
+        when(teamManagerRepository.existsByManager_UsernameAndTeam_Id("manager1", 1L)).thenReturn(true);
+        when(userRepository.findById(2L)).thenReturn(Optional.of(employee));
+        when(teamMemberRepository.existsByUser_IdAndTeam_IdAndActiveTrue(2L, 1L)).thenReturn(true);
+        when(teamMemberStaffingRoleRepository.existsByTeamMember_User_IdAndTeamMember_Team_IdAndStaffingRole_Id(
+                2L,
+                1L,
+                50L
+        )).thenReturn(true);
+        when(assignmentRepository.existsByShift_IdAndEmployee_Id(20L, 2L)).thenReturn(false);
+        when(assignmentRepository.countByShift_Id(20L)).thenReturn(0L);
+        when(availabilityConstraintRepository.findByEmployee_IdAndStartTimeLessThanAndEndTimeGreaterThan(
+                2L,
+                shift.getEndTime(),
+                shift.getStartTime()
+        )).thenReturn(List.of());
+        when(assignmentRepository.findByEmployee_IdAndShift_StartTimeLessThanAndShift_EndTimeGreaterThan(
+                2L,
+                shift.getEndTime(),
+                shift.getStartTime()
+        )).thenReturn(List.of());
+        when(assignmentRepository.findTopByEmployee_IdAndShift_EndTimeLessThanEqualOrderByShift_EndTimeDesc(
+                2L,
+                shift.getStartTime()
+        )).thenReturn(Optional.empty());
+        when(assignmentRepository.findTopByEmployee_IdAndShift_StartTimeGreaterThanEqualOrderByShift_StartTimeAsc(
+                2L,
+                shift.getEndTime()
+        )).thenReturn(Optional.empty());
+        when(assignmentRepository.save(any(Assignment.class))).thenAnswer(invocation -> {
+            Assignment assignment = invocation.getArgument(0);
+            ReflectionTestUtils.setField(assignment, "id", 30L);
+            return assignment;
+        });
+
+        AssignmentResponse response = assignmentService.createAssignment("manager1", validRequest());
+
+        assertThat(response.id()).isEqualTo(30L);
+        assertThat(response.shiftId()).isEqualTo(20L);
+        assertThat(response.employeeId()).isEqualTo(2L);
+    }
+
+    @Test
+    void createAssignmentRejectsEmployeeWithoutRequiredStaffingRoleInShiftTeam() {
+        Schedule schedule = schedule(ScheduleStatus.DRAFT);
+        StaffingRole requiredRole = staffingRole(schedule.getTeam(), 50L, "Shift Supervisor");
+        Shift shift = shift(schedule, 20L, requiredRole);
+        User employee = employee();
+
+        when(shiftRepository.findById(20L)).thenReturn(Optional.of(shift));
+        when(teamManagerRepository.existsByManager_UsernameAndTeam_Id("manager1", 1L)).thenReturn(true);
+        when(userRepository.findById(2L)).thenReturn(Optional.of(employee));
+        when(teamMemberRepository.existsByUser_IdAndTeam_IdAndActiveTrue(2L, 1L)).thenReturn(true);
+        when(teamMemberStaffingRoleRepository.existsByTeamMember_User_IdAndTeamMember_Team_IdAndStaffingRole_Id(
+                2L,
+                1L,
+                50L
+        )).thenReturn(false);
+
+        assertAssignmentConflict("STAFFING_ROLE_REQUIRED");
+
+        verify(teamMemberStaffingRoleRepository)
+                .existsByTeamMember_User_IdAndTeamMember_Team_IdAndStaffingRole_Id(2L, 1L, 50L);
+        verify(assignmentRepository, never()).save(any());
     }
 
     @Test
@@ -446,16 +524,27 @@ class AssignmentServiceTest {
     }
 
     private Shift shift(Schedule schedule, Long id) {
+        return shift(schedule, id, null);
+    }
+
+    private Shift shift(Schedule schedule, Long id, StaffingRole requiredStaffingRole) {
         Shift shift = new Shift(
                 schedule,
                 Instant.parse("2026-07-06T06:00:00Z"),
                 Instant.parse("2026-07-06T14:00:00Z"),
                 "Morning shift",
                 2,
-                8
+                8,
+                requiredStaffingRole
         );
         ReflectionTestUtils.setField(shift, "id", id);
         return shift;
+    }
+
+    private StaffingRole staffingRole(Team team, Long id, String name) {
+        StaffingRole staffingRole = new StaffingRole(team, name, null);
+        ReflectionTestUtils.setField(staffingRole, "id", id);
+        return staffingRole;
     }
 
     private Schedule schedule(ScheduleStatus status) {

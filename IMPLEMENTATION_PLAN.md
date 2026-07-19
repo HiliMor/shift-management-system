@@ -1,6 +1,6 @@
 # Implementation Plan - Shift Management System
 
-Last updated: 2026-07-18
+Last updated: 2026-07-19
 
 This document is the working implementation plan for the project.  
 The goal is to build the system in small, understandable steps, while keeping each part easy to explain during the final presentation.
@@ -448,16 +448,16 @@ Goal: support professional scheduling roles such as shift supervisor or entrance
 - [x] Allow managers to create team staffing roles.
 - [x] Allow managers to assign staffing roles to employees.
 - [x] Add an optional required staffing role to shifts.
-- [ ] Add staffing-role validation to assignment creation.
+- [x] Add staffing-role validation to assignment creation.
 
 ### Verify
 
 - [x] A manager can create a staffing role for a managed team.
 - [x] A manager can assign a staffing role to an active team member.
 - [x] A manager cannot assign a role from another team to an employee.
-- [ ] An employee with the required role can be assigned.
-- [ ] An employee without the required role is rejected.
-- [ ] A role from another team does not count.
+- [x] An employee with the required role can be assigned.
+- [x] An employee without the required role is rejected.
+- [x] A role from another team does not count.
 
 ### Document
 
@@ -502,11 +502,8 @@ Initial persistence rules:
 - A shift can optionally require one staffing role.
 - A shift without a required staffing role remains a general shift.
 - A required staffing role on a shift must belong to the schedule's team.
-- Assignment validation against required staffing roles is not implemented yet.
-
-Still deferred from Phase 6:
-
-- Assignment validation based on required staffing roles.
+- Assignment creation validates required staffing roles only when a shift has a professional role requirement.
+- A role assignment from another team does not satisfy a shift requirement.
 
 Staffing role management endpoints:
 
@@ -537,6 +534,13 @@ Rules for required staffing roles on shifts:
 - A missing or `null` `requiredStaffingRoleId` means the shift has no professional role requirement.
 - A non-null `requiredStaffingRoleId` must point to a staffing role from the schedule's team.
 - Shift responses include `requiredStaffingRoleId` and `requiredStaffingRoleName`.
+
+Rules for assignment validation against staffing roles:
+
+- A shift without a required staffing role keeps the existing general assignment behavior.
+- A shift with a required staffing role can receive only employees who have that role in the shift's team.
+- Missing required staffing roles return `409 Conflict` with code `STAFFING_ROLE_REQUIRED`.
+- The staffing-role check runs after active team membership validation and before duplicate assignment, capacity, availability, overlap, and rest checks.
 
 ## Phase 7 - Schedule Publication
 
@@ -1056,3 +1060,16 @@ Still open:
 - Verified `mvn test` succeeds outside the Codex sandbox.
 - Verified Spring Boot starts against PostgreSQL with Flyway schema version `V8`.
 - Verified `GET /api/teams/1/employees/2/staffing-roles` returns `200 OK` for `manager1`.
+
+### 2026-07-19 - Phase 6 Assignment Validation Against Required Staffing Roles
+
+- Added assignment validation that checks a shift's optional required staffing role.
+- Kept shifts without a required staffing role backward compatible with the existing assignment behavior.
+- Added `STAFFING_ROLE_REQUIRED` as a stable assignment validation code.
+- Added a Spring Data repository query that checks whether an employee has a required staffing role inside the shift's team.
+- Added service tests for assigning an employee who has the required role and rejecting an employee who does not have the required role in the shift's team.
+- Updated `README.md`, `shift-management-backend/README.md`, `docs/current-backend-architecture.md`, and the Phase 6 plan.
+- Verified `mvn -Dtest=AssignmentServiceTest,TeamMemberStaffingRoleServiceTest test` succeeds outside the Codex sandbox.
+- Verified `mvn test` succeeds outside the Codex sandbox.
+- Verified Spring Boot starts against PostgreSQL with Flyway schema version `V8`.
+- Verified `GET /api/health` returns `UP`.

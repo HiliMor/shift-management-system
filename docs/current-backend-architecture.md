@@ -60,6 +60,7 @@ flowchart TD
     assignment --> team
     assignment --> user
     assignment --> availability
+    assignment --> staffing
     availability --> user
     availability --> assignment
     staffing --> team
@@ -90,7 +91,7 @@ flowchart TD
 ```
 
 Not every package has every layer yet.
-For example, `staffing` currently supports role management and employee role assignment, but assignment creation does not yet validate required staffing roles.
+For example, schedule publication endpoints are still planned, while staffing roles are already used during manual assignment validation.
 
 ## Domain Model
 
@@ -218,7 +219,7 @@ flowchart TD
     api --> staffingApi
 ```
 
-Assignment creation does not yet validate required staffing roles.
+Assignment creation validates required staffing roles when a shift has a professional role requirement.
 
 ## Main Request Flow Examples
 
@@ -314,7 +315,7 @@ flowchart LR
 | `team` | Teams, active team membership, and team managers. |
 | `schedule` | Draft schedule creation and schedule lifecycle state fields. |
 | `shift` | Shift creation, listing, update, deletion, schedule-range validation, and optional required staffing role storage. |
-| `assignment` | Manual assignment creation/list/delete and business rule validation. |
+| `assignment` | Manual assignment creation/list/delete and business rule validation, including capacity, availability, overlap, rest, and required staffing roles. |
 | `availability` | Employee unavailable time ranges and conflict checks with assignments. |
 | `staffing` | Team-specific professional roles, role create/list API, employee role assignment/list API, and persistence for assigning roles to team members. |
 | Flyway migrations | Versioned PostgreSQL schema changes. |

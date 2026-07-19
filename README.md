@@ -31,10 +31,10 @@ Implemented:
 - Staffing role create and list operations.
 - Optional required staffing role on shifts.
 - Employee staffing role assignment and list operations.
+- Assignment creation validates required staffing roles.
 
 Planned next:
 
-- Assignment validation against required staffing roles.
 - Schedule publication and reopening.
 - Basic React frontend.
 - Swap and transfer requests.

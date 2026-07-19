@@ -42,12 +42,12 @@ Implemented:
 - Optional required staffing role on shifts.
 - Employee staffing role assignment endpoint: `POST /api/teams/{teamId}/employees/{employeeId}/staffing-roles`.
 - Employee staffing role list endpoint: `GET /api/teams/{teamId}/employees/{employeeId}/staffing-roles`.
+- Assignment creation validates required staffing roles.
 
 Not implemented yet:
 
 - Schedule list, update, delete, publish, and reopen endpoints.
 - Assignment transfer endpoints.
-- Assignment validation against required staffing roles.
 - Automatic assignment.
 - Remaining team-scoped authorization for future manager workflows.
 
@@ -187,7 +187,7 @@ Shifts can be created only while the schedule is still `DRAFT`.
 Shift dates must be inside the schedule date range according to the team's time zone.
 `requiredStaffingRoleId` is optional. A missing or `null` value means the shift has no professional role requirement.
 When `requiredStaffingRoleId` is provided, it must reference a staffing role from the schedule's team.
-Assignment validation against required staffing roles is not implemented yet.
+Assignment creation validates that the employee has the required staffing role in the shift's team.
 
 List shifts in a schedule:
 
@@ -332,18 +332,19 @@ Assignments can be deleted only while the schedule is still `DRAFT`.
 The assignment service currently validates, in order:
 
 1. The employee is an active member of the shift's team.
-2. The employee is not already assigned to the same shift.
-3. The shift still has available capacity.
-4. The employee has no overlapping availability constraint.
-5. The employee has no overlapping assignment in any team.
-6. The employee has enough rest before and after the shift.
+2. If the shift requires a staffing role, the employee has that role in the shift's team.
+3. The employee is not already assigned to the same shift.
+4. The shift still has available capacity.
+5. The employee has no overlapping availability constraint.
+6. The employee has no overlapping assignment in any team.
+7. The employee has enough rest before and after the shift.
 
 Scheduling validation failures return a stable error code:
 
 ```json
 {
-  "code": "AVAILABILITY_CONFLICT",
-  "message": "Employee is unavailable during this shift"
+  "code": "STAFFING_ROLE_REQUIRED",
+  "message": "Employee does not have the staffing role required for this shift"
 }
 ```
 
@@ -529,7 +530,7 @@ Only managers assigned to the requested team can assign or list employee staffin
 The employee must be an active member of the requested team.
 The assigned staffing role must belong to the requested team.
 Assigning the same staffing role to the same team member twice returns `409 Conflict`.
-Assignment validation against required staffing roles is not implemented yet.
+Assignment creation validates these employee staffing roles when a shift has a `requiredStaffingRoleId`.
 
 ## Important Notes
 
