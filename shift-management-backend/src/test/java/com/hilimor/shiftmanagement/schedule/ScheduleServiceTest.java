@@ -7,6 +7,7 @@ import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
+import java.time.Instant;
 import java.time.LocalDate;
 import java.util.Optional;
 
@@ -107,9 +108,76 @@ class ScheduleServiceTest {
         verify(scheduleRepository, never()).save(any());
     }
 
+    @Test
+    void publishSchedulePublishesManagedDraftSchedule() {
+        Schedule schedule = schedule(ScheduleStatus.DRAFT);
+
+        when(scheduleRepository.findById(10L)).thenReturn(Optional.of(schedule));
+        when(teamManagerRepository.existsByManager_UsernameAndTeam_Id("manager1", 1L)).thenReturn(true);
+
+        ScheduleResponse response = scheduleService.publishSchedule("manager1", 10L);
+
+        assertThat(response.id()).isEqualTo(10L);
+        assertThat(response.teamId()).isEqualTo(1L);
+        assertThat(response.status()).isEqualTo(ScheduleStatus.PUBLISHED);
+        assertThat(response.publicationNumber()).isEqualTo(1);
+        assertThat(response.publishedAt()).isNotNull();
+        assertThat(schedule.getStatus()).isEqualTo(ScheduleStatus.PUBLISHED);
+        assertThat(schedule.getPublicationNumber()).isEqualTo(1);
+        assertThat(schedule.getPublishedAt()).isNotNull();
+    }
+
+    @Test
+    void publishScheduleRejectsMissingSchedule() {
+        when(scheduleRepository.findById(10L)).thenReturn(Optional.empty());
+
+        assertThatThrownBy(() -> scheduleService.publishSchedule("manager1", 10L))
+                .isInstanceOfSatisfying(ResponseStatusException.class, exception ->
+                        assertThat(exception.getStatusCode()).isEqualTo(HttpStatus.NOT_FOUND));
+    }
+
+    @Test
+    void publishScheduleRejectsUnmanagedSchedule() {
+        Schedule schedule = schedule(ScheduleStatus.DRAFT);
+
+        when(scheduleRepository.findById(10L)).thenReturn(Optional.of(schedule));
+        when(teamManagerRepository.existsByManager_UsernameAndTeam_Id("manager2", 1L)).thenReturn(false);
+
+        assertThatThrownBy(() -> scheduleService.publishSchedule("manager2", 10L))
+                .isInstanceOfSatisfying(ResponseStatusException.class, exception ->
+                        assertThat(exception.getStatusCode()).isEqualTo(HttpStatus.FORBIDDEN));
+
+        assertThat(schedule.getStatus()).isEqualTo(ScheduleStatus.DRAFT);
+    }
+
+    @Test
+    void publishScheduleRejectsAlreadyPublishedSchedule() {
+        Schedule schedule = schedule(ScheduleStatus.PUBLISHED);
+
+        when(scheduleRepository.findById(10L)).thenReturn(Optional.of(schedule));
+        when(teamManagerRepository.existsByManager_UsernameAndTeam_Id("manager1", 1L)).thenReturn(true);
+
+        assertThatThrownBy(() -> scheduleService.publishSchedule("manager1", 10L))
+                .isInstanceOfSatisfying(ResponseStatusException.class, exception ->
+                        assertThat(exception.getStatusCode()).isEqualTo(HttpStatus.CONFLICT));
+    }
+
     private Team team() {
         Team team = new Team("Operations", SwapApprovalPolicy.MANAGER, 8, "Asia/Jerusalem");
         ReflectionTestUtils.setField(team, "id", 1L);
         return team;
+    }
+
+    private Schedule schedule(ScheduleStatus status) {
+        Schedule schedule = new Schedule(
+                team(),
+                LocalDate.of(2026, 7, 5),
+                LocalDate.of(2026, 7, 11)
+        );
+        ReflectionTestUtils.setField(schedule, "id", 10L);
+        if (status == ScheduleStatus.PUBLISHED) {
+            schedule.publish(Instant.parse("2026-07-20T18:00:00Z"));
+        }
+        return schedule;
     }
 }

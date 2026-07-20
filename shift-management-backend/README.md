@@ -43,10 +43,12 @@ Implemented:
 - Employee staffing role assignment endpoint: `POST /api/teams/{teamId}/employees/{employeeId}/staffing-roles`.
 - Employee staffing role list endpoint: `GET /api/teams/{teamId}/employees/{employeeId}/staffing-roles`.
 - Assignment creation validates required staffing roles.
+- Schedule publish endpoint: `POST /api/schedules/{scheduleId}/publish`.
 
 Not implemented yet:
 
-- Schedule list, update, delete, publish, and reopen endpoints.
+- Schedule list, update, delete, and reopen endpoints.
+- Publication readiness report.
 - Assignment transfer endpoints.
 - Automatic assignment.
 - Remaining team-scoped authorization for future manager workflows.
@@ -156,6 +158,33 @@ Expected response:
 ```
 
 Only managers assigned to the requested team can create schedules for that team.
+
+Publish a draft schedule:
+
+```bash
+curl -X POST http://localhost:8080/api/schedules/1/publish \
+  -H "Authorization: Bearer <TOKEN>"
+```
+
+Expected response:
+
+```json
+{
+  "id": 1,
+  "teamId": 1,
+  "teamName": "Operations",
+  "startDate": "2026-07-05",
+  "endDate": "2026-07-11",
+  "status": "PUBLISHED",
+  "publicationNumber": 1,
+  "publishedAt": "2026-07-20T08:59:10.000000Z"
+}
+```
+
+Only managers assigned to the schedule's team can publish it.
+Only draft schedules can be published.
+Publishing sets the schedule status to `PUBLISHED`, records `publishedAt`, and increments `publicationNumber`.
+Reopen behavior and publication readiness reports are not implemented yet.
 
 Create a shift inside a draft schedule:
 

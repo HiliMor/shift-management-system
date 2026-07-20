@@ -36,7 +36,7 @@ flowchart TD
     auth["auth<br/>Login, JWT, current user"]
     user["user<br/>User and application role"]
     team["team<br/>Team, team members, managers"]
-    schedule["schedule<br/>Draft schedule creation"]
+    schedule["schedule<br/>Draft schedule creation and publication"]
     shift["shift<br/>Shift CRUD inside schedules"]
     assignment["assignment<br/>Manual assignment workflow and validations"]
     availability["availability<br/>Employee unavailable time ranges"]
@@ -91,7 +91,7 @@ flowchart TD
 ```
 
 Not every package has every layer yet.
-For example, schedule publication endpoints are still planned, while staffing roles are already used during manual assignment validation.
+For example, schedule reopening is still planned, while schedule publication is already implemented.
 
 ## Domain Model
 
@@ -204,7 +204,7 @@ flowchart TD
 
     healthApi["Health<br/>GET /api/health"]
     authApi["Authentication<br/>POST /api/auth/login<br/>GET /api/auth/me"]
-    schedulesApi["Schedules<br/>POST /api/schedules"]
+    schedulesApi["Schedules<br/>POST /api/schedules<br/>POST /api/schedules/{scheduleId}/publish"]
     shiftsApi["Shifts<br/>POST /api/schedules/{scheduleId}/shifts<br/>GET /api/schedules/{scheduleId}/shifts<br/>PUT /api/schedules/{scheduleId}/shifts/{shiftId}<br/>DELETE /api/schedules/{scheduleId}/shifts/{shiftId}"]
     assignmentsApi["Assignments<br/>POST /api/assignments<br/>GET /api/schedules/{scheduleId}/assignments<br/>DELETE /api/assignments/{assignmentId}"]
     availabilityApi["Availability Constraints<br/>POST /api/availability-constraints<br/>GET /api/availability-constraints/me<br/>DELETE /api/availability-constraints/{constraintId}"]
@@ -243,6 +243,26 @@ sequenceDiagram
     AuthController-->>Client: 200 OK
 ```
 
+### Schedule Publication
+
+```mermaid
+sequenceDiagram
+    participant Client
+    participant Security as JwtAuthenticationFilter
+    participant ScheduleController
+    participant ScheduleService
+    participant ScheduleRepository
+
+    Client->>Security: POST /api/schedules/{scheduleId}/publish with Bearer token
+    Security->>ScheduleController: authenticated request
+    ScheduleController->>ScheduleService: publishSchedule(username, scheduleId)
+    ScheduleService->>ScheduleRepository: findById(scheduleId)
+    ScheduleService->>ScheduleService: validate manager and draft status
+    ScheduleService->>ScheduleService: mark schedule PUBLISHED
+    ScheduleService-->>ScheduleController: ScheduleResponse
+    ScheduleController-->>Client: 200 OK
+```
+
 ### Manual Assignment
 
 ```mermaid
@@ -260,7 +280,7 @@ sequenceDiagram
     AssignmentService->>Repositories: load manager, shift, employee, team membership
     Repositories->>Database: queries
     AssignmentService->>AssignmentService: validate manager, draft schedule, team membership
-    AssignmentService->>AssignmentService: validate capacity, availability, overlap, rest
+    AssignmentService->>AssignmentService: validate staffing role, capacity, availability, overlap, rest
     AssignmentService->>Repositories: save Assignment
     Repositories->>Database: insert assignment
     AssignmentService-->>AssignmentController: AssignmentResponse
@@ -313,7 +333,7 @@ flowchart LR
 | `health` | Public health check endpoint. |
 | `user` | User entity and broad application role such as `MANAGER` or `EMPLOYEE`. |
 | `team` | Teams, active team membership, and team managers. |
-| `schedule` | Draft schedule creation and schedule lifecycle state fields. |
+| `schedule` | Draft schedule creation, schedule publication, and schedule lifecycle state fields. |
 | `shift` | Shift creation, listing, update, deletion, schedule-range validation, and optional required staffing role storage. |
 | `assignment` | Manual assignment creation/list/delete and business rule validation, including capacity, availability, overlap, rest, and required staffing roles. |
 | `availability` | Employee unavailable time ranges and conflict checks with assignments. |

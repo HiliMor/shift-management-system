@@ -70,6 +70,18 @@ public class Schedule {
         this.publicationNumber = 0;
     }
 
+    public void publish(Instant publishedAt) {
+        Objects.requireNonNull(publishedAt, "publishedAt must not be null");
+
+        if (status != ScheduleStatus.DRAFT) {
+            throw new IllegalStateException("Only draft schedules can be published");
+        }
+
+        status = ScheduleStatus.PUBLISHED;
+        publicationNumber++;
+        this.publishedAt = publishedAt;
+    }
+
     public Long getId() {
         return id;
     }

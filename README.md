@@ -32,10 +32,11 @@ Implemented:
 - Optional required staffing role on shifts.
 - Employee staffing role assignment and list operations.
 - Assignment creation validates required staffing roles.
+- Schedule publication from `DRAFT` to `PUBLISHED`.
 
 Planned next:
 
-- Schedule publication and reopening.
+- Schedule reopening.
 - Basic React frontend.
 - Swap and transfer requests.
 - Notifications and JMS integration.

@@ -1,6 +1,6 @@
 # Implementation Plan - Shift Management System
 
-Last updated: 2026-07-19
+Last updated: 2026-07-20
 
 This document is the working implementation plan for the project.  
 The goal is to build the system in small, understandable steps, while keeping each part easy to explain during the final presentation.
@@ -554,24 +554,50 @@ Goal: turn a draft schedule into an official schedule visible to employees.
 
 ### Implement
 
-- [ ] Add `publish`.
+- [x] Add `publish`.
 - [ ] Add `reopen`.
-- [ ] Add `publicationNumber`.
-- [ ] Block direct editing of published schedules.
+- [x] Add `publicationNumber`.
+- [x] Block direct shift and assignment edits after publication.
 - [ ] Return a report before publication.
 - [ ] Allow publication with unfilled shifts only after explicit confirmation.
 
 ### Verify
 
-- [ ] A new schedule starts as `DRAFT`.
+- [x] A new schedule starts as `DRAFT`.
+- [x] Publishing changes a schedule from `DRAFT` to `PUBLISHED`.
 - [ ] After publication, employees can see the schedule.
-- [ ] After publication, managers cannot edit until reopening.
+- [x] After publication, managers cannot edit shifts or assignments until reopening.
 - [ ] Republishing increments `publicationNumber`.
 
 ### Document
 
 - A short state diagram for `Schedule`.
 - Which actions are allowed in each state.
+
+### Phase 7 Design Decisions
+
+The first Phase 7 step adds schedule publication only.
+
+Initial endpoint:
+
+- `POST /api/schedules/{scheduleId}/publish`
+
+Rules for the first publication step:
+
+- Only a manager of the schedule's team can publish the schedule.
+- Only `DRAFT` schedules can be published.
+- Publishing changes the schedule status to `PUBLISHED`.
+- Publishing records `publishedAt`.
+- Publishing increments `publicationNumber` from `0` to `1`.
+- Direct shift changes and assignment changes are already blocked once the schedule is `PUBLISHED`.
+
+Deferred from the first publication step:
+
+- Reopening a published schedule.
+- Publishing a reopened schedule again.
+- Publication readiness report.
+- Explicit confirmation for publishing with unfilled shifts.
+- Employee-facing published schedule view.
 
 ## Phase 8 - Basic Frontend
 
@@ -1070,6 +1096,21 @@ Still open:
 - Added service tests for assigning an employee who has the required role and rejecting an employee who does not have the required role in the shift's team.
 - Updated `README.md`, `shift-management-backend/README.md`, `docs/current-backend-architecture.md`, and the Phase 6 plan.
 - Verified `mvn -Dtest=AssignmentServiceTest,TeamMemberStaffingRoleServiceTest test` succeeds outside the Codex sandbox.
+- Verified `mvn test` succeeds outside the Codex sandbox.
+- Verified Spring Boot starts against PostgreSQL with Flyway schema version `V8`.
+- Verified `GET /api/health` returns `UP`.
+
+### 2026-07-20 - Phase 7 Schedule Publish Endpoint
+
+- Started Phase 7 with a focused publish-only step.
+- Added `Schedule.publish(...)` as the domain operation that changes a schedule from `DRAFT` to `PUBLISHED`.
+- Publishing records `publishedAt` and increments `publicationNumber`.
+- Added `ScheduleService.publishSchedule(...)` with manager authorization and draft-status validation.
+- Added `POST /api/schedules/{scheduleId}/publish`.
+- Added entity tests for publishing a draft schedule and rejecting repeated publication.
+- Added service tests for successful publication, missing schedule rejection, unmanaged schedule rejection, and already-published schedule rejection.
+- Updated `README.md`, `shift-management-backend/README.md`, `docs/current-backend-architecture.md`, and the Phase 7 plan.
+- Verified `mvn -Dtest=ScheduleTest,ScheduleServiceTest test` succeeds outside the Codex sandbox.
 - Verified `mvn test` succeeds outside the Codex sandbox.
 - Verified Spring Boot starts against PostgreSQL with Flyway schema version `V8`.
 - Verified `GET /api/health` returns `UP`.
