@@ -71,4 +71,53 @@ class ScheduleTest {
         assertThatIllegalStateException()
                 .isThrownBy(() -> schedule.publish(Instant.parse("2026-07-21T18:00:00Z")));
     }
+
+    @Test
+    void reopenChangesPublishedScheduleBackToDraft() {
+        Team team = new Team("Operations", SwapApprovalPolicy.MANAGER, 8, "Asia/Jerusalem");
+        Schedule schedule = new Schedule(
+                team,
+                LocalDate.of(2026, 7, 1),
+                LocalDate.of(2026, 7, 7)
+        );
+        Instant publishedAt = Instant.parse("2026-07-20T18:00:00Z");
+        schedule.publish(publishedAt);
+
+        schedule.reopen();
+
+        assertThat(schedule.getStatus()).isEqualTo(ScheduleStatus.DRAFT);
+        assertThat(schedule.getPublicationNumber()).isEqualTo(1);
+        assertThat(schedule.getPublishedAt()).isEqualTo(publishedAt);
+    }
+
+    @Test
+    void draftScheduleCannotBeReopened() {
+        Team team = new Team("Operations", SwapApprovalPolicy.MANAGER, 8, "Asia/Jerusalem");
+        Schedule schedule = new Schedule(
+                team,
+                LocalDate.of(2026, 7, 1),
+                LocalDate.of(2026, 7, 7)
+        );
+
+        assertThatIllegalStateException()
+                .isThrownBy(schedule::reopen);
+    }
+
+    @Test
+    void reopenedScheduleCanBePublishedAgain() {
+        Team team = new Team("Operations", SwapApprovalPolicy.MANAGER, 8, "Asia/Jerusalem");
+        Schedule schedule = new Schedule(
+                team,
+                LocalDate.of(2026, 7, 1),
+                LocalDate.of(2026, 7, 7)
+        );
+        schedule.publish(Instant.parse("2026-07-20T18:00:00Z"));
+        schedule.reopen();
+
+        schedule.publish(Instant.parse("2026-07-21T18:00:00Z"));
+
+        assertThat(schedule.getStatus()).isEqualTo(ScheduleStatus.PUBLISHED);
+        assertThat(schedule.getPublicationNumber()).isEqualTo(2);
+        assertThat(schedule.getPublishedAt()).isEqualTo(Instant.parse("2026-07-21T18:00:00Z"));
+    }
 }

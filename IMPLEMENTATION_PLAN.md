@@ -1,6 +1,6 @@
 # Implementation Plan - Shift Management System
 
-Last updated: 2026-07-20
+Last updated: 2026-07-21
 
 This document is the working implementation plan for the project.  
 The goal is to build the system in small, understandable steps, while keeping each part easy to explain during the final presentation.
@@ -555,7 +555,7 @@ Goal: turn a draft schedule into an official schedule visible to employees.
 ### Implement
 
 - [x] Add `publish`.
-- [ ] Add `reopen`.
+- [x] Add `reopen`.
 - [x] Add `publicationNumber`.
 - [x] Block direct shift and assignment edits after publication.
 - [ ] Return a report before publication.
@@ -565,9 +565,10 @@ Goal: turn a draft schedule into an official schedule visible to employees.
 
 - [x] A new schedule starts as `DRAFT`.
 - [x] Publishing changes a schedule from `DRAFT` to `PUBLISHED`.
+- [x] Reopening changes a schedule from `PUBLISHED` to `DRAFT`.
 - [ ] After publication, employees can see the schedule.
 - [x] After publication, managers cannot edit shifts or assignments until reopening.
-- [ ] Republishing increments `publicationNumber`.
+- [x] Republishing increments `publicationNumber`.
 
 ### Document
 
@@ -576,25 +577,33 @@ Goal: turn a draft schedule into an official schedule visible to employees.
 
 ### Phase 7 Design Decisions
 
-The first Phase 7 step adds schedule publication only.
+Phase 7 currently supports the basic schedule lifecycle.
 
-Initial endpoint:
+Current endpoints:
 
 - `POST /api/schedules/{scheduleId}/publish`
+- `POST /api/schedules/{scheduleId}/reopen`
 
-Rules for the first publication step:
+Rules for publication:
 
 - Only a manager of the schedule's team can publish the schedule.
 - Only `DRAFT` schedules can be published.
 - Publishing changes the schedule status to `PUBLISHED`.
 - Publishing records `publishedAt`.
-- Publishing increments `publicationNumber` from `0` to `1`.
+- Publishing increments `publicationNumber`.
 - Direct shift changes and assignment changes are already blocked once the schedule is `PUBLISHED`.
 
-Deferred from the first publication step:
+Rules for reopening:
 
-- Reopening a published schedule.
-- Publishing a reopened schedule again.
+- Only a manager of the schedule's team can reopen the schedule.
+- Only `PUBLISHED` schedules can be reopened.
+- Reopening changes the schedule status back to `DRAFT`.
+- Reopening does not increment `publicationNumber`.
+- Reopening does not clear `publishedAt`, so the latest publication timestamp remains visible.
+- Publishing a reopened schedule again increments `publicationNumber`.
+
+Deferred from the first Phase 7 steps:
+
 - Publication readiness report.
 - Explicit confirmation for publishing with unfilled shifts.
 - Employee-facing published schedule view.
@@ -1109,6 +1118,21 @@ Still open:
 - Added `POST /api/schedules/{scheduleId}/publish`.
 - Added entity tests for publishing a draft schedule and rejecting repeated publication.
 - Added service tests for successful publication, missing schedule rejection, unmanaged schedule rejection, and already-published schedule rejection.
+- Updated `README.md`, `shift-management-backend/README.md`, `docs/current-backend-architecture.md`, and the Phase 7 plan.
+- Verified `mvn -Dtest=ScheduleTest,ScheduleServiceTest test` succeeds outside the Codex sandbox.
+- Verified `mvn test` succeeds outside the Codex sandbox.
+- Verified Spring Boot starts against PostgreSQL with Flyway schema version `V8`.
+- Verified `GET /api/health` returns `UP`.
+
+### 2026-07-21 - Phase 7 Schedule Reopen Endpoint
+
+- Added `Schedule.reopen(...)` as the domain operation that changes a schedule from `PUBLISHED` back to `DRAFT`.
+- Added `ScheduleService.reopenSchedule(...)` with manager authorization and published-status validation.
+- Added `POST /api/schedules/{scheduleId}/reopen`.
+- Kept `publishedAt` and `publicationNumber` unchanged when reopening, so the latest publication remains visible.
+- Verified that publishing a reopened schedule again increments `publicationNumber`.
+- Added entity tests for reopening, rejecting reopen on draft schedules, and publishing a reopened schedule again.
+- Added service tests for successful reopening, missing schedule rejection, unmanaged schedule rejection, and draft-schedule reopen rejection.
 - Updated `README.md`, `shift-management-backend/README.md`, `docs/current-backend-architecture.md`, and the Phase 7 plan.
 - Verified `mvn -Dtest=ScheduleTest,ScheduleServiceTest test` succeeds outside the Codex sandbox.
 - Verified `mvn test` succeeds outside the Codex sandbox.

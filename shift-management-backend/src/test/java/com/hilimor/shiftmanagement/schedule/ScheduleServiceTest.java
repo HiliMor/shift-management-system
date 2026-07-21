@@ -162,6 +162,61 @@ class ScheduleServiceTest {
                         assertThat(exception.getStatusCode()).isEqualTo(HttpStatus.CONFLICT));
     }
 
+    @Test
+    void reopenScheduleReopensManagedPublishedSchedule() {
+        Schedule schedule = schedule(ScheduleStatus.PUBLISHED);
+        Instant previousPublishedAt = schedule.getPublishedAt();
+
+        when(scheduleRepository.findById(10L)).thenReturn(Optional.of(schedule));
+        when(teamManagerRepository.existsByManager_UsernameAndTeam_Id("manager1", 1L)).thenReturn(true);
+
+        ScheduleResponse response = scheduleService.reopenSchedule("manager1", 10L);
+
+        assertThat(response.id()).isEqualTo(10L);
+        assertThat(response.teamId()).isEqualTo(1L);
+        assertThat(response.status()).isEqualTo(ScheduleStatus.DRAFT);
+        assertThat(response.publicationNumber()).isEqualTo(1);
+        assertThat(response.publishedAt()).isEqualTo(previousPublishedAt);
+        assertThat(schedule.getStatus()).isEqualTo(ScheduleStatus.DRAFT);
+        assertThat(schedule.getPublicationNumber()).isEqualTo(1);
+        assertThat(schedule.getPublishedAt()).isEqualTo(previousPublishedAt);
+    }
+
+    @Test
+    void reopenScheduleRejectsMissingSchedule() {
+        when(scheduleRepository.findById(10L)).thenReturn(Optional.empty());
+
+        assertThatThrownBy(() -> scheduleService.reopenSchedule("manager1", 10L))
+                .isInstanceOfSatisfying(ResponseStatusException.class, exception ->
+                        assertThat(exception.getStatusCode()).isEqualTo(HttpStatus.NOT_FOUND));
+    }
+
+    @Test
+    void reopenScheduleRejectsUnmanagedSchedule() {
+        Schedule schedule = schedule(ScheduleStatus.PUBLISHED);
+
+        when(scheduleRepository.findById(10L)).thenReturn(Optional.of(schedule));
+        when(teamManagerRepository.existsByManager_UsernameAndTeam_Id("manager2", 1L)).thenReturn(false);
+
+        assertThatThrownBy(() -> scheduleService.reopenSchedule("manager2", 10L))
+                .isInstanceOfSatisfying(ResponseStatusException.class, exception ->
+                        assertThat(exception.getStatusCode()).isEqualTo(HttpStatus.FORBIDDEN));
+
+        assertThat(schedule.getStatus()).isEqualTo(ScheduleStatus.PUBLISHED);
+    }
+
+    @Test
+    void reopenScheduleRejectsDraftSchedule() {
+        Schedule schedule = schedule(ScheduleStatus.DRAFT);
+
+        when(scheduleRepository.findById(10L)).thenReturn(Optional.of(schedule));
+        when(teamManagerRepository.existsByManager_UsernameAndTeam_Id("manager1", 1L)).thenReturn(true);
+
+        assertThatThrownBy(() -> scheduleService.reopenSchedule("manager1", 10L))
+                .isInstanceOfSatisfying(ResponseStatusException.class, exception ->
+                        assertThat(exception.getStatusCode()).isEqualTo(HttpStatus.CONFLICT));
+    }
+
     private Team team() {
         Team team = new Team("Operations", SwapApprovalPolicy.MANAGER, 8, "Asia/Jerusalem");
         ReflectionTestUtils.setField(team, "id", 1L);

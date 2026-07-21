@@ -44,10 +44,11 @@ Implemented:
 - Employee staffing role list endpoint: `GET /api/teams/{teamId}/employees/{employeeId}/staffing-roles`.
 - Assignment creation validates required staffing roles.
 - Schedule publish endpoint: `POST /api/schedules/{scheduleId}/publish`.
+- Schedule reopen endpoint: `POST /api/schedules/{scheduleId}/reopen`.
 
 Not implemented yet:
 
-- Schedule list, update, delete, and reopen endpoints.
+- Schedule list, update, and delete endpoints.
 - Publication readiness report.
 - Assignment transfer endpoints.
 - Automatic assignment.
@@ -184,7 +185,35 @@ Expected response:
 Only managers assigned to the schedule's team can publish it.
 Only draft schedules can be published.
 Publishing sets the schedule status to `PUBLISHED`, records `publishedAt`, and increments `publicationNumber`.
-Reopen behavior and publication readiness reports are not implemented yet.
+
+Reopen a published schedule:
+
+```bash
+curl -X POST http://localhost:8080/api/schedules/1/reopen \
+  -H "Authorization: Bearer <TOKEN>"
+```
+
+Expected response:
+
+```json
+{
+  "id": 1,
+  "teamId": 1,
+  "teamName": "Operations",
+  "startDate": "2026-07-05",
+  "endDate": "2026-07-11",
+  "status": "DRAFT",
+  "publicationNumber": 1,
+  "publishedAt": "2026-07-20T08:59:10.000000Z"
+}
+```
+
+Only managers assigned to the schedule's team can reopen it.
+Only published schedules can be reopened.
+Reopening returns the schedule to `DRAFT` so shifts and assignments can be edited again.
+Reopening does not increment `publicationNumber` and does not clear `publishedAt`; those fields keep the history of the latest publication.
+Publishing the reopened schedule again increments `publicationNumber`.
+Publication readiness reports are not implemented yet.
 
 Create a shift inside a draft schedule:
 

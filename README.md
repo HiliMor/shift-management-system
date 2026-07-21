@@ -33,10 +33,12 @@ Implemented:
 - Employee staffing role assignment and list operations.
 - Assignment creation validates required staffing roles.
 - Schedule publication from `DRAFT` to `PUBLISHED`.
+- Schedule reopening from `PUBLISHED` to `DRAFT`.
 
 Planned next:
 
-- Schedule reopening.
+- Publication readiness report.
+- Employee-facing published schedule view.
 - Basic React frontend.
 - Swap and transfer requests.
 - Notifications and JMS integration.

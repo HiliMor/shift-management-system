@@ -82,6 +82,14 @@ public class Schedule {
         this.publishedAt = publishedAt;
     }
 
+    public void reopen() {
+        if (status != ScheduleStatus.PUBLISHED) {
+            throw new IllegalStateException("Only published schedules can be reopened");
+        }
+
+        status = ScheduleStatus.DRAFT;
+    }
+
     public Long getId() {
         return id;
     }

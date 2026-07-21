@@ -37,4 +37,12 @@ public class ScheduleController {
     ) {
         return scheduleService.publishSchedule(authentication.getName(), scheduleId);
     }
+
+    @PostMapping("/{scheduleId}/reopen")
+    public ScheduleResponse reopenSchedule(
+            Authentication authentication,
+            @PathVariable Long scheduleId
+    ) {
+        return scheduleService.reopenSchedule(authentication.getName(), scheduleId);
+    }
 }

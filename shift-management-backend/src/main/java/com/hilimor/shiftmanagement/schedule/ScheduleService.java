@@ -64,6 +64,23 @@ public class ScheduleService {
         return ScheduleResponse.from(schedule);
     }
 
+    @Transactional
+    public ScheduleResponse reopenSchedule(String username, Long scheduleId) {
+        Schedule schedule = managedSchedule(
+                username,
+                scheduleId,
+                "Only a team manager can reopen this schedule"
+        );
+
+        try {
+            schedule.reopen();
+        } catch (IllegalStateException exception) {
+            throw new ResponseStatusException(HttpStatus.CONFLICT, exception.getMessage());
+        }
+
+        return ScheduleResponse.from(schedule);
+    }
+
     private Schedule managedSchedule(String username, Long scheduleId, String errorMessage) {
         Schedule schedule = scheduleRepository.findById(scheduleId)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Schedule not found"));
