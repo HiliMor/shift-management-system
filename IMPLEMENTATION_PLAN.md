@@ -1,6 +1,6 @@
 # Implementation Plan - Shift Management System
 
-Last updated: 2026-07-21
+Last updated: 2026-07-22
 
 This document is the working implementation plan for the project.  
 The goal is to build the system in small, understandable steps, while keeping each part easy to explain during the final presentation.
@@ -558,6 +558,7 @@ Goal: turn a draft schedule into an official schedule visible to employees.
 - [x] Add `reopen`.
 - [x] Add `publicationNumber`.
 - [x] Block direct shift and assignment edits after publication.
+- [x] Allow employees to list published schedules for active teams.
 - [ ] Return a report before publication.
 - [ ] Allow publication with unfilled shifts only after explicit confirmation.
 
@@ -566,7 +567,8 @@ Goal: turn a draft schedule into an official schedule visible to employees.
 - [x] A new schedule starts as `DRAFT`.
 - [x] Publishing changes a schedule from `DRAFT` to `PUBLISHED`.
 - [x] Reopening changes a schedule from `PUBLISHED` to `DRAFT`.
-- [ ] After publication, employees can see the schedule.
+- [x] After publication, employees can list the schedule.
+- [ ] Employees can view published schedule details and shifts.
 - [x] After publication, managers cannot edit shifts or assignments until reopening.
 - [x] Republishing increments `publicationNumber`.
 
@@ -577,12 +579,13 @@ Goal: turn a draft schedule into an official schedule visible to employees.
 
 ### Phase 7 Design Decisions
 
-Phase 7 currently supports the basic schedule lifecycle.
+Phase 7 currently supports the basic schedule lifecycle and the first employee-facing schedule list.
 
 Current endpoints:
 
 - `POST /api/schedules/{scheduleId}/publish`
 - `POST /api/schedules/{scheduleId}/reopen`
+- `GET /api/schedules/me/published`
 
 Rules for publication:
 
@@ -602,11 +605,19 @@ Rules for reopening:
 - Reopening does not clear `publishedAt`, so the latest publication timestamp remains visible.
 - Publishing a reopened schedule again increments `publicationNumber`.
 
+Rules for the employee published schedule list:
+
+- The authenticated user sees only schedules with status `PUBLISHED`.
+- The authenticated user sees only schedules for teams where they are an active team member.
+- Users with no active team memberships receive an empty list.
+- Draft schedules are not returned.
+- The first employee-facing endpoint returns schedule headers only; detailed published shifts are still planned.
+
 Deferred from the first Phase 7 steps:
 
 - Publication readiness report.
 - Explicit confirmation for publishing with unfilled shifts.
-- Employee-facing published schedule view.
+- Employee-facing published schedule details with shifts.
 
 ## Phase 8 - Basic Frontend
 
@@ -631,7 +642,8 @@ Goal: build a minimal React interface connected to the backend.
 ### Verify
 
 - [ ] Successful login navigates to the correct area.
-- [ ] Employees can view published schedules.
+- [ ] Frontend can call the published schedules backend endpoint.
+- [ ] Employees can view published schedule details in the frontend.
 - [ ] Managers can create shifts.
 - [ ] Assignment errors are displayed clearly.
 
@@ -1133,6 +1145,22 @@ Still open:
 - Verified that publishing a reopened schedule again increments `publicationNumber`.
 - Added entity tests for reopening, rejecting reopen on draft schedules, and publishing a reopened schedule again.
 - Added service tests for successful reopening, missing schedule rejection, unmanaged schedule rejection, and draft-schedule reopen rejection.
+- Updated `README.md`, `shift-management-backend/README.md`, `docs/current-backend-architecture.md`, and the Phase 7 plan.
+- Verified `mvn -Dtest=ScheduleTest,ScheduleServiceTest test` succeeds outside the Codex sandbox.
+- Verified `mvn test` succeeds outside the Codex sandbox.
+- Verified Spring Boot starts against PostgreSQL with Flyway schema version `V8`.
+- Verified `GET /api/health` returns `UP`.
+
+### 2026-07-22 - Phase 7 Employee Published Schedule List
+
+- Added `GET /api/schedules/me/published`.
+- Added a schedule repository query for published schedules across the authenticated user's active team memberships.
+- Added `ScheduleService.listPublishedSchedulesForUser(...)`.
+- The endpoint returns only `PUBLISHED` schedules.
+- Draft schedules are not returned.
+- Users with no active team memberships receive an empty list.
+- Kept this as a read-only API step with no database migration.
+- Added service tests for successful employee listing, empty active-team membership, and missing user rejection.
 - Updated `README.md`, `shift-management-backend/README.md`, `docs/current-backend-architecture.md`, and the Phase 7 plan.
 - Verified `mvn -Dtest=ScheduleTest,ScheduleServiceTest test` succeeds outside the Codex sandbox.
 - Verified `mvn test` succeeds outside the Codex sandbox.

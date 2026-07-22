@@ -45,11 +45,13 @@ Implemented:
 - Assignment creation validates required staffing roles.
 - Schedule publish endpoint: `POST /api/schedules/{scheduleId}/publish`.
 - Schedule reopen endpoint: `POST /api/schedules/{scheduleId}/reopen`.
+- Employee published schedule list endpoint: `GET /api/schedules/me/published`.
 
 Not implemented yet:
 
 - Schedule list, update, and delete endpoints.
 - Publication readiness report.
+- Employee published schedule details with shifts.
 - Assignment transfer endpoints.
 - Automatic assignment.
 - Remaining team-scoped authorization for future manager workflows.
@@ -214,6 +216,34 @@ Reopening returns the schedule to `DRAFT` so shifts and assignments can be edite
 Reopening does not increment `publicationNumber` and does not clear `publishedAt`; those fields keep the history of the latest publication.
 Publishing the reopened schedule again increments `publicationNumber`.
 Publication readiness reports are not implemented yet.
+
+List published schedules for the authenticated employee:
+
+```bash
+curl http://localhost:8080/api/schedules/me/published \
+  -H "Authorization: Bearer <TOKEN>"
+```
+
+Expected response:
+
+```json
+[
+  {
+    "id": 1,
+    "teamId": 1,
+    "teamName": "Operations",
+    "startDate": "2026-07-05",
+    "endDate": "2026-07-11",
+    "status": "PUBLISHED",
+    "publicationNumber": 1,
+    "publishedAt": "2026-07-20T08:59:10.000000Z"
+  }
+]
+```
+
+The authenticated user sees only published schedules for teams where they are an active team member.
+Draft schedules are not returned.
+This endpoint returns the schedule list only; detailed published shifts for employees are still planned.
 
 Create a shift inside a draft schedule:
 

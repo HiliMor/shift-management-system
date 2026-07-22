@@ -34,11 +34,12 @@ Implemented:
 - Assignment creation validates required staffing roles.
 - Schedule publication from `DRAFT` to `PUBLISHED`.
 - Schedule reopening from `PUBLISHED` to `DRAFT`.
+- Employee published schedule list endpoint.
 
 Planned next:
 
 - Publication readiness report.
-- Employee-facing published schedule view.
+- Employee-facing published schedule details with shifts.
 - Basic React frontend.
 - Swap and transfer requests.
 - Notifications and JMS integration.

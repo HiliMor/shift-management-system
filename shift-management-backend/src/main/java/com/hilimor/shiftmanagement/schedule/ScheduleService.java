@@ -1,10 +1,14 @@
 package com.hilimor.shiftmanagement.schedule;
 
 import java.time.Instant;
+import java.util.List;
 
 import com.hilimor.shiftmanagement.team.Team;
 import com.hilimor.shiftmanagement.team.TeamManagerRepository;
+import com.hilimor.shiftmanagement.team.TeamMemberRepository;
 import com.hilimor.shiftmanagement.team.TeamRepository;
+import com.hilimor.shiftmanagement.user.User;
+import com.hilimor.shiftmanagement.user.UserRepository;
 
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
@@ -17,15 +21,21 @@ public class ScheduleService {
     private final ScheduleRepository scheduleRepository;
     private final TeamRepository teamRepository;
     private final TeamManagerRepository teamManagerRepository;
+    private final TeamMemberRepository teamMemberRepository;
+    private final UserRepository userRepository;
 
     public ScheduleService(
             ScheduleRepository scheduleRepository,
             TeamRepository teamRepository,
-            TeamManagerRepository teamManagerRepository
+            TeamManagerRepository teamManagerRepository,
+            TeamMemberRepository teamMemberRepository,
+            UserRepository userRepository
     ) {
         this.scheduleRepository = scheduleRepository;
         this.teamRepository = teamRepository;
         this.teamManagerRepository = teamManagerRepository;
+        this.teamMemberRepository = teamMemberRepository;
+        this.userRepository = userRepository;
     }
 
     @Transactional
@@ -79,6 +89,26 @@ public class ScheduleService {
         }
 
         return ScheduleResponse.from(schedule);
+    }
+
+    @Transactional(readOnly = true)
+    public List<ScheduleResponse> listPublishedSchedulesForUser(String username) {
+        User user = userRepository.findByUsername(username)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "User not found"));
+
+        List<Long> teamIds = teamMemberRepository.findByUser_IdAndActiveTrue(user.getId())
+                .stream()
+                .map(teamMember -> teamMember.getTeam().getId())
+                .toList();
+
+        if (teamIds.isEmpty()) {
+            return List.of();
+        }
+
+        return scheduleRepository.findByTeam_IdInAndStatusOrderByStartDateDesc(teamIds, ScheduleStatus.PUBLISHED)
+                .stream()
+                .map(ScheduleResponse::from)
+                .toList();
     }
 
     private Schedule managedSchedule(String username, Long scheduleId, String errorMessage) {

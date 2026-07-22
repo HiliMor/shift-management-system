@@ -9,6 +9,7 @@ import static org.mockito.Mockito.when;
 
 import java.time.Instant;
 import java.time.LocalDate;
+import java.util.List;
 import java.util.Optional;
 
 import org.junit.jupiter.api.Test;
@@ -24,7 +25,12 @@ import org.springframework.web.server.ResponseStatusException;
 import com.hilimor.shiftmanagement.team.SwapApprovalPolicy;
 import com.hilimor.shiftmanagement.team.Team;
 import com.hilimor.shiftmanagement.team.TeamManagerRepository;
+import com.hilimor.shiftmanagement.team.TeamMember;
+import com.hilimor.shiftmanagement.team.TeamMemberRepository;
 import com.hilimor.shiftmanagement.team.TeamRepository;
+import com.hilimor.shiftmanagement.user.ApplicationRole;
+import com.hilimor.shiftmanagement.user.User;
+import com.hilimor.shiftmanagement.user.UserRepository;
 
 @ExtendWith(MockitoExtension.class)
 class ScheduleServiceTest {
@@ -37,6 +43,12 @@ class ScheduleServiceTest {
 
     @Mock
     private TeamManagerRepository teamManagerRepository;
+
+    @Mock
+    private TeamMemberRepository teamMemberRepository;
+
+    @Mock
+    private UserRepository userRepository;
 
     @InjectMocks
     private ScheduleService scheduleService;
@@ -217,19 +229,91 @@ class ScheduleServiceTest {
                         assertThat(exception.getStatusCode()).isEqualTo(HttpStatus.CONFLICT));
     }
 
+    @Test
+    void listPublishedSchedulesForUserReturnsPublishedSchedulesForActiveTeamMemberships() {
+        User employee = employee();
+        Team team = team();
+        TeamMember teamMember = teamMember(employee, team);
+        Schedule publishedSchedule = schedule(team, ScheduleStatus.PUBLISHED, 11L, LocalDate.of(2026, 7, 12));
+
+        when(userRepository.findByUsername("employee1")).thenReturn(Optional.of(employee));
+        when(teamMemberRepository.findByUser_IdAndActiveTrue(2L)).thenReturn(List.of(teamMember));
+        when(scheduleRepository.findByTeam_IdInAndStatusOrderByStartDateDesc(
+                List.of(1L),
+                ScheduleStatus.PUBLISHED
+        )).thenReturn(List.of(publishedSchedule));
+
+        List<ScheduleResponse> responses = scheduleService.listPublishedSchedulesForUser("employee1");
+
+        assertThat(responses).hasSize(1);
+        assertThat(responses.get(0).id()).isEqualTo(11L);
+        assertThat(responses.get(0).teamId()).isEqualTo(1L);
+        assertThat(responses.get(0).teamName()).isEqualTo("Operations");
+        assertThat(responses.get(0).status()).isEqualTo(ScheduleStatus.PUBLISHED);
+    }
+
+    @Test
+    void listPublishedSchedulesForUserReturnsEmptyListWhenUserHasNoActiveTeams() {
+        User employee = employee();
+
+        when(userRepository.findByUsername("employee1")).thenReturn(Optional.of(employee));
+        when(teamMemberRepository.findByUser_IdAndActiveTrue(2L)).thenReturn(List.of());
+
+        List<ScheduleResponse> responses = scheduleService.listPublishedSchedulesForUser("employee1");
+
+        assertThat(responses).isEmpty();
+        verify(scheduleRepository, never()).findByTeam_IdInAndStatusOrderByStartDateDesc(any(), any());
+    }
+
+    @Test
+    void listPublishedSchedulesForUserRejectsMissingUser() {
+        when(userRepository.findByUsername("missing")).thenReturn(Optional.empty());
+
+        assertThatThrownBy(() -> scheduleService.listPublishedSchedulesForUser("missing"))
+                .isInstanceOfSatisfying(ResponseStatusException.class, exception ->
+                        assertThat(exception.getStatusCode()).isEqualTo(HttpStatus.NOT_FOUND));
+    }
+
     private Team team() {
         Team team = new Team("Operations", SwapApprovalPolicy.MANAGER, 8, "Asia/Jerusalem");
         ReflectionTestUtils.setField(team, "id", 1L);
         return team;
     }
 
-    private Schedule schedule(ScheduleStatus status) {
-        Schedule schedule = new Schedule(
-                team(),
-                LocalDate.of(2026, 7, 5),
-                LocalDate.of(2026, 7, 11)
+    private User employee() {
+        User user = new User(
+                "employee1",
+                "password-hash",
+                "Demo Employee",
+                "employee1@example.com",
+                ApplicationRole.EMPLOYEE
         );
-        ReflectionTestUtils.setField(schedule, "id", 10L);
+        ReflectionTestUtils.setField(user, "id", 2L);
+        return user;
+    }
+
+    private TeamMember teamMember(User user, Team team) {
+        TeamMember teamMember = new TeamMember(
+                user,
+                team,
+                Instant.parse("2026-07-01T08:00:00Z"),
+                true
+        );
+        ReflectionTestUtils.setField(teamMember, "id", 20L);
+        return teamMember;
+    }
+
+    private Schedule schedule(ScheduleStatus status) {
+        return schedule(team(), status, 10L, LocalDate.of(2026, 7, 5));
+    }
+
+    private Schedule schedule(Team team, ScheduleStatus status, Long id, LocalDate startDate) {
+        Schedule schedule = new Schedule(
+                team,
+                startDate,
+                startDate.plusDays(6)
+        );
+        ReflectionTestUtils.setField(schedule, "id", id);
         if (status == ScheduleStatus.PUBLISHED) {
             schedule.publish(Instant.parse("2026-07-20T18:00:00Z"));
         }
