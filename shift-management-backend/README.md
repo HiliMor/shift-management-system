@@ -46,12 +46,12 @@ Implemented:
 - Schedule publish endpoint: `POST /api/schedules/{scheduleId}/publish`.
 - Schedule reopen endpoint: `POST /api/schedules/{scheduleId}/reopen`.
 - Employee published schedule list endpoint: `GET /api/schedules/me/published`.
+- Employee published schedule details endpoint: `GET /api/schedules/me/published/{scheduleId}`.
 
 Not implemented yet:
 
 - Schedule list, update, and delete endpoints.
 - Publication readiness report.
-- Employee published schedule details with shifts.
 - Assignment transfer endpoints.
 - Automatic assignment.
 - Remaining team-scoped authorization for future manager workflows.
@@ -243,7 +243,57 @@ Expected response:
 
 The authenticated user sees only published schedules for teams where they are an active team member.
 Draft schedules are not returned.
-This endpoint returns the schedule list only; detailed published shifts for employees are still planned.
+This endpoint returns schedule headers only.
+
+Get one published schedule with shifts and assignments for the authenticated employee:
+
+```bash
+curl http://localhost:8080/api/schedules/me/published/1 \
+  -H "Authorization: Bearer <TOKEN>"
+```
+
+Expected response:
+
+```json
+{
+  "schedule": {
+    "id": 1,
+    "teamId": 1,
+    "teamName": "Operations",
+    "startDate": "2026-07-05",
+    "endDate": "2026-07-11",
+    "status": "PUBLISHED",
+    "publicationNumber": 1,
+    "publishedAt": "2026-07-20T08:59:10.000000Z"
+  },
+  "shifts": [
+    {
+      "id": 1,
+      "scheduleId": 1,
+      "startTime": "2026-07-05T06:00:00Z",
+      "endTime": "2026-07-05T14:00:00Z",
+      "description": "Morning shift",
+      "requiredWorkers": 2,
+      "minRestHours": 8,
+      "requiredStaffingRoleId": null,
+      "requiredStaffingRoleName": null,
+      "assignments": [
+        {
+          "id": 1,
+          "shiftId": 1,
+          "employeeId": 2,
+          "employeeUsername": "employee1",
+          "employeeFullName": "Demo Employee",
+          "assignedAt": "2026-07-11T07:17:41.000000Z"
+        }
+      ]
+    }
+  ]
+}
+```
+
+The authenticated user can view details only for published schedules belonging to active teams they are a member of.
+Draft schedules and schedules from unrelated teams return `404 Not Found`.
 
 Create a shift inside a draft schedule:
 

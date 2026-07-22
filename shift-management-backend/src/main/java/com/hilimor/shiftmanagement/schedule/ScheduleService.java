@@ -2,7 +2,12 @@ package com.hilimor.shiftmanagement.schedule;
 
 import java.time.Instant;
 import java.util.List;
+import java.util.Map;
+import java.util.stream.Collectors;
 
+import com.hilimor.shiftmanagement.assignment.Assignment;
+import com.hilimor.shiftmanagement.assignment.AssignmentRepository;
+import com.hilimor.shiftmanagement.shift.ShiftRepository;
 import com.hilimor.shiftmanagement.team.Team;
 import com.hilimor.shiftmanagement.team.TeamManagerRepository;
 import com.hilimor.shiftmanagement.team.TeamMemberRepository;
@@ -23,19 +28,25 @@ public class ScheduleService {
     private final TeamManagerRepository teamManagerRepository;
     private final TeamMemberRepository teamMemberRepository;
     private final UserRepository userRepository;
+    private final ShiftRepository shiftRepository;
+    private final AssignmentRepository assignmentRepository;
 
     public ScheduleService(
             ScheduleRepository scheduleRepository,
             TeamRepository teamRepository,
             TeamManagerRepository teamManagerRepository,
             TeamMemberRepository teamMemberRepository,
-            UserRepository userRepository
+            UserRepository userRepository,
+            ShiftRepository shiftRepository,
+            AssignmentRepository assignmentRepository
     ) {
         this.scheduleRepository = scheduleRepository;
         this.teamRepository = teamRepository;
         this.teamManagerRepository = teamManagerRepository;
         this.teamMemberRepository = teamMemberRepository;
         this.userRepository = userRepository;
+        this.shiftRepository = shiftRepository;
+        this.assignmentRepository = assignmentRepository;
     }
 
     @Transactional
@@ -109,6 +120,39 @@ public class ScheduleService {
                 .stream()
                 .map(ScheduleResponse::from)
                 .toList();
+    }
+
+    @Transactional(readOnly = true)
+    public PublishedScheduleDetailsResponse getPublishedScheduleDetailsForUser(String username, Long scheduleId) {
+        User user = userRepository.findByUsername(username)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "User not found"));
+
+        Schedule schedule = scheduleRepository.findById(scheduleId)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Schedule not found"));
+
+        if (schedule.getStatus() != ScheduleStatus.PUBLISHED) {
+            throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Schedule not found");
+        }
+
+        Long teamId = schedule.getTeam().getId();
+        if (teamMemberRepository.findByUser_IdAndTeam_IdAndActiveTrue(user.getId(), teamId).isEmpty()) {
+            throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Schedule not found");
+        }
+
+        Map<Long, List<Assignment>> assignmentsByShiftId = assignmentRepository
+                .findByShift_Schedule_IdOrderByShift_StartTimeAscEmployee_FullNameAsc(scheduleId)
+                .stream()
+                .collect(Collectors.groupingBy(assignment -> assignment.getShift().getId()));
+
+        List<PublishedShiftResponse> shifts = shiftRepository.findBySchedule_IdOrderByStartTime(scheduleId)
+                .stream()
+                .map(shift -> PublishedShiftResponse.from(
+                        shift,
+                        assignmentsByShiftId.getOrDefault(shift.getId(), List.of())
+                ))
+                .toList();
+
+        return PublishedScheduleDetailsResponse.from(schedule, shifts);
     }
 
     private Schedule managedSchedule(String username, Long scheduleId, String errorMessage) {

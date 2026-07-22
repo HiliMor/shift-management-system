@@ -35,11 +35,11 @@ Implemented:
 - Schedule publication from `DRAFT` to `PUBLISHED`.
 - Schedule reopening from `PUBLISHED` to `DRAFT`.
 - Employee published schedule list endpoint.
+- Employee published schedule details endpoint with shifts and assignments.
 
 Planned next:
 
 - Publication readiness report.
-- Employee-facing published schedule details with shifts.
 - Basic React frontend.
 - Swap and transfer requests.
 - Notifications and JMS integration.

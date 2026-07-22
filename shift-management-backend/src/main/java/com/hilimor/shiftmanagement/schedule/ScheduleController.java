@@ -38,6 +38,14 @@ public class ScheduleController {
         return scheduleService.listPublishedSchedulesForUser(authentication.getName());
     }
 
+    @GetMapping("/me/published/{scheduleId}")
+    public PublishedScheduleDetailsResponse getMyPublishedScheduleDetails(
+            Authentication authentication,
+            @PathVariable Long scheduleId
+    ) {
+        return scheduleService.getPublishedScheduleDetailsForUser(authentication.getName(), scheduleId);
+    }
+
     @PostMapping("/{scheduleId}/publish")
     public ScheduleResponse publishSchedule(
             Authentication authentication,

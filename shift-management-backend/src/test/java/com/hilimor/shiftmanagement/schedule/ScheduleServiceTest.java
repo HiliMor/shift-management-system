@@ -22,6 +22,10 @@ import org.springframework.http.HttpStatus;
 import org.springframework.test.util.ReflectionTestUtils;
 import org.springframework.web.server.ResponseStatusException;
 
+import com.hilimor.shiftmanagement.assignment.Assignment;
+import com.hilimor.shiftmanagement.assignment.AssignmentRepository;
+import com.hilimor.shiftmanagement.shift.Shift;
+import com.hilimor.shiftmanagement.shift.ShiftRepository;
 import com.hilimor.shiftmanagement.team.SwapApprovalPolicy;
 import com.hilimor.shiftmanagement.team.Team;
 import com.hilimor.shiftmanagement.team.TeamManagerRepository;
@@ -49,6 +53,12 @@ class ScheduleServiceTest {
 
     @Mock
     private UserRepository userRepository;
+
+    @Mock
+    private ShiftRepository shiftRepository;
+
+    @Mock
+    private AssignmentRepository assignmentRepository;
 
     @InjectMocks
     private ScheduleService scheduleService;
@@ -274,6 +284,84 @@ class ScheduleServiceTest {
                         assertThat(exception.getStatusCode()).isEqualTo(HttpStatus.NOT_FOUND));
     }
 
+    @Test
+    void getPublishedScheduleDetailsForUserReturnsShiftsAndAssignmentsForActiveTeamMember() {
+        User employee = employee();
+        Team team = team();
+        TeamMember teamMember = teamMember(employee, team);
+        Schedule schedule = schedule(team, ScheduleStatus.PUBLISHED, 12L, LocalDate.of(2026, 7, 12));
+        Shift morningShift = shift(
+                schedule,
+                101L,
+                Instant.parse("2026-07-12T06:00:00Z"),
+                Instant.parse("2026-07-12T14:00:00Z"),
+                "Morning shift"
+        );
+        Shift eveningShift = shift(
+                schedule,
+                102L,
+                Instant.parse("2026-07-12T14:00:00Z"),
+                Instant.parse("2026-07-12T22:00:00Z"),
+                "Evening shift"
+        );
+        Assignment assignment = assignment(morningShift, employee, 201L);
+
+        when(userRepository.findByUsername("employee1")).thenReturn(Optional.of(employee));
+        when(scheduleRepository.findById(12L)).thenReturn(Optional.of(schedule));
+        when(teamMemberRepository.findByUser_IdAndTeam_IdAndActiveTrue(2L, 1L)).thenReturn(Optional.of(teamMember));
+        when(assignmentRepository.findByShift_Schedule_IdOrderByShift_StartTimeAscEmployee_FullNameAsc(12L))
+                .thenReturn(List.of(assignment));
+        when(shiftRepository.findBySchedule_IdOrderByStartTime(12L)).thenReturn(List.of(morningShift, eveningShift));
+
+        PublishedScheduleDetailsResponse response = scheduleService.getPublishedScheduleDetailsForUser(
+                "employee1",
+                12L
+        );
+
+        assertThat(response.schedule().id()).isEqualTo(12L);
+        assertThat(response.schedule().status()).isEqualTo(ScheduleStatus.PUBLISHED);
+        assertThat(response.shifts()).hasSize(2);
+        assertThat(response.shifts().get(0).id()).isEqualTo(101L);
+        assertThat(response.shifts().get(0).assignments()).hasSize(1);
+        assertThat(response.shifts().get(0).assignments().get(0).employeeFullName()).isEqualTo("Demo Employee");
+        assertThat(response.shifts().get(1).id()).isEqualTo(102L);
+        assertThat(response.shifts().get(1).assignments()).isEmpty();
+    }
+
+    @Test
+    void getPublishedScheduleDetailsForUserRejectsDraftSchedule() {
+        User employee = employee();
+        Schedule schedule = schedule(ScheduleStatus.DRAFT);
+
+        when(userRepository.findByUsername("employee1")).thenReturn(Optional.of(employee));
+        when(scheduleRepository.findById(10L)).thenReturn(Optional.of(schedule));
+
+        assertThatThrownBy(() -> scheduleService.getPublishedScheduleDetailsForUser("employee1", 10L))
+                .isInstanceOfSatisfying(ResponseStatusException.class, exception ->
+                        assertThat(exception.getStatusCode()).isEqualTo(HttpStatus.NOT_FOUND));
+
+        verify(teamMemberRepository, never()).findByUser_IdAndTeam_IdAndActiveTrue(any(), any());
+        verify(shiftRepository, never()).findBySchedule_IdOrderByStartTime(any());
+        verify(assignmentRepository, never()).findByShift_Schedule_IdOrderByShift_StartTimeAscEmployee_FullNameAsc(any());
+    }
+
+    @Test
+    void getPublishedScheduleDetailsForUserRejectsScheduleOutsideActiveMembership() {
+        User employee = employee();
+        Schedule schedule = schedule(ScheduleStatus.PUBLISHED);
+
+        when(userRepository.findByUsername("employee1")).thenReturn(Optional.of(employee));
+        when(scheduleRepository.findById(10L)).thenReturn(Optional.of(schedule));
+        when(teamMemberRepository.findByUser_IdAndTeam_IdAndActiveTrue(2L, 1L)).thenReturn(Optional.empty());
+
+        assertThatThrownBy(() -> scheduleService.getPublishedScheduleDetailsForUser("employee1", 10L))
+                .isInstanceOfSatisfying(ResponseStatusException.class, exception ->
+                        assertThat(exception.getStatusCode()).isEqualTo(HttpStatus.NOT_FOUND));
+
+        verify(shiftRepository, never()).findBySchedule_IdOrderByStartTime(any());
+        verify(assignmentRepository, never()).findByShift_Schedule_IdOrderByShift_StartTimeAscEmployee_FullNameAsc(any());
+    }
+
     private Team team() {
         Team team = new Team("Operations", SwapApprovalPolicy.MANAGER, 8, "Asia/Jerusalem");
         ReflectionTestUtils.setField(team, "id", 1L);
@@ -318,5 +406,28 @@ class ScheduleServiceTest {
             schedule.publish(Instant.parse("2026-07-20T18:00:00Z"));
         }
         return schedule;
+    }
+
+    private Shift shift(Schedule schedule, Long id, Instant startTime, Instant endTime, String description) {
+        Shift shift = new Shift(
+                schedule,
+                startTime,
+                endTime,
+                description,
+                2,
+                8
+        );
+        ReflectionTestUtils.setField(shift, "id", id);
+        return shift;
+    }
+
+    private Assignment assignment(Shift shift, User employee, Long id) {
+        Assignment assignment = new Assignment(
+                shift,
+                employee,
+                Instant.parse("2026-07-11T08:00:00Z")
+        );
+        ReflectionTestUtils.setField(assignment, "id", id);
+        return assignment;
     }
 }

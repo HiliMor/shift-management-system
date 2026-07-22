@@ -559,6 +559,7 @@ Goal: turn a draft schedule into an official schedule visible to employees.
 - [x] Add `publicationNumber`.
 - [x] Block direct shift and assignment edits after publication.
 - [x] Allow employees to list published schedules for active teams.
+- [x] Allow employees to view published schedule details with shifts and assignments.
 - [ ] Return a report before publication.
 - [ ] Allow publication with unfilled shifts only after explicit confirmation.
 
@@ -568,7 +569,7 @@ Goal: turn a draft schedule into an official schedule visible to employees.
 - [x] Publishing changes a schedule from `DRAFT` to `PUBLISHED`.
 - [x] Reopening changes a schedule from `PUBLISHED` to `DRAFT`.
 - [x] After publication, employees can list the schedule.
-- [ ] Employees can view published schedule details and shifts.
+- [x] Employees can view published schedule details and shifts.
 - [x] After publication, managers cannot edit shifts or assignments until reopening.
 - [x] Republishing increments `publicationNumber`.
 
@@ -579,13 +580,14 @@ Goal: turn a draft schedule into an official schedule visible to employees.
 
 ### Phase 7 Design Decisions
 
-Phase 7 currently supports the basic schedule lifecycle and the first employee-facing schedule list.
+Phase 7 currently supports the basic schedule lifecycle and employee-facing published schedule viewing.
 
 Current endpoints:
 
 - `POST /api/schedules/{scheduleId}/publish`
 - `POST /api/schedules/{scheduleId}/reopen`
 - `GET /api/schedules/me/published`
+- `GET /api/schedules/me/published/{scheduleId}`
 
 Rules for publication:
 
@@ -611,13 +613,19 @@ Rules for the employee published schedule list:
 - The authenticated user sees only schedules for teams where they are an active team member.
 - Users with no active team memberships receive an empty list.
 - Draft schedules are not returned.
-- The first employee-facing endpoint returns schedule headers only; detailed published shifts are still planned.
+- The list endpoint returns schedule headers only.
+
+Rules for the employee published schedule details:
+
+- The authenticated user can open only schedules with status `PUBLISHED`.
+- The authenticated user can open only schedules from teams where they are an active team member.
+- Draft schedules and schedules from unrelated teams return `404 Not Found`.
+- The details response includes the schedule header, shifts, and published assignment information for each shift.
 
 Deferred from the first Phase 7 steps:
 
 - Publication readiness report.
 - Explicit confirmation for publishing with unfilled shifts.
-- Employee-facing published schedule details with shifts.
 
 ## Phase 8 - Basic Frontend
 
@@ -1161,6 +1169,24 @@ Still open:
 - Users with no active team memberships receive an empty list.
 - Kept this as a read-only API step with no database migration.
 - Added service tests for successful employee listing, empty active-team membership, and missing user rejection.
+- Updated `README.md`, `shift-management-backend/README.md`, `docs/current-backend-architecture.md`, and the Phase 7 plan.
+- Verified `mvn -Dtest=ScheduleTest,ScheduleServiceTest test` succeeds outside the Codex sandbox.
+- Verified `mvn test` succeeds outside the Codex sandbox.
+- Verified Spring Boot starts against PostgreSQL with Flyway schema version `V8`.
+- Verified `GET /api/health` returns `UP`.
+
+### 2026-07-22 - Phase 7 Employee Published Schedule Details
+
+- Added `GET /api/schedules/me/published/{scheduleId}`.
+- Added `PublishedScheduleDetailsResponse`.
+- Added `PublishedShiftResponse`.
+- Added `PublishedAssignmentResponse`.
+- Added `ScheduleService.getPublishedScheduleDetailsForUser(...)`.
+- The endpoint returns one published schedule with its shifts and shift assignments.
+- The endpoint returns `404 Not Found` for draft schedules.
+- The endpoint returns `404 Not Found` for schedules outside the authenticated user's active team memberships.
+- Kept this as a read-only API step with no database migration.
+- Added service tests for successful details viewing, draft-schedule rejection, and unrelated-team rejection.
 - Updated `README.md`, `shift-management-backend/README.md`, `docs/current-backend-architecture.md`, and the Phase 7 plan.
 - Verified `mvn -Dtest=ScheduleTest,ScheduleServiceTest test` succeeds outside the Codex sandbox.
 - Verified `mvn test` succeeds outside the Codex sandbox.
