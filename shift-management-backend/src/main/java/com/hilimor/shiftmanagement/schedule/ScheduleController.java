@@ -57,9 +57,11 @@ public class ScheduleController {
     @PostMapping("/{scheduleId}/publish")
     public ScheduleResponse publishSchedule(
             Authentication authentication,
-            @PathVariable Long scheduleId
+            @PathVariable Long scheduleId,
+            @RequestBody(required = false) PublishScheduleRequest request
     ) {
-        return scheduleService.publishSchedule(authentication.getName(), scheduleId);
+        boolean confirmUnfilled = request != null && request.confirmUnfilled();
+        return scheduleService.publishSchedule(authentication.getName(), scheduleId, confirmUnfilled);
     }
 
     @PostMapping("/{scheduleId}/reopen")

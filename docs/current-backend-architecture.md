@@ -93,7 +93,7 @@ flowchart TD
 ```
 
 Not every package has every layer yet.
-For example, explicit confirmation for publishing with unfilled shifts is still planned, while the basic schedule lifecycle, publication readiness report, and employee published schedule views are already implemented.
+For example, the basic schedule lifecycle, publication readiness report, explicit unfilled-publication confirmation, and employee published schedule views are already implemented.
 
 ## Domain Model
 
@@ -257,9 +257,10 @@ sequenceDiagram
 
     Client->>Security: POST /api/schedules/{scheduleId}/publish with Bearer token
     Security->>ScheduleController: authenticated request
-    ScheduleController->>ScheduleService: publishSchedule(username, scheduleId)
+    ScheduleController->>ScheduleService: publishSchedule(username, scheduleId, confirmUnfilled)
     ScheduleService->>ScheduleRepository: findById(scheduleId)
     ScheduleService->>ScheduleService: validate manager and draft status
+    ScheduleService->>ScheduleService: require readiness or explicit unfilled confirmation
     ScheduleService->>ScheduleService: mark schedule PUBLISHED
     ScheduleService-->>ScheduleController: ScheduleResponse
     ScheduleController-->>Client: 200 OK
@@ -428,7 +429,7 @@ flowchart LR
 | `health` | Public health check endpoint. |
 | `user` | User entity and broad application role such as `MANAGER` or `EMPLOYEE`. |
 | `team` | Teams, active team membership, and team managers. |
-| `schedule` | Draft schedule creation, schedule publication, schedule reopening, publication readiness, employee published schedule list/details, and schedule lifecycle state fields. |
+| `schedule` | Draft schedule creation, schedule publication, explicit unfilled-publication confirmation, schedule reopening, publication readiness, employee published schedule list/details, and schedule lifecycle state fields. |
 | `shift` | Shift creation, listing, update, deletion, schedule-range validation, and optional required staffing role storage. |
 | `assignment` | Manual assignment creation/list/delete and business rule validation, including capacity, availability, overlap, rest, and required staffing roles. |
 | `availability` | Employee unavailable time ranges and conflict checks with assignments. |

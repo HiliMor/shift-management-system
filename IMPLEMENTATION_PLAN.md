@@ -561,7 +561,7 @@ Goal: turn a draft schedule into an official schedule visible to employees.
 - [x] Allow employees to list published schedules for active teams.
 - [x] Allow employees to view published schedule details with shifts and assignments.
 - [x] Return a report before publication.
-- [ ] Allow publication with unfilled shifts only after explicit confirmation.
+- [x] Allow publication with unfilled shifts only after explicit confirmation.
 
 ### Verify
 
@@ -580,7 +580,7 @@ Goal: turn a draft schedule into an official schedule visible to employees.
 
 ### Phase 7 Design Decisions
 
-Phase 7 currently supports the basic schedule lifecycle and employee-facing published schedule viewing.
+Phase 7 currently supports the basic schedule lifecycle, publication readiness, explicit unfilled-publication confirmation, and employee-facing published schedule viewing.
 
 Current endpoints:
 
@@ -597,6 +597,9 @@ Rules for publication:
 - Publishing changes the schedule status to `PUBLISHED`.
 - Publishing records `publishedAt`.
 - Publishing increments `publicationNumber`.
+- Publishing without explicit confirmation is allowed only when the publication readiness report has `readyToPublish: true`.
+- Publishing with unfilled shifts requires request body `{"confirmUnfilled":true}`.
+- Publishing with unfilled shifts without explicit confirmation returns `409 Conflict`.
 - Direct shift changes and assignment changes are already blocked once the schedule is `PUBLISHED`.
 
 Rules for publication readiness:
@@ -606,7 +609,7 @@ Rules for publication readiness:
 - The report summarizes total shifts, required workers, assigned workers, and open slots.
 - `readyToPublish` is `true` only when the schedule has at least one shift and all shift slots are filled.
 - Unfilled shifts are returned with their required worker count, assigned worker count, and open slot count.
-- This report does not yet block publication with unfilled shifts; explicit confirmation is still planned separately.
+- The publish endpoint uses this readiness logic when `confirmUnfilled` is not provided.
 
 Rules for reopening:
 
@@ -632,9 +635,7 @@ Rules for the employee published schedule details:
 - Draft schedules and schedules from unrelated teams return `404 Not Found`.
 - The details response includes the schedule header, shifts, and published assignment information for each shift.
 
-Deferred from the first Phase 7 steps:
-
-- Explicit confirmation for publishing with unfilled shifts.
+No remaining items are deferred from the first Phase 7 scope.
 
 ## Phase 8 - Basic Frontend
 
@@ -1212,10 +1213,25 @@ Still open:
 - The report lists unfilled shifts with their assigned worker count and remaining open slots.
 - `readyToPublish` is `true` only when the schedule has at least one shift and all shift slots are filled.
 - The report is manager-only and read-only.
-- Kept explicit confirmation for publishing with unfilled shifts as a separate planned step.
+- Kept explicit confirmation for publishing with unfilled shifts as a separate follow-up step.
 - Kept this as a read-only API step with no database migration.
 - Added service tests for unfilled readiness, ready schedule readiness, and unmanaged-schedule rejection.
 - Updated `README.md`, `shift-management-backend/README.md`, `docs/current-backend-architecture.md`, and the Phase 7 plan.
+- Verified `mvn -Dtest=ScheduleTest,ScheduleServiceTest test` succeeds outside the Codex sandbox.
+- Verified `mvn test` succeeds outside the Codex sandbox.
+- Verified Spring Boot starts against PostgreSQL with Flyway schema version `V8`.
+- Verified `GET /api/health` returns `UP`.
+
+### 2026-07-23 - Phase 7 Explicit Unfilled Publication Confirmation
+
+- Added `PublishScheduleRequest` with `confirmUnfilled`.
+- Updated `POST /api/schedules/{scheduleId}/publish` to accept an optional request body.
+- Publishing without a request body still works when the schedule is fully assigned.
+- Publishing an unfilled schedule without `confirmUnfilled: true` returns `409 Conflict`.
+- Publishing an unfilled schedule with `confirmUnfilled: true` is allowed.
+- Reused the publication readiness logic to decide whether a schedule is fully assigned.
+- Added service tests for full schedule publication, unconfirmed unfilled publication rejection, and confirmed unfilled publication.
+- Updated `README.md`, `shift-management-backend/README.md`, and the Phase 7 plan.
 - Verified `mvn -Dtest=ScheduleTest,ScheduleServiceTest test` succeeds outside the Codex sandbox.
 - Verified `mvn test` succeeds outside the Codex sandbox.
 - Verified Spring Boot starts against PostgreSQL with Flyway schema version `V8`.

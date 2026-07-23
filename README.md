@@ -37,6 +37,7 @@ Implemented:
 - Employee published schedule list endpoint.
 - Employee published schedule details endpoint with shifts and assignments.
 - Publication readiness report.
+- Explicit confirmation for publishing schedules with unfilled shifts.
 
 Planned next:
 

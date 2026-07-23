@@ -69,12 +69,26 @@ public class ScheduleService {
     }
 
     @Transactional
-    public ScheduleResponse publishSchedule(String username, Long scheduleId) {
+    public ScheduleResponse publishSchedule(String username, Long scheduleId, boolean confirmUnfilled) {
         Schedule schedule = managedSchedule(
                 username,
                 scheduleId,
                 "Only a team manager can publish this schedule"
         );
+
+        if (schedule.getStatus() != ScheduleStatus.DRAFT) {
+            throw new ResponseStatusException(HttpStatus.CONFLICT, "Only draft schedules can be published");
+        }
+
+        if (!confirmUnfilled) {
+            SchedulePublicationReadinessResponse readiness = publicationReadiness(schedule, scheduleId);
+            if (!readiness.readyToPublish()) {
+                throw new ResponseStatusException(
+                        HttpStatus.CONFLICT,
+                        "Schedule is not fully assigned; confirm publication with unfilled shifts"
+                );
+            }
+        }
 
         try {
             schedule.publish(Instant.now());
@@ -160,16 +174,7 @@ public class ScheduleService {
                 "Only a team manager can view publication readiness for this schedule"
         );
 
-        Map<Long, List<Assignment>> assignmentsByShiftId = assignmentsByShiftId(scheduleId);
-        List<SchedulePublicationReadinessShiftResponse> shifts = shiftRepository.findBySchedule_IdOrderByStartTime(scheduleId)
-                .stream()
-                .map(shift -> SchedulePublicationReadinessShiftResponse.from(
-                        shift,
-                        assignmentsByShiftId.getOrDefault(shift.getId(), List.of()).size()
-                ))
-                .toList();
-
-        return SchedulePublicationReadinessResponse.from(schedule, shifts);
+        return publicationReadiness(schedule, scheduleId);
     }
 
     private Schedule managedSchedule(String username, Long scheduleId, String errorMessage) {
@@ -182,6 +187,19 @@ public class ScheduleService {
         }
 
         return schedule;
+    }
+
+    private SchedulePublicationReadinessResponse publicationReadiness(Schedule schedule, Long scheduleId) {
+        Map<Long, List<Assignment>> assignmentsByShiftId = assignmentsByShiftId(scheduleId);
+        List<SchedulePublicationReadinessShiftResponse> shifts = shiftRepository.findBySchedule_IdOrderByStartTime(scheduleId)
+                .stream()
+                .map(shift -> SchedulePublicationReadinessShiftResponse.from(
+                        shift,
+                        assignmentsByShiftId.getOrDefault(shift.getId(), List.of()).size()
+                ))
+                .toList();
+
+        return SchedulePublicationReadinessResponse.from(schedule, shifts);
     }
 
     private Map<Long, List<Assignment>> assignmentsByShiftId(Long scheduleId) {

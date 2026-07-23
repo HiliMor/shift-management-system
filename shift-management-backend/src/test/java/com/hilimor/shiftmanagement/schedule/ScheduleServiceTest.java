@@ -133,11 +133,26 @@ class ScheduleServiceTest {
     @Test
     void publishSchedulePublishesManagedDraftSchedule() {
         Schedule schedule = schedule(ScheduleStatus.DRAFT);
+        Shift shift = shift(
+                schedule,
+                101L,
+                Instant.parse("2026-07-05T06:00:00Z"),
+                Instant.parse("2026-07-05T14:00:00Z"),
+                "Morning shift"
+        );
+        User employee = employee();
+        User secondEmployee = employee2();
 
         when(scheduleRepository.findById(10L)).thenReturn(Optional.of(schedule));
         when(teamManagerRepository.existsByManager_UsernameAndTeam_Id("manager1", 1L)).thenReturn(true);
+        when(assignmentRepository.findByShift_Schedule_IdOrderByShift_StartTimeAscEmployee_FullNameAsc(10L))
+                .thenReturn(List.of(
+                        assignment(shift, employee, 201L),
+                        assignment(shift, secondEmployee, 202L)
+                ));
+        when(shiftRepository.findBySchedule_IdOrderByStartTime(10L)).thenReturn(List.of(shift));
 
-        ScheduleResponse response = scheduleService.publishSchedule("manager1", 10L);
+        ScheduleResponse response = scheduleService.publishSchedule("manager1", 10L, false);
 
         assertThat(response.id()).isEqualTo(10L);
         assertThat(response.teamId()).isEqualTo(1L);
@@ -153,7 +168,7 @@ class ScheduleServiceTest {
     void publishScheduleRejectsMissingSchedule() {
         when(scheduleRepository.findById(10L)).thenReturn(Optional.empty());
 
-        assertThatThrownBy(() -> scheduleService.publishSchedule("manager1", 10L))
+        assertThatThrownBy(() -> scheduleService.publishSchedule("manager1", 10L, false))
                 .isInstanceOfSatisfying(ResponseStatusException.class, exception ->
                         assertThat(exception.getStatusCode()).isEqualTo(HttpStatus.NOT_FOUND));
     }
@@ -165,7 +180,7 @@ class ScheduleServiceTest {
         when(scheduleRepository.findById(10L)).thenReturn(Optional.of(schedule));
         when(teamManagerRepository.existsByManager_UsernameAndTeam_Id("manager2", 1L)).thenReturn(false);
 
-        assertThatThrownBy(() -> scheduleService.publishSchedule("manager2", 10L))
+        assertThatThrownBy(() -> scheduleService.publishSchedule("manager2", 10L, false))
                 .isInstanceOfSatisfying(ResponseStatusException.class, exception ->
                         assertThat(exception.getStatusCode()).isEqualTo(HttpStatus.FORBIDDEN));
 
@@ -179,9 +194,49 @@ class ScheduleServiceTest {
         when(scheduleRepository.findById(10L)).thenReturn(Optional.of(schedule));
         when(teamManagerRepository.existsByManager_UsernameAndTeam_Id("manager1", 1L)).thenReturn(true);
 
-        assertThatThrownBy(() -> scheduleService.publishSchedule("manager1", 10L))
+        assertThatThrownBy(() -> scheduleService.publishSchedule("manager1", 10L, false))
                 .isInstanceOfSatisfying(ResponseStatusException.class, exception ->
                         assertThat(exception.getStatusCode()).isEqualTo(HttpStatus.CONFLICT));
+    }
+
+    @Test
+    void publishScheduleRejectsUnfilledScheduleWithoutConfirmation() {
+        Schedule schedule = schedule(ScheduleStatus.DRAFT);
+        Shift shift = shift(
+                schedule,
+                101L,
+                Instant.parse("2026-07-05T06:00:00Z"),
+                Instant.parse("2026-07-05T14:00:00Z"),
+                "Morning shift"
+        );
+
+        when(scheduleRepository.findById(10L)).thenReturn(Optional.of(schedule));
+        when(teamManagerRepository.existsByManager_UsernameAndTeam_Id("manager1", 1L)).thenReturn(true);
+        when(assignmentRepository.findByShift_Schedule_IdOrderByShift_StartTimeAscEmployee_FullNameAsc(10L))
+                .thenReturn(List.of());
+        when(shiftRepository.findBySchedule_IdOrderByStartTime(10L)).thenReturn(List.of(shift));
+
+        assertThatThrownBy(() -> scheduleService.publishSchedule("manager1", 10L, false))
+                .isInstanceOfSatisfying(ResponseStatusException.class, exception ->
+                        assertThat(exception.getStatusCode()).isEqualTo(HttpStatus.CONFLICT));
+
+        assertThat(schedule.getStatus()).isEqualTo(ScheduleStatus.DRAFT);
+    }
+
+    @Test
+    void publishScheduleAllowsUnfilledScheduleWithExplicitConfirmation() {
+        Schedule schedule = schedule(ScheduleStatus.DRAFT);
+
+        when(scheduleRepository.findById(10L)).thenReturn(Optional.of(schedule));
+        when(teamManagerRepository.existsByManager_UsernameAndTeam_Id("manager1", 1L)).thenReturn(true);
+
+        ScheduleResponse response = scheduleService.publishSchedule("manager1", 10L, true);
+
+        assertThat(response.status()).isEqualTo(ScheduleStatus.PUBLISHED);
+        assertThat(response.publicationNumber()).isEqualTo(1);
+        assertThat(schedule.getStatus()).isEqualTo(ScheduleStatus.PUBLISHED);
+        verify(shiftRepository, never()).findBySchedule_IdOrderByStartTime(any());
+        verify(assignmentRepository, never()).findByShift_Schedule_IdOrderByShift_StartTimeAscEmployee_FullNameAsc(any());
     }
 
     @Test

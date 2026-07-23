@@ -48,6 +48,7 @@ Implemented:
 - Employee published schedule list endpoint: `GET /api/schedules/me/published`.
 - Employee published schedule details endpoint: `GET /api/schedules/me/published/{scheduleId}`.
 - Publication readiness report endpoint: `GET /api/schedules/{scheduleId}/publication-readiness`.
+- Explicit confirmation for publishing schedules with unfilled shifts.
 
 Not implemented yet:
 
@@ -187,6 +188,19 @@ Expected response:
 Only managers assigned to the schedule's team can publish it.
 Only draft schedules can be published.
 Publishing sets the schedule status to `PUBLISHED`, records `publishedAt`, and increments `publicationNumber`.
+Publishing without a request body is allowed only when the schedule readiness report has `readyToPublish: true`.
+When the readiness report has `readyToPublish: false`, publishing without confirmation returns `409 Conflict`.
+
+Publish a draft schedule with unfilled shifts after explicit manager confirmation:
+
+```bash
+curl -X POST http://localhost:8080/api/schedules/1/publish \
+  -H 'Content-Type: application/json' \
+  -H "Authorization: Bearer <TOKEN>" \
+  -d '{"confirmUnfilled":true}'
+```
+
+Use this only after reviewing the publication readiness report.
 
 Reopen a published schedule:
 
@@ -259,7 +273,7 @@ Expected response for a schedule that is not fully assigned:
 
 Only managers assigned to the schedule's team can view publication readiness.
 This report is read-only. It does not publish the schedule and does not change assignments.
-For now, publishing is still allowed even when the report shows open slots; explicit confirmation for publishing with unfilled shifts is planned separately.
+Publishing a schedule with open slots requires `confirmUnfilled: true`.
 
 List published schedules for the authenticated employee:
 
