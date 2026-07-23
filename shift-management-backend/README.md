@@ -47,11 +47,11 @@ Implemented:
 - Schedule reopen endpoint: `POST /api/schedules/{scheduleId}/reopen`.
 - Employee published schedule list endpoint: `GET /api/schedules/me/published`.
 - Employee published schedule details endpoint: `GET /api/schedules/me/published/{scheduleId}`.
+- Publication readiness report endpoint: `GET /api/schedules/{scheduleId}/publication-readiness`.
 
 Not implemented yet:
 
 - Schedule list, update, and delete endpoints.
-- Publication readiness report.
 - Assignment transfer endpoints.
 - Automatic assignment.
 - Remaining team-scoped authorization for future manager workflows.
@@ -215,7 +215,51 @@ Only published schedules can be reopened.
 Reopening returns the schedule to `DRAFT` so shifts and assignments can be edited again.
 Reopening does not increment `publicationNumber` and does not clear `publishedAt`; those fields keep the history of the latest publication.
 Publishing the reopened schedule again increments `publicationNumber`.
-Publication readiness reports are not implemented yet.
+
+View publication readiness before publishing:
+
+```bash
+curl http://localhost:8080/api/schedules/1/publication-readiness \
+  -H "Authorization: Bearer <TOKEN>"
+```
+
+Expected response for a schedule that is not fully assigned:
+
+```json
+{
+  "schedule": {
+    "id": 1,
+    "teamId": 1,
+    "teamName": "Operations",
+    "startDate": "2026-07-05",
+    "endDate": "2026-07-11",
+    "status": "DRAFT",
+    "publicationNumber": 0,
+    "publishedAt": null
+  },
+  "readyToPublish": false,
+  "totalShifts": 2,
+  "totalRequiredWorkers": 4,
+  "totalAssignedWorkers": 3,
+  "totalOpenSlots": 1,
+  "unfilledShifts": [
+    {
+      "shiftId": 1,
+      "startTime": "2026-07-05T06:00:00Z",
+      "endTime": "2026-07-05T14:00:00Z",
+      "description": "Morning shift",
+      "requiredWorkers": 2,
+      "assignedWorkers": 1,
+      "openSlots": 1,
+      "filled": false
+    }
+  ]
+}
+```
+
+Only managers assigned to the schedule's team can view publication readiness.
+This report is read-only. It does not publish the schedule and does not change assignments.
+For now, publishing is still allowed even when the report shows open slots; explicit confirmation for publishing with unfilled shifts is planned separately.
 
 List published schedules for the authenticated employee:
 

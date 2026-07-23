@@ -139,10 +139,7 @@ public class ScheduleService {
             throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Schedule not found");
         }
 
-        Map<Long, List<Assignment>> assignmentsByShiftId = assignmentRepository
-                .findByShift_Schedule_IdOrderByShift_StartTimeAscEmployee_FullNameAsc(scheduleId)
-                .stream()
-                .collect(Collectors.groupingBy(assignment -> assignment.getShift().getId()));
+        Map<Long, List<Assignment>> assignmentsByShiftId = assignmentsByShiftId(scheduleId);
 
         List<PublishedShiftResponse> shifts = shiftRepository.findBySchedule_IdOrderByStartTime(scheduleId)
                 .stream()
@@ -155,6 +152,26 @@ public class ScheduleService {
         return PublishedScheduleDetailsResponse.from(schedule, shifts);
     }
 
+    @Transactional(readOnly = true)
+    public SchedulePublicationReadinessResponse getPublicationReadiness(String username, Long scheduleId) {
+        Schedule schedule = managedSchedule(
+                username,
+                scheduleId,
+                "Only a team manager can view publication readiness for this schedule"
+        );
+
+        Map<Long, List<Assignment>> assignmentsByShiftId = assignmentsByShiftId(scheduleId);
+        List<SchedulePublicationReadinessShiftResponse> shifts = shiftRepository.findBySchedule_IdOrderByStartTime(scheduleId)
+                .stream()
+                .map(shift -> SchedulePublicationReadinessShiftResponse.from(
+                        shift,
+                        assignmentsByShiftId.getOrDefault(shift.getId(), List.of()).size()
+                ))
+                .toList();
+
+        return SchedulePublicationReadinessResponse.from(schedule, shifts);
+    }
+
     private Schedule managedSchedule(String username, Long scheduleId, String errorMessage) {
         Schedule schedule = scheduleRepository.findById(scheduleId)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Schedule not found"));
@@ -165,5 +182,11 @@ public class ScheduleService {
         }
 
         return schedule;
+    }
+
+    private Map<Long, List<Assignment>> assignmentsByShiftId(Long scheduleId) {
+        return assignmentRepository.findByShift_Schedule_IdOrderByShift_StartTimeAscEmployee_FullNameAsc(scheduleId)
+                .stream()
+                .collect(Collectors.groupingBy(assignment -> assignment.getShift().getId()));
     }
 }

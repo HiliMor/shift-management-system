@@ -362,6 +362,98 @@ class ScheduleServiceTest {
         verify(assignmentRepository, never()).findByShift_Schedule_IdOrderByShift_StartTimeAscEmployee_FullNameAsc(any());
     }
 
+    @Test
+    void getPublicationReadinessReportsUnfilledShiftsForManagedSchedule() {
+        Schedule schedule = schedule(ScheduleStatus.DRAFT);
+        Shift morningShift = shift(
+                schedule,
+                101L,
+                Instant.parse("2026-07-05T06:00:00Z"),
+                Instant.parse("2026-07-05T14:00:00Z"),
+                "Morning shift"
+        );
+        Shift eveningShift = shift(
+                schedule,
+                102L,
+                Instant.parse("2026-07-05T14:00:00Z"),
+                Instant.parse("2026-07-05T22:00:00Z"),
+                "Evening shift"
+        );
+        User employee = employee();
+        User secondEmployee = employee2();
+
+        when(scheduleRepository.findById(10L)).thenReturn(Optional.of(schedule));
+        when(teamManagerRepository.existsByManager_UsernameAndTeam_Id("manager1", 1L)).thenReturn(true);
+        when(assignmentRepository.findByShift_Schedule_IdOrderByShift_StartTimeAscEmployee_FullNameAsc(10L))
+                .thenReturn(List.of(
+                        assignment(morningShift, employee, 201L),
+                        assignment(eveningShift, employee, 202L),
+                        assignment(eveningShift, secondEmployee, 203L)
+                ));
+        when(shiftRepository.findBySchedule_IdOrderByStartTime(10L)).thenReturn(List.of(morningShift, eveningShift));
+
+        SchedulePublicationReadinessResponse response = scheduleService.getPublicationReadiness("manager1", 10L);
+
+        assertThat(response.schedule().id()).isEqualTo(10L);
+        assertThat(response.readyToPublish()).isFalse();
+        assertThat(response.totalShifts()).isEqualTo(2);
+        assertThat(response.totalRequiredWorkers()).isEqualTo(4);
+        assertThat(response.totalAssignedWorkers()).isEqualTo(3);
+        assertThat(response.totalOpenSlots()).isEqualTo(1);
+        assertThat(response.unfilledShifts()).hasSize(1);
+        assertThat(response.unfilledShifts().get(0).shiftId()).isEqualTo(101L);
+        assertThat(response.unfilledShifts().get(0).assignedWorkers()).isEqualTo(1);
+        assertThat(response.unfilledShifts().get(0).openSlots()).isEqualTo(1);
+        assertThat(response.unfilledShifts().get(0).filled()).isFalse();
+    }
+
+    @Test
+    void getPublicationReadinessReportsReadyScheduleWhenAllShiftsAreFilled() {
+        Schedule schedule = schedule(ScheduleStatus.DRAFT);
+        Shift shift = shift(
+                schedule,
+                101L,
+                Instant.parse("2026-07-05T06:00:00Z"),
+                Instant.parse("2026-07-05T14:00:00Z"),
+                "Morning shift"
+        );
+        User employee = employee();
+        User secondEmployee = employee2();
+
+        when(scheduleRepository.findById(10L)).thenReturn(Optional.of(schedule));
+        when(teamManagerRepository.existsByManager_UsernameAndTeam_Id("manager1", 1L)).thenReturn(true);
+        when(assignmentRepository.findByShift_Schedule_IdOrderByShift_StartTimeAscEmployee_FullNameAsc(10L))
+                .thenReturn(List.of(
+                        assignment(shift, employee, 201L),
+                        assignment(shift, secondEmployee, 202L)
+                ));
+        when(shiftRepository.findBySchedule_IdOrderByStartTime(10L)).thenReturn(List.of(shift));
+
+        SchedulePublicationReadinessResponse response = scheduleService.getPublicationReadiness("manager1", 10L);
+
+        assertThat(response.readyToPublish()).isTrue();
+        assertThat(response.totalShifts()).isEqualTo(1);
+        assertThat(response.totalRequiredWorkers()).isEqualTo(2);
+        assertThat(response.totalAssignedWorkers()).isEqualTo(2);
+        assertThat(response.totalOpenSlots()).isZero();
+        assertThat(response.unfilledShifts()).isEmpty();
+    }
+
+    @Test
+    void getPublicationReadinessRejectsUnmanagedSchedule() {
+        Schedule schedule = schedule(ScheduleStatus.DRAFT);
+
+        when(scheduleRepository.findById(10L)).thenReturn(Optional.of(schedule));
+        when(teamManagerRepository.existsByManager_UsernameAndTeam_Id("manager2", 1L)).thenReturn(false);
+
+        assertThatThrownBy(() -> scheduleService.getPublicationReadiness("manager2", 10L))
+                .isInstanceOfSatisfying(ResponseStatusException.class, exception ->
+                        assertThat(exception.getStatusCode()).isEqualTo(HttpStatus.FORBIDDEN));
+
+        verify(shiftRepository, never()).findBySchedule_IdOrderByStartTime(any());
+        verify(assignmentRepository, never()).findByShift_Schedule_IdOrderByShift_StartTimeAscEmployee_FullNameAsc(any());
+    }
+
     private Team team() {
         Team team = new Team("Operations", SwapApprovalPolicy.MANAGER, 8, "Asia/Jerusalem");
         ReflectionTestUtils.setField(team, "id", 1L);
@@ -369,14 +461,22 @@ class ScheduleServiceTest {
     }
 
     private User employee() {
+        return employee("employee1", 2L, "Demo Employee");
+    }
+
+    private User employee2() {
+        return employee("employee2", 3L, "Second Employee");
+    }
+
+    private User employee(String username, Long id, String fullName) {
         User user = new User(
-                "employee1",
+                username,
                 "password-hash",
-                "Demo Employee",
-                "employee1@example.com",
+                fullName,
+                username + "@example.com",
                 ApplicationRole.EMPLOYEE
         );
-        ReflectionTestUtils.setField(user, "id", 2L);
+        ReflectionTestUtils.setField(user, "id", id);
         return user;
     }
 

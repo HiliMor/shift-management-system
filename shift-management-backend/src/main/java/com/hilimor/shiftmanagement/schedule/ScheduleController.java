@@ -46,6 +46,14 @@ public class ScheduleController {
         return scheduleService.getPublishedScheduleDetailsForUser(authentication.getName(), scheduleId);
     }
 
+    @GetMapping("/{scheduleId}/publication-readiness")
+    public SchedulePublicationReadinessResponse getPublicationReadiness(
+            Authentication authentication,
+            @PathVariable Long scheduleId
+    ) {
+        return scheduleService.getPublicationReadiness(authentication.getName(), scheduleId);
+    }
+
     @PostMapping("/{scheduleId}/publish")
     public ScheduleResponse publishSchedule(
             Authentication authentication,

@@ -560,7 +560,7 @@ Goal: turn a draft schedule into an official schedule visible to employees.
 - [x] Block direct shift and assignment edits after publication.
 - [x] Allow employees to list published schedules for active teams.
 - [x] Allow employees to view published schedule details with shifts and assignments.
-- [ ] Return a report before publication.
+- [x] Return a report before publication.
 - [ ] Allow publication with unfilled shifts only after explicit confirmation.
 
 ### Verify
@@ -588,6 +588,7 @@ Current endpoints:
 - `POST /api/schedules/{scheduleId}/reopen`
 - `GET /api/schedules/me/published`
 - `GET /api/schedules/me/published/{scheduleId}`
+- `GET /api/schedules/{scheduleId}/publication-readiness`
 
 Rules for publication:
 
@@ -597,6 +598,15 @@ Rules for publication:
 - Publishing records `publishedAt`.
 - Publishing increments `publicationNumber`.
 - Direct shift changes and assignment changes are already blocked once the schedule is `PUBLISHED`.
+
+Rules for publication readiness:
+
+- Only a manager of the schedule's team can view publication readiness.
+- The readiness report is read-only.
+- The report summarizes total shifts, required workers, assigned workers, and open slots.
+- `readyToPublish` is `true` only when the schedule has at least one shift and all shift slots are filled.
+- Unfilled shifts are returned with their required worker count, assigned worker count, and open slot count.
+- This report does not yet block publication with unfilled shifts; explicit confirmation is still planned separately.
 
 Rules for reopening:
 
@@ -624,7 +634,6 @@ Rules for the employee published schedule details:
 
 Deferred from the first Phase 7 steps:
 
-- Publication readiness report.
 - Explicit confirmation for publishing with unfilled shifts.
 
 ## Phase 8 - Basic Frontend
@@ -1187,6 +1196,25 @@ Still open:
 - The endpoint returns `404 Not Found` for schedules outside the authenticated user's active team memberships.
 - Kept this as a read-only API step with no database migration.
 - Added service tests for successful details viewing, draft-schedule rejection, and unrelated-team rejection.
+- Updated `README.md`, `shift-management-backend/README.md`, `docs/current-backend-architecture.md`, and the Phase 7 plan.
+- Verified `mvn -Dtest=ScheduleTest,ScheduleServiceTest test` succeeds outside the Codex sandbox.
+- Verified `mvn test` succeeds outside the Codex sandbox.
+- Verified Spring Boot starts against PostgreSQL with Flyway schema version `V8`.
+- Verified `GET /api/health` returns `UP`.
+
+### 2026-07-22 - Phase 7 Publication Readiness Report
+
+- Added `GET /api/schedules/{scheduleId}/publication-readiness`.
+- Added `SchedulePublicationReadinessResponse`.
+- Added `SchedulePublicationReadinessShiftResponse`.
+- Added `ScheduleService.getPublicationReadiness(...)`.
+- The report summarizes total shifts, required workers, assigned workers, and open slots.
+- The report lists unfilled shifts with their assigned worker count and remaining open slots.
+- `readyToPublish` is `true` only when the schedule has at least one shift and all shift slots are filled.
+- The report is manager-only and read-only.
+- Kept explicit confirmation for publishing with unfilled shifts as a separate planned step.
+- Kept this as a read-only API step with no database migration.
+- Added service tests for unfilled readiness, ready schedule readiness, and unmanaged-schedule rejection.
 - Updated `README.md`, `shift-management-backend/README.md`, `docs/current-backend-architecture.md`, and the Phase 7 plan.
 - Verified `mvn -Dtest=ScheduleTest,ScheduleServiceTest test` succeeds outside the Codex sandbox.
 - Verified `mvn test` succeeds outside the Codex sandbox.

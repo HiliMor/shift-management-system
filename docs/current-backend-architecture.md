@@ -36,7 +36,7 @@ flowchart TD
     auth["auth<br/>Login, JWT, current user"]
     user["user<br/>User and application role"]
     team["team<br/>Team, team members, managers"]
-    schedule["schedule<br/>Draft schedule creation, publication, reopening, and employee published views"]
+    schedule["schedule<br/>Draft schedule creation, publication, reopening, readiness, and employee published views"]
     shift["shift<br/>Shift CRUD inside schedules"]
     assignment["assignment<br/>Manual assignment workflow and validations"]
     availability["availability<br/>Employee unavailable time ranges"]
@@ -93,7 +93,7 @@ flowchart TD
 ```
 
 Not every package has every layer yet.
-For example, publication readiness reports are still planned, while the basic schedule lifecycle and employee published schedule views are already implemented.
+For example, explicit confirmation for publishing with unfilled shifts is still planned, while the basic schedule lifecycle, publication readiness report, and employee published schedule views are already implemented.
 
 ## Domain Model
 
@@ -206,7 +206,7 @@ flowchart TD
 
     healthApi["Health<br/>GET /api/health"]
     authApi["Authentication<br/>POST /api/auth/login<br/>GET /api/auth/me"]
-    schedulesApi["Schedules<br/>POST /api/schedules<br/>GET /api/schedules/me/published<br/>GET /api/schedules/me/published/{scheduleId}<br/>POST /api/schedules/{scheduleId}/publish<br/>POST /api/schedules/{scheduleId}/reopen"]
+    schedulesApi["Schedules<br/>POST /api/schedules<br/>GET /api/schedules/me/published<br/>GET /api/schedules/me/published/{scheduleId}<br/>GET /api/schedules/{scheduleId}/publication-readiness<br/>POST /api/schedules/{scheduleId}/publish<br/>POST /api/schedules/{scheduleId}/reopen"]
     shiftsApi["Shifts<br/>POST /api/schedules/{scheduleId}/shifts<br/>GET /api/schedules/{scheduleId}/shifts<br/>PUT /api/schedules/{scheduleId}/shifts/{shiftId}<br/>DELETE /api/schedules/{scheduleId}/shifts/{shiftId}"]
     assignmentsApi["Assignments<br/>POST /api/assignments<br/>GET /api/schedules/{scheduleId}/assignments<br/>DELETE /api/assignments/{assignmentId}"]
     availabilityApi["Availability Constraints<br/>POST /api/availability-constraints<br/>GET /api/availability-constraints/me<br/>DELETE /api/availability-constraints/{constraintId}"]
@@ -262,6 +262,30 @@ sequenceDiagram
     ScheduleService->>ScheduleService: validate manager and draft status
     ScheduleService->>ScheduleService: mark schedule PUBLISHED
     ScheduleService-->>ScheduleController: ScheduleResponse
+    ScheduleController-->>Client: 200 OK
+```
+
+### Publication Readiness
+
+```mermaid
+sequenceDiagram
+    participant Client
+    participant Security as JwtAuthenticationFilter
+    participant ScheduleController
+    participant ScheduleService
+    participant ScheduleRepository
+    participant ShiftRepository
+    participant AssignmentRepository
+
+    Client->>Security: GET /api/schedules/{scheduleId}/publication-readiness with Bearer token
+    Security->>ScheduleController: authenticated request
+    ScheduleController->>ScheduleService: getPublicationReadiness(username, scheduleId)
+    ScheduleService->>ScheduleRepository: findById(scheduleId)
+    ScheduleService->>ScheduleService: validate manager access
+    ScheduleService->>ShiftRepository: find shifts in schedule order
+    ScheduleService->>AssignmentRepository: find assignments for schedule shifts
+    ScheduleService->>ScheduleService: calculate required workers, assigned workers, and open slots
+    ScheduleService-->>ScheduleController: SchedulePublicationReadinessResponse
     ScheduleController-->>Client: 200 OK
 ```
 
@@ -404,7 +428,7 @@ flowchart LR
 | `health` | Public health check endpoint. |
 | `user` | User entity and broad application role such as `MANAGER` or `EMPLOYEE`. |
 | `team` | Teams, active team membership, and team managers. |
-| `schedule` | Draft schedule creation, schedule publication, schedule reopening, employee published schedule list/details, and schedule lifecycle state fields. |
+| `schedule` | Draft schedule creation, schedule publication, schedule reopening, publication readiness, employee published schedule list/details, and schedule lifecycle state fields. |
 | `shift` | Shift creation, listing, update, deletion, schedule-range validation, and optional required staffing role storage. |
 | `assignment` | Manual assignment creation/list/delete and business rule validation, including capacity, availability, overlap, rest, and required staffing roles. |
 | `availability` | Employee unavailable time ranges and conflict checks with assignments. |
