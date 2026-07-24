@@ -649,26 +649,26 @@ Goal: build a minimal React interface connected to the backend.
 
 ### Implement
 
-- [ ] Login screen.
-- [ ] Role-based navigation.
-- [ ] Schedule view.
+- [x] Login screen.
+- [x] Role-based navigation.
+- [x] Initial published schedule view.
 - [ ] Manager schedule creation screen.
 - [ ] Manager shift creation screen.
 - [ ] Simple manual assignment screen.
-- [ ] Display backend errors clearly.
+- [x] Display backend errors clearly for login and published schedule loading.
 
 ### Verify
 
-- [ ] Successful login navigates to the correct area.
-- [ ] Frontend can call the published schedules backend endpoint.
+- [x] Successful login navigates to the correct area.
+- [x] Frontend can call the published schedules backend endpoint.
 - [ ] Employees can view published schedule details in the frontend.
 - [ ] Managers can create shifts.
 - [ ] Assignment errors are displayed clearly.
 
 ### Document
 
-- Existing screens.
-- For each screen: who can use it and what it does.
+- [x] Existing screens.
+- [x] For each screen: who can use it and what it does.
 
 ## Phase 9 - Transfer And Swap Requests
 

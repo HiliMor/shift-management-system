@@ -17,6 +17,7 @@ Implemented:
 - Development seed data.
 - JWT-based login.
 - Authenticated current-user endpoint: `GET /api/auth/me`.
+- CORS support for the local React development server.
 - Initial schedule domain model.
 - Schedule creation endpoint: `POST /api/schedules`.
 - Initial shift domain model.
@@ -750,6 +751,18 @@ Seed users:
 | employee2 | EMPLOYEE | password |
 
 These users can be used with `POST /api/auth/login`.
+
+## Local Frontend Access
+
+The backend allows browser requests from the local React development server:
+
+```text
+http://localhost:5173
+http://127.0.0.1:5173
+```
+
+This is needed because browser-based requests are subject to CORS checks, unlike
+Postman or curl.
 
 Seed team:
 

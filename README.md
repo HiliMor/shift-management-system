@@ -4,11 +4,13 @@ A course project for managing employee shifts across teams.
 
 The project is being implemented gradually. The current focus is a working
 Spring Boot backend with authentication, teams, schedules, shifts, manual
-assignment rules, availability constraint support, and staffing role support.
+assignment rules, availability constraint support, staffing role support, and
+the first React frontend screens.
 
 ## Repository Structure
 
 - `shift-management-backend/` - Spring Boot backend.
+- `shift-management-frontend/` - React frontend.
 - `IMPLEMENTATION_PLAN.md` - step-by-step implementation plan and current status.
 - `spec-revised.md` - main project specification.
 
@@ -39,9 +41,16 @@ Implemented:
 - Publication readiness report.
 - Explicit confirmation for publishing schedules with unfilled shifts.
 
+Frontend:
+
+- Login screen connected to `POST /api/auth/login`.
+- JWT session stored in browser local storage.
+- Role-based workspace title and navigation.
+- Published schedule list loaded from `GET /api/schedules/me/published`.
+
 Planned next:
 
-- Basic React frontend.
+- Manager schedule creation screen.
 - Swap and transfer requests.
 - Notifications and JMS integration.
 
@@ -57,6 +66,12 @@ The current backend component architecture is documented in:
 
 ```text
 docs/current-backend-architecture.md
+```
+
+Frontend setup and run instructions are documented in:
+
+```text
+shift-management-frontend/README.md
 ```
 
 ## Development Approach

@@ -11,6 +11,12 @@ Thumbs.db
 target/
 *.class
 
+# JavaScript frontend dependencies and build output
+node_modules/
+dist/
+coverage/
+.pnpm-store/
+
 # Runtime logs
 *.log
 
