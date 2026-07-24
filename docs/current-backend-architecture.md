@@ -1,14 +1,17 @@
 # Current Backend Architecture
 
-This document describes the backend components that currently exist in the project.
-It intentionally documents the implemented state only, not future planned features.
+This document describes the backend components that currently exist in the project
+and how the initial React frontend connects to them. It intentionally documents
+the implemented state only, not future planned features.
 
 ## System Context
 
 ```mermaid
 flowchart LR
-    client["API Client<br/>Postman now, React later"]
+    react["React Frontend<br/>Login and published schedule view"]
+    apiClient["API Client<br/>Postman or curl"]
     security["Spring Security<br/>JWT Authentication Filter"]
+    cors["CORS Configuration<br/>Local frontend access"]
     controllers["REST Controllers"]
     services["Application Services<br/>Business Rules"]
     repositories["Spring Data JPA Repositories"]
@@ -16,7 +19,9 @@ flowchart LR
     flyway["Flyway Migrations"]
     seed["Development Data Seeder"]
 
-    client --> security
+    react --> cors
+    apiClient --> security
+    cors --> security
     security --> controllers
     controllers --> services
     services --> repositories
@@ -24,6 +29,20 @@ flowchart LR
     flyway --> database
     seed --> repositories
 ```
+
+## Frontend Integration
+
+The current frontend is intentionally small. It is responsible for:
+
+- Displaying the login form.
+- Calling `POST /api/auth/login`.
+- Storing the returned JWT in browser local storage.
+- Sending the JWT as a bearer token for authenticated API calls.
+- Showing a manager or employee workspace based on the authenticated user's role.
+- Loading the signed-in user's published schedules from `GET /api/schedules/me/published`.
+
+The backend remains the authority for authentication, authorization, validation,
+business rules, and persistence.
 
 ## Backend Packages
 
@@ -229,7 +248,7 @@ Assignment creation validates required staffing roles when a shift has a profess
 
 ```mermaid
 sequenceDiagram
-    participant Client
+    participant Client as React or API Client
     participant AuthController
     participant AuthService
     participant UserRepository
@@ -249,7 +268,7 @@ sequenceDiagram
 
 ```mermaid
 sequenceDiagram
-    participant Client
+    participant Client as React or API Client
     participant Security as JwtAuthenticationFilter
     participant ScheduleController
     participant ScheduleService
@@ -270,7 +289,7 @@ sequenceDiagram
 
 ```mermaid
 sequenceDiagram
-    participant Client
+    participant Client as React or API Client
     participant Security as JwtAuthenticationFilter
     participant ScheduleController
     participant ScheduleService
@@ -294,7 +313,7 @@ sequenceDiagram
 
 ```mermaid
 sequenceDiagram
-    participant Client
+    participant Client as React or API Client
     participant Security as JwtAuthenticationFilter
     participant ScheduleController
     participant ScheduleService
@@ -314,7 +333,7 @@ sequenceDiagram
 
 ```mermaid
 sequenceDiagram
-    participant Client
+    participant Client as React or API Client
     participant Security as JwtAuthenticationFilter
     participant ScheduleController
     participant ScheduleService
@@ -336,7 +355,7 @@ sequenceDiagram
 
 ```mermaid
 sequenceDiagram
-    participant Client
+    participant Client as React or API Client
     participant Security as JwtAuthenticationFilter
     participant ScheduleController
     participant ScheduleService
@@ -363,7 +382,7 @@ sequenceDiagram
 
 ```mermaid
 sequenceDiagram
-    participant Client
+    participant Client as React or API Client
     participant Security as JwtAuthenticationFilter
     participant AssignmentController
     participant AssignmentService
@@ -387,7 +406,7 @@ sequenceDiagram
 
 ```mermaid
 sequenceDiagram
-    participant Client
+    participant Client as React or API Client
     participant AvailabilityConstraintController
     participant AvailabilityConstraintService
     participant AssignmentRepository

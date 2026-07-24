@@ -2,6 +2,12 @@
 
 Minimal React frontend for the shift management system.
 
+For end-to-end local run instructions, see:
+
+```text
+../docs/RUN_LOCALLY.md
+```
+
 ## Current Screens
 
 - Login screen - public screen for signing in with a backend user.

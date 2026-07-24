@@ -56,13 +56,19 @@ Planned next:
 
 ## Backend Documentation
 
+End-to-end local run instructions are documented in:
+
+```text
+docs/RUN_LOCALLY.md
+```
+
 Backend setup, run instructions, and API examples are documented in:
 
 ```text
 shift-management-backend/README.md
 ```
 
-The current backend component architecture is documented in:
+The current backend and system context architecture is documented in:
 
 ```text
 docs/current-backend-architecture.md

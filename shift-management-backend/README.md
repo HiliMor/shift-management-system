@@ -2,6 +2,12 @@
 
 Spring Boot backend for the shift management system.
 
+For end-to-end local run instructions, see:
+
+```text
+../docs/RUN_LOCALLY.md
+```
+
 ## Current Status
 
 Implemented:

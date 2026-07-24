@@ -1,6 +1,6 @@
 # Implementation Plan - Shift Management System
 
-Last updated: 2026-07-22
+Last updated: 2026-07-24
 
 This document is the working implementation plan for the project.  
 The goal is to build the system in small, understandable steps, while keeping each part easy to explain during the final presentation.
@@ -71,24 +71,24 @@ Goal: create a clean foundation for development.
 - [ ] Initialize a Git repository.
 - [x] Create a basic backend `README.md`.
 - [x] Create an empty Spring Boot backend project.
-- [ ] Create an empty React frontend project.
+- [x] Create an empty React frontend project.
 - [x] Configure local PostgreSQL.
 - [x] Configure `application.yml`.
 - [x] Verify that the backend starts.
-- [ ] Verify that the frontend starts.
+- [x] Verify that the frontend starts.
 
 ### Verify
 
 - [ ] Backend runs without errors.
-- [ ] Frontend runs without errors.
+- [x] Frontend runs without errors.
 - [x] A simple health endpoint exists: `GET /api/health`.
 - [x] The health endpoint can be opened in the browser or tested with Postman.
 
 ### Document
 
-- How to run the backend.
-- How to run the frontend.
-- How to connect to the database.
+- [x] How to run the backend.
+- [x] How to run the frontend.
+- [x] How to connect to the database.
 
 ## Phase 1 - Users, Teams, And Basic Authorization
 
@@ -1236,3 +1236,23 @@ Still open:
 - Verified `mvn test` succeeds outside the Codex sandbox.
 - Verified Spring Boot starts against PostgreSQL with Flyway schema version `V8`.
 - Verified `GET /api/health` returns `UP`.
+
+### 2026-07-24 - Phase 8 Initial React Frontend
+
+- Added the first React frontend under `shift-management-frontend`.
+- Added a Vite build setup with `package.json`, `vite.config.js`, and `pnpm-lock.yaml`.
+- Added a login screen connected to `POST /api/auth/login`.
+- Stored the JWT session in browser local storage.
+- Added role-based workspace display for manager and employee users.
+- Added an initial published schedule list loaded from `GET /api/schedules/me/published`.
+- Added CORS support in the backend for the local React development server.
+- Updated project documentation to include frontend status and local frontend access.
+- Verified `pnpm build` succeeds.
+- Verified `mvn test` succeeds outside the Codex sandbox.
+- Verified browser login works for `manager1/password` and `employee1/password`.
+
+### 2026-07-24 - Local Run Documentation
+
+- Added `docs/RUN_LOCALLY.md` as the main concise run guide for presentation and local development.
+- Documented required tools, database startup, backend startup, frontend startup, demo users, URLs, and common local issues.
+- Updated the architecture document so the system context shows the implemented React frontend instead of describing React as future work.
