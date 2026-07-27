@@ -1,5 +1,11 @@
 import { useEffect, useMemo, useState } from "react";
-import { getMyPublishedScheduleDetails, listMyPublishedSchedules, login } from "./api.js";
+import {
+  createSchedule,
+  getMyPublishedScheduleDetails,
+  listMyManagedTeams,
+  listMyPublishedSchedules,
+  login,
+} from "./api.js";
 
 const STORAGE_KEY = "shift-management-session";
 
@@ -53,6 +59,13 @@ function App() {
   const [selectedScheduleDetails, setSelectedScheduleDetails] = useState(null);
   const [detailsError, setDetailsError] = useState("");
   const [isLoadingDetails, setIsLoadingDetails] = useState(false);
+  const [managedTeams, setManagedTeams] = useState([]);
+  const [isLoadingManagedTeams, setIsLoadingManagedTeams] = useState(false);
+  const [managedTeamsError, setManagedTeamsError] = useState("");
+  const [scheduleForm, setScheduleForm] = useState({ teamId: "", startDate: "", endDate: "" });
+  const [createdSchedule, setCreatedSchedule] = useState(null);
+  const [scheduleCreationError, setScheduleCreationError] = useState("");
+  const [isCreatingSchedule, setIsCreatingSchedule] = useState(false);
 
   const isManager = session?.user?.applicationRole === "MANAGER";
 
@@ -99,6 +112,29 @@ function App() {
       .finally(() => setIsLoadingDetails(false));
   }, [selectedScheduleId, session]);
 
+  useEffect(() => {
+    if (!session?.accessToken || !isManager) {
+      setManagedTeams([]);
+      setManagedTeamsError("");
+      setScheduleForm({ teamId: "", startDate: "", endDate: "" });
+      return;
+    }
+
+    setIsLoadingManagedTeams(true);
+    setManagedTeamsError("");
+
+    listMyManagedTeams(session.accessToken)
+      .then((teams) => {
+        setManagedTeams(teams);
+        setScheduleForm((current) => ({
+          ...current,
+          teamId: current.teamId || teams[0]?.id?.toString() || "",
+        }));
+      })
+      .catch((error) => setManagedTeamsError(error.message))
+      .finally(() => setIsLoadingManagedTeams(false));
+  }, [isManager, session]);
+
   async function handleLogin(event) {
     event.preventDefault();
     setIsLoggingIn(true);
@@ -124,6 +160,40 @@ function App() {
     setSelectedScheduleId(null);
     setSelectedScheduleDetails(null);
     setDetailsError("");
+    setManagedTeams([]);
+    setManagedTeamsError("");
+    setScheduleForm({ teamId: "", startDate: "", endDate: "" });
+    setCreatedSchedule(null);
+    setScheduleCreationError("");
+  }
+
+  function handleScheduleFormChange(event) {
+    const { name, value } = event.target;
+
+    setScheduleForm((current) => ({
+      ...current,
+      [name]: value,
+    }));
+  }
+
+  async function handleCreateSchedule(event) {
+    event.preventDefault();
+    setIsCreatingSchedule(true);
+    setScheduleCreationError("");
+    setCreatedSchedule(null);
+
+    try {
+      const response = await createSchedule(session.accessToken, {
+        teamId: Number(scheduleForm.teamId),
+        startDate: scheduleForm.startDate,
+        endDate: scheduleForm.endDate,
+      });
+      setCreatedSchedule(response);
+    } catch (error) {
+      setScheduleCreationError(error.message);
+    } finally {
+      setIsCreatingSchedule(false);
+    }
   }
 
   if (!session) {
@@ -307,20 +377,74 @@ function App() {
         {isManager ? (
           <section className="section-block" id="manager">
             <div className="section-heading">
-              <h2>Manager actions</h2>
-              <span>Next</span>
+              <h2>Create schedule</h2>
+              <span>{managedTeams.length}</span>
             </div>
-            <div className="action-grid">
-              <button className="secondary-button" type="button">
-                Create schedule
-              </button>
-              <button className="secondary-button" type="button">
-                Add shift
-              </button>
-              <button className="secondary-button" type="button">
-                Assign employee
-              </button>
-            </div>
+
+            {isLoadingManagedTeams ? <p className="muted">Loading managed teams...</p> : null}
+            {managedTeamsError ? <p className="error-message">{managedTeamsError}</p> : null}
+
+            {!isLoadingManagedTeams && !managedTeamsError && managedTeams.length === 0 ? (
+              <p className="muted">No managed teams are available for this user.</p>
+            ) : null}
+
+            {managedTeams.length > 0 ? (
+              <form className="manager-form" onSubmit={handleCreateSchedule}>
+                <label>
+                  Team
+                  <select
+                    name="teamId"
+                    onChange={handleScheduleFormChange}
+                    required
+                    value={scheduleForm.teamId}
+                  >
+                    {managedTeams.map((team) => (
+                      <option key={team.id} value={team.id}>
+                        {team.name}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+
+                <label>
+                  Start date
+                  <input
+                    name="startDate"
+                    onChange={handleScheduleFormChange}
+                    required
+                    type="date"
+                    value={scheduleForm.startDate}
+                  />
+                </label>
+
+                <label>
+                  End date
+                  <input
+                    name="endDate"
+                    onChange={handleScheduleFormChange}
+                    required
+                    type="date"
+                    value={scheduleForm.endDate}
+                  />
+                </label>
+
+                <button disabled={isCreatingSchedule} type="submit">
+                  {isCreatingSchedule ? "Creating..." : "Create draft schedule"}
+                </button>
+              </form>
+            ) : null}
+
+            {scheduleCreationError ? <p className="error-message">{scheduleCreationError}</p> : null}
+
+            {createdSchedule ? (
+              <div className="success-message">
+                <strong>Draft schedule #{createdSchedule.id} created</strong>
+                <span>
+                  {createdSchedule.teamName}: {formatDate(createdSchedule.startDate)} to{" "}
+                  {formatDate(createdSchedule.endDate)}
+                </span>
+              </div>
+            ) : null}
           </section>
         ) : null}
       </section>

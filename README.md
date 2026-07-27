@@ -49,10 +49,12 @@ Frontend:
 - Published schedule list loaded from `GET /api/schedules/me/published`.
 - Published schedule details loaded from `GET /api/schedules/me/published/{scheduleId}`.
 - Shift and assignment display for selected published schedules.
+- Managed team list loaded from `GET /api/teams/me/managed`.
+- Manager draft schedule creation connected to `POST /api/schedules`.
 
 Planned next:
 
-- Manager schedule creation screen.
+- Manager shift creation screen.
 - Swap and transfer requests.
 - Notifications and JMS integration.
 

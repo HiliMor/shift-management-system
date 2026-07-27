@@ -11,4 +11,6 @@ public interface TeamManagerRepository extends JpaRepository<TeamManager, Long> 
     boolean existsByManager_UsernameAndTeam_Id(String username, Long teamId);
 
     List<TeamManager> findByManager_Id(Long managerId);
+
+    List<TeamManager> findByManager_Username(String username);
 }

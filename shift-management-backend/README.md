@@ -23,6 +23,7 @@ Implemented:
 - Development seed data.
 - JWT-based login.
 - Authenticated current-user endpoint: `GET /api/auth/me`.
+- Managed teams endpoint: `GET /api/teams/me/managed`.
 - CORS support for the local React development server.
 - Initial schedule domain model.
 - Schedule creation endpoint: `POST /api/schedules`.
@@ -141,6 +142,31 @@ Check the current authenticated user:
 curl http://localhost:8080/api/auth/me \
   -H "Authorization: Bearer <TOKEN>"
 ```
+
+## Team Endpoints
+
+List teams managed by the authenticated manager:
+
+```bash
+curl http://localhost:8080/api/teams/me/managed \
+  -H "Authorization: Bearer <TOKEN>"
+```
+
+Expected response:
+
+```json
+[
+  {
+    "id": 1,
+    "name": "Operations",
+    "swapApprovalPolicy": "MANAGER",
+    "defaultMinRestHours": 8,
+    "timeZone": "Asia/Jerusalem"
+  }
+]
+```
+
+Users who do not manage teams receive an empty list.
 
 ## Schedule Endpoints
 

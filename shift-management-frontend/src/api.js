@@ -44,3 +44,15 @@ export function listMyPublishedSchedules(token) {
 export function getMyPublishedScheduleDetails(token, scheduleId) {
   return request(`/api/schedules/me/published/${scheduleId}`, { token });
 }
+
+export function listMyManagedTeams(token) {
+  return request("/api/teams/me/managed", { token });
+}
+
+export function createSchedule(token, schedule) {
+  return request("/api/schedules", {
+    method: "POST",
+    token,
+    body: JSON.stringify(schedule),
+  });
+}

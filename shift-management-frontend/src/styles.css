@@ -19,7 +19,8 @@ body {
 }
 
 button,
-input {
+input,
+select {
   font: inherit;
 }
 
@@ -108,7 +109,9 @@ label {
   gap: 7px;
 }
 
-input {
+input,
+select {
+  background: #ffffff;
   border: 1px solid #c7d0df;
   border-radius: 6px;
   color: #172033;
@@ -117,13 +120,15 @@ input {
   width: 100%;
 }
 
-input:focus {
+input:focus,
+select:focus {
   border-color: #206a5d;
   box-shadow: 0 0 0 3px rgba(32, 106, 93, 0.15);
   outline: 0;
 }
 
-.error-message {
+.error-message,
+.success-message {
   background: #fff1f2;
   border: 1px solid #fecdd3;
   border-radius: 6px;
@@ -131,6 +136,19 @@ input:focus {
   font-weight: 700;
   margin-bottom: 0;
   padding: 10px 12px;
+}
+
+.success-message {
+  background: #ecfdf5;
+  border-color: #bbf7d0;
+  color: #166534;
+  display: grid;
+  gap: 4px;
+  margin-top: 14px;
+}
+
+.success-message span {
+  font-weight: 600;
 }
 
 .app-shell {
@@ -330,6 +348,13 @@ nav a:hover,
   font-size: 0.9rem;
 }
 
+.manager-form {
+  align-items: end;
+  display: grid;
+  gap: 14px;
+  grid-template-columns: minmax(180px, 1.2fr) minmax(150px, 1fr) minmax(150px, 1fr) auto;
+}
+
 .action-grid {
   display: grid;
   gap: 10px;
@@ -352,7 +377,8 @@ nav a:hover,
 
   .schedule-row,
   .details-summary,
-  .shift-main {
+  .shift-main,
+  .manager-form {
     grid-template-columns: 1fr;
   }
 

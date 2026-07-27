@@ -653,7 +653,7 @@ Goal: build a minimal React interface connected to the backend.
 - [x] Role-based navigation.
 - [x] Initial published schedule view.
 - [x] Employee published schedule details view.
-- [ ] Manager schedule creation screen.
+- [x] Manager schedule creation screen.
 - [ ] Manager shift creation screen.
 - [ ] Simple manual assignment screen.
 - [x] Display backend errors clearly for login and published schedule loading.
@@ -664,6 +664,7 @@ Goal: build a minimal React interface connected to the backend.
 - [x] Successful login navigates to the correct area.
 - [x] Frontend can call the published schedules backend endpoint.
 - [x] Employees can view published schedule details in the frontend.
+- [x] Managers can create draft schedules from the frontend.
 - [ ] Managers can create shifts.
 - [ ] Assignment errors are displayed clearly.
 
@@ -1266,3 +1267,14 @@ Still open:
 - Added a schedule details panel that shows schedule metadata, shifts, required workers, required staffing role when present, and assigned employees.
 - Added loading, empty, and error states for schedule details.
 - Kept this step frontend-only because the matching backend endpoint was already implemented in Phase 7.
+
+### 2026-07-27 - Phase 8 Manager Schedule Creation Screen
+
+- Added `GET /api/teams/me/managed` so the frontend can show managed teams instead of requiring manual team IDs.
+- Added `TeamResponse`, `TeamService`, and `TeamController`.
+- Added focused service tests for managed team listing.
+- Added frontend API calls for managed teams and draft schedule creation.
+- Replaced the manager placeholder actions with a manager-only create schedule form.
+- Added success and error states for schedule creation.
+- Verified `pnpm build` succeeds.
+- Verified `mvn -Dtest=TeamServiceTest test` succeeds outside the Codex sandbox.
