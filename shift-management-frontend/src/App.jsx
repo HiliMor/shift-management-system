@@ -1,7 +1,29 @@
 import { useEffect, useMemo, useState } from "react";
-import { listMyPublishedSchedules, login } from "./api.js";
+import { getMyPublishedScheduleDetails, listMyPublishedSchedules, login } from "./api.js";
 
 const STORAGE_KEY = "shift-management-session";
+
+const dateFormatter = new Intl.DateTimeFormat("en-GB", {
+  day: "2-digit",
+  month: "short",
+  year: "numeric",
+});
+
+const dateTimeFormatter = new Intl.DateTimeFormat("en-GB", {
+  day: "2-digit",
+  hour: "2-digit",
+  minute: "2-digit",
+  month: "short",
+  year: "numeric",
+});
+
+function formatDate(value) {
+  return value ? dateFormatter.format(new Date(value)) : "Not set";
+}
+
+function formatDateTime(value) {
+  return value ? dateTimeFormatter.format(new Date(value)) : "Not set";
+}
 
 function loadStoredSession() {
   const stored = localStorage.getItem(STORAGE_KEY);
@@ -27,6 +49,10 @@ function App() {
   const [publishedSchedules, setPublishedSchedules] = useState([]);
   const [scheduleError, setScheduleError] = useState("");
   const [isLoadingSchedules, setIsLoadingSchedules] = useState(false);
+  const [selectedScheduleId, setSelectedScheduleId] = useState(null);
+  const [selectedScheduleDetails, setSelectedScheduleDetails] = useState(null);
+  const [detailsError, setDetailsError] = useState("");
+  const [isLoadingDetails, setIsLoadingDetails] = useState(false);
 
   const isManager = session?.user?.applicationRole === "MANAGER";
 
@@ -41,6 +67,7 @@ function App() {
   useEffect(() => {
     if (!session?.accessToken) {
       setPublishedSchedules([]);
+      setSelectedScheduleId(null);
       return;
     }
 
@@ -52,6 +79,25 @@ function App() {
       .catch((error) => setScheduleError(error.message))
       .finally(() => setIsLoadingSchedules(false));
   }, [session]);
+
+  useEffect(() => {
+    if (!session?.accessToken || !selectedScheduleId) {
+      setSelectedScheduleDetails(null);
+      setDetailsError("");
+      return;
+    }
+
+    setIsLoadingDetails(true);
+    setDetailsError("");
+
+    getMyPublishedScheduleDetails(session.accessToken, selectedScheduleId)
+      .then(setSelectedScheduleDetails)
+      .catch((error) => {
+        setSelectedScheduleDetails(null);
+        setDetailsError(error.message);
+      })
+      .finally(() => setIsLoadingDetails(false));
+  }, [selectedScheduleId, session]);
 
   async function handleLogin(event) {
     event.preventDefault();
@@ -75,6 +121,9 @@ function App() {
     setSession(null);
     setPublishedSchedules([]);
     setScheduleError("");
+    setSelectedScheduleId(null);
+    setSelectedScheduleDetails(null);
+    setDetailsError("");
   }
 
   if (!session) {
@@ -163,17 +212,96 @@ function App() {
 
           <div className="schedule-list">
             {publishedSchedules.map((schedule) => (
-              <article className="schedule-row" key={schedule.id}>
+              <article
+                className={schedule.id === selectedScheduleId ? "schedule-row selected-row" : "schedule-row"}
+                key={schedule.id}
+              >
                 <div>
                   <h3>{schedule.teamName}</h3>
                   <p>
-                    {schedule.startDate} to {schedule.endDate}
+                    {formatDate(schedule.startDate)} to {formatDate(schedule.endDate)}
                   </p>
                 </div>
                 <span>{schedule.status}</span>
+                <button
+                  className="secondary-button compact-button"
+                  onClick={() => setSelectedScheduleId(schedule.id)}
+                  type="button"
+                >
+                  View details
+                </button>
               </article>
             ))}
           </div>
+        </section>
+
+        <section className="section-block" id="schedule-details">
+          <div className="section-heading">
+            <h2>Schedule details</h2>
+            <span>{selectedScheduleDetails?.shifts?.length ?? 0}</span>
+          </div>
+
+          {!selectedScheduleId ? <p className="muted">Select a published schedule to view its shifts.</p> : null}
+          {isLoadingDetails ? <p className="muted">Loading schedule details...</p> : null}
+          {detailsError ? <p className="error-message">{detailsError}</p> : null}
+
+          {selectedScheduleDetails && !isLoadingDetails ? (
+            <div className="details-stack">
+              <div className="details-summary">
+                <div>
+                  <p className="eyebrow">Team</p>
+                  <strong>{selectedScheduleDetails.schedule.teamName}</strong>
+                </div>
+                <div>
+                  <p className="eyebrow">Dates</p>
+                  <strong>
+                    {formatDate(selectedScheduleDetails.schedule.startDate)} to{" "}
+                    {formatDate(selectedScheduleDetails.schedule.endDate)}
+                  </strong>
+                </div>
+                <div>
+                  <p className="eyebrow">Publication</p>
+                  <strong>#{selectedScheduleDetails.schedule.publicationNumber}</strong>
+                </div>
+              </div>
+
+              {selectedScheduleDetails.shifts.length === 0 ? (
+                <p className="muted">This published schedule has no shifts.</p>
+              ) : null}
+
+              <div className="shift-list">
+                {selectedScheduleDetails.shifts.map((shift) => (
+                  <article className="shift-row" key={shift.id}>
+                    <div className="shift-main">
+                      <div>
+                        <h3>{shift.description || "Shift"}</h3>
+                        <p>
+                          {formatDateTime(shift.startTime)} to {formatDateTime(shift.endTime)}
+                        </p>
+                      </div>
+                      <div className="shift-meta">
+                        <span>{shift.requiredWorkers} required</span>
+                        {shift.requiredStaffingRoleName ? <span>{shift.requiredStaffingRoleName}</span> : null}
+                      </div>
+                    </div>
+
+                    <div className="assignment-list">
+                      {shift.assignments.length === 0 ? (
+                        <p className="muted">No employees assigned yet.</p>
+                      ) : (
+                        shift.assignments.map((assignment) => (
+                          <div className="assignment-row" key={assignment.id}>
+                            <strong>{assignment.employeeFullName || assignment.employeeUsername}</strong>
+                            <span>{assignment.employeeUsername}</span>
+                          </div>
+                        ))
+                      )}
+                    </div>
+                  </article>
+                ))}
+              </div>
+            </div>
+          ) : null}
         </section>
 
         {isManager ? (

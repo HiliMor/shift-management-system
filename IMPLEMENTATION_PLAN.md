@@ -652,16 +652,18 @@ Goal: build a minimal React interface connected to the backend.
 - [x] Login screen.
 - [x] Role-based navigation.
 - [x] Initial published schedule view.
+- [x] Employee published schedule details view.
 - [ ] Manager schedule creation screen.
 - [ ] Manager shift creation screen.
 - [ ] Simple manual assignment screen.
 - [x] Display backend errors clearly for login and published schedule loading.
+- [x] Display backend errors clearly for published schedule details loading.
 
 ### Verify
 
 - [x] Successful login navigates to the correct area.
 - [x] Frontend can call the published schedules backend endpoint.
-- [ ] Employees can view published schedule details in the frontend.
+- [x] Employees can view published schedule details in the frontend.
 - [ ] Managers can create shifts.
 - [ ] Assignment errors are displayed clearly.
 
@@ -1256,3 +1258,11 @@ Still open:
 - Added `docs/RUN_LOCALLY.md` as the main concise run guide for presentation and local development.
 - Documented required tools, database startup, backend startup, frontend startup, demo users, URLs, and common local issues.
 - Updated the architecture document so the system context shows the implemented React frontend instead of describing React as future work.
+
+### 2026-07-27 - Phase 8 Employee Published Schedule Details View
+
+- Added a frontend API call for `GET /api/schedules/me/published/{scheduleId}`.
+- Added schedule selection from the published schedules list.
+- Added a schedule details panel that shows schedule metadata, shifts, required workers, required staffing role when present, and assigned employees.
+- Added loading, empty, and error states for schedule details.
+- Kept this step frontend-only because the matching backend endpoint was already implemented in Phase 7.

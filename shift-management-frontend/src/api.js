@@ -40,3 +40,7 @@ export function login(username, password) {
 export function listMyPublishedSchedules(token) {
   return request("/api/schedules/me/published", { token });
 }
+
+export function getMyPublishedScheduleDetails(token, scheduleId) {
+  return request(`/api/schedules/me/published/${scheduleId}`, { token });
+}

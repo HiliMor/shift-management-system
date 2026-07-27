@@ -12,6 +12,7 @@ For end-to-end local run instructions, see:
 
 - Login screen - public screen for signing in with a backend user.
 - Published schedules - authenticated screen that lists published schedules visible to the signed-in user.
+- Schedule details - authenticated screen section that shows shifts and assignments for a selected published schedule.
 - Manager actions - placeholder area for the next manager workflows.
 
 ## Run Locally

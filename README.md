@@ -47,6 +47,8 @@ Frontend:
 - JWT session stored in browser local storage.
 - Role-based workspace title and navigation.
 - Published schedule list loaded from `GET /api/schedules/me/published`.
+- Published schedule details loaded from `GET /api/schedules/me/published/{scheduleId}`.
+- Shift and assignment display for selected published schedules.
 
 Planned next:
 
