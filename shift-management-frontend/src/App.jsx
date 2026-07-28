@@ -1,9 +1,12 @@
 import { useEffect, useMemo, useState } from "react";
 import {
   createSchedule,
+  createShift,
   getMyPublishedScheduleDetails,
+  listManagedDraftSchedules,
   listMyManagedTeams,
   listMyPublishedSchedules,
+  listStaffingRoles,
   login,
 } from "./api.js";
 
@@ -29,6 +32,10 @@ function formatDate(value) {
 
 function formatDateTime(value) {
   return value ? dateTimeFormatter.format(new Date(value)) : "Not set";
+}
+
+function toIsoStringFromLocalDateTime(value) {
+  return value ? new Date(value).toISOString() : "";
 }
 
 function loadStoredSession() {
@@ -66,6 +73,25 @@ function App() {
   const [createdSchedule, setCreatedSchedule] = useState(null);
   const [scheduleCreationError, setScheduleCreationError] = useState("");
   const [isCreatingSchedule, setIsCreatingSchedule] = useState(false);
+  const [managedDraftSchedules, setManagedDraftSchedules] = useState([]);
+  const [isLoadingDraftSchedules, setIsLoadingDraftSchedules] = useState(false);
+  const [draftSchedulesError, setDraftSchedulesError] = useState("");
+  const [draftScheduleRefreshKey, setDraftScheduleRefreshKey] = useState(0);
+  const [staffingRoles, setStaffingRoles] = useState([]);
+  const [isLoadingStaffingRoles, setIsLoadingStaffingRoles] = useState(false);
+  const [staffingRolesError, setStaffingRolesError] = useState("");
+  const [shiftForm, setShiftForm] = useState({
+    scheduleId: "",
+    startTime: "",
+    endTime: "",
+    description: "",
+    requiredWorkers: "1",
+    minRestHours: "8",
+    requiredStaffingRoleId: "",
+  });
+  const [createdShift, setCreatedShift] = useState(null);
+  const [shiftCreationError, setShiftCreationError] = useState("");
+  const [isCreatingShift, setIsCreatingShift] = useState(false);
 
   const isManager = session?.user?.applicationRole === "MANAGER";
 
@@ -76,6 +102,11 @@ function App() {
 
     return session.user.fullName || session.user.username;
   }, [session]);
+
+  const selectedDraftSchedule = useMemo(
+    () => managedDraftSchedules.find((schedule) => schedule.id.toString() === shiftForm.scheduleId) ?? null,
+    [managedDraftSchedules, shiftForm.scheduleId],
+  );
 
   useEffect(() => {
     if (!session?.accessToken) {
@@ -135,6 +166,53 @@ function App() {
       .finally(() => setIsLoadingManagedTeams(false));
   }, [isManager, session]);
 
+  useEffect(() => {
+    if (!session?.accessToken || !isManager) {
+      setManagedDraftSchedules([]);
+      setDraftSchedulesError("");
+      setShiftForm({
+        scheduleId: "",
+        startTime: "",
+        endTime: "",
+        description: "",
+        requiredWorkers: "1",
+        minRestHours: "8",
+        requiredStaffingRoleId: "",
+      });
+      return;
+    }
+
+    setIsLoadingDraftSchedules(true);
+    setDraftSchedulesError("");
+
+    listManagedDraftSchedules(session.accessToken)
+      .then((schedules) => {
+        setManagedDraftSchedules(schedules);
+        setShiftForm((current) => ({
+          ...current,
+          scheduleId: current.scheduleId || schedules[0]?.id?.toString() || "",
+        }));
+      })
+      .catch((error) => setDraftSchedulesError(error.message))
+      .finally(() => setIsLoadingDraftSchedules(false));
+  }, [draftScheduleRefreshKey, isManager, session]);
+
+  useEffect(() => {
+    if (!session?.accessToken || !selectedDraftSchedule) {
+      setStaffingRoles([]);
+      setStaffingRolesError("");
+      return;
+    }
+
+    setIsLoadingStaffingRoles(true);
+    setStaffingRolesError("");
+
+    listStaffingRoles(session.accessToken, selectedDraftSchedule.teamId)
+      .then(setStaffingRoles)
+      .catch((error) => setStaffingRolesError(error.message))
+      .finally(() => setIsLoadingStaffingRoles(false));
+  }, [selectedDraftSchedule, session]);
+
   async function handleLogin(event) {
     event.preventDefault();
     setIsLoggingIn(true);
@@ -165,6 +243,21 @@ function App() {
     setScheduleForm({ teamId: "", startDate: "", endDate: "" });
     setCreatedSchedule(null);
     setScheduleCreationError("");
+    setManagedDraftSchedules([]);
+    setDraftSchedulesError("");
+    setStaffingRoles([]);
+    setStaffingRolesError("");
+    setShiftForm({
+      scheduleId: "",
+      startTime: "",
+      endTime: "",
+      description: "",
+      requiredWorkers: "1",
+      minRestHours: "8",
+      requiredStaffingRoleId: "",
+    });
+    setCreatedShift(null);
+    setShiftCreationError("");
   }
 
   function handleScheduleFormChange(event) {
@@ -189,10 +282,57 @@ function App() {
         endDate: scheduleForm.endDate,
       });
       setCreatedSchedule(response);
+      setShiftForm((current) => ({
+        ...current,
+        scheduleId: response.id.toString(),
+        minRestHours: managedTeams
+          .find((team) => team.id === response.teamId)
+          ?.defaultMinRestHours?.toString() || current.minRestHours,
+      }));
+      setDraftScheduleRefreshKey((current) => current + 1);
     } catch (error) {
       setScheduleCreationError(error.message);
     } finally {
       setIsCreatingSchedule(false);
+    }
+  }
+
+  function handleShiftFormChange(event) {
+    const { name, value } = event.target;
+
+    setShiftForm((current) => ({
+      ...current,
+      [name]: value,
+      ...(name === "scheduleId" ? { requiredStaffingRoleId: "" } : {}),
+    }));
+  }
+
+  async function handleCreateShift(event) {
+    event.preventDefault();
+    setIsCreatingShift(true);
+    setShiftCreationError("");
+    setCreatedShift(null);
+
+    try {
+      const response = await createShift(session.accessToken, shiftForm.scheduleId, {
+        startTime: toIsoStringFromLocalDateTime(shiftForm.startTime),
+        endTime: toIsoStringFromLocalDateTime(shiftForm.endTime),
+        description: shiftForm.description || null,
+        requiredWorkers: Number(shiftForm.requiredWorkers),
+        minRestHours: Number(shiftForm.minRestHours),
+        requiredStaffingRoleId: shiftForm.requiredStaffingRoleId ? Number(shiftForm.requiredStaffingRoleId) : null,
+      });
+      setCreatedShift(response);
+      setShiftForm((current) => ({
+        ...current,
+        startTime: "",
+        endTime: "",
+        description: "",
+      }));
+    } catch (error) {
+      setShiftCreationError(error.message);
+    } finally {
+      setIsCreatingShift(false);
     }
   }
 
@@ -377,7 +517,7 @@ function App() {
         {isManager ? (
           <section className="section-block" id="manager">
             <div className="section-heading">
-              <h2>Create schedule</h2>
+              <h2>Manager actions</h2>
               <span>{managedTeams.length}</span>
             </div>
 
@@ -389,52 +529,169 @@ function App() {
             ) : null}
 
             {managedTeams.length > 0 ? (
-              <form className="manager-form" onSubmit={handleCreateSchedule}>
-                <label>
-                  Team
-                  <select
-                    name="teamId"
-                    onChange={handleScheduleFormChange}
-                    required
-                    value={scheduleForm.teamId}
-                  >
-                    {managedTeams.map((team) => (
-                      <option key={team.id} value={team.id}>
-                        {team.name}
-                      </option>
-                    ))}
-                  </select>
-                </label>
+              <div className="manager-stack">
+                <section className="manager-panel">
+                  <h3>Create draft schedule</h3>
+                  <form className="manager-form" onSubmit={handleCreateSchedule}>
+                    <label>
+                      Team
+                      <select
+                        name="teamId"
+                        onChange={handleScheduleFormChange}
+                        required
+                        value={scheduleForm.teamId}
+                      >
+                        {managedTeams.map((team) => (
+                          <option key={team.id} value={team.id}>
+                            {team.name}
+                          </option>
+                        ))}
+                      </select>
+                    </label>
 
-                <label>
-                  Start date
-                  <input
-                    name="startDate"
-                    onChange={handleScheduleFormChange}
-                    required
-                    type="date"
-                    value={scheduleForm.startDate}
-                  />
-                </label>
+                    <label>
+                      Start date
+                      <input
+                        name="startDate"
+                        onChange={handleScheduleFormChange}
+                        required
+                        type="date"
+                        value={scheduleForm.startDate}
+                      />
+                    </label>
 
-                <label>
-                  End date
-                  <input
-                    name="endDate"
-                    onChange={handleScheduleFormChange}
-                    required
-                    type="date"
-                    value={scheduleForm.endDate}
-                  />
-                </label>
+                    <label>
+                      End date
+                      <input
+                        name="endDate"
+                        onChange={handleScheduleFormChange}
+                        required
+                        type="date"
+                        value={scheduleForm.endDate}
+                      />
+                    </label>
 
-                <button disabled={isCreatingSchedule} type="submit">
-                  {isCreatingSchedule ? "Creating..." : "Create draft schedule"}
-                </button>
-              </form>
+                    <button disabled={isCreatingSchedule} type="submit">
+                      {isCreatingSchedule ? "Creating..." : "Create draft schedule"}
+                    </button>
+                  </form>
+                </section>
+
+                <section className="manager-panel">
+                  <h3>Create shift</h3>
+
+                  {isLoadingDraftSchedules ? <p className="muted">Loading draft schedules...</p> : null}
+                  {draftSchedulesError ? <p className="error-message">{draftSchedulesError}</p> : null}
+                  {staffingRolesError ? <p className="error-message">{staffingRolesError}</p> : null}
+
+                  {!isLoadingDraftSchedules && !draftSchedulesError && managedDraftSchedules.length === 0 ? (
+                    <p className="muted">Create a draft schedule before adding shifts.</p>
+                  ) : null}
+
+                  {managedDraftSchedules.length > 0 ? (
+                    <form className="shift-form" onSubmit={handleCreateShift}>
+                      <label>
+                        Draft schedule
+                        <select
+                          name="scheduleId"
+                          onChange={handleShiftFormChange}
+                          required
+                          value={shiftForm.scheduleId}
+                        >
+                          {managedDraftSchedules.map((schedule) => (
+                            <option key={schedule.id} value={schedule.id}>
+                              #{schedule.id} - {schedule.teamName}, {formatDate(schedule.startDate)} to{" "}
+                              {formatDate(schedule.endDate)}
+                            </option>
+                          ))}
+                        </select>
+                      </label>
+
+                      <label>
+                        Start time
+                        <input
+                          name="startTime"
+                          onChange={handleShiftFormChange}
+                          required
+                          type="datetime-local"
+                          value={shiftForm.startTime}
+                        />
+                      </label>
+
+                      <label>
+                        End time
+                        <input
+                          name="endTime"
+                          onChange={handleShiftFormChange}
+                          required
+                          type="datetime-local"
+                          value={shiftForm.endTime}
+                        />
+                      </label>
+
+                      <label>
+                        Description
+                        <input
+                          maxLength="500"
+                          name="description"
+                          onChange={handleShiftFormChange}
+                          type="text"
+                          value={shiftForm.description}
+                        />
+                      </label>
+
+                      <label>
+                        Required workers
+                        <input
+                          min="1"
+                          name="requiredWorkers"
+                          onChange={handleShiftFormChange}
+                          required
+                          type="number"
+                          value={shiftForm.requiredWorkers}
+                        />
+                      </label>
+
+                      <label>
+                        Minimum rest hours
+                        <input
+                          min="0"
+                          name="minRestHours"
+                          onChange={handleShiftFormChange}
+                          required
+                          type="number"
+                          value={shiftForm.minRestHours}
+                        />
+                      </label>
+
+                      <label>
+                        Required role
+                        <select
+                          disabled={isLoadingStaffingRoles}
+                          name="requiredStaffingRoleId"
+                          onChange={handleShiftFormChange}
+                          value={shiftForm.requiredStaffingRoleId}
+                        >
+                          <option value="">No specific role</option>
+                          {staffingRoles.map((role) => (
+                            <option key={role.id} value={role.id}>
+                              {role.name}
+                            </option>
+                          ))}
+                        </select>
+                      </label>
+
+                      <button disabled={isCreatingShift} type="submit">
+                        {isCreatingShift ? "Creating..." : "Create shift"}
+                      </button>
+                    </form>
+                  ) : null}
+                </section>
+              </div>
             ) : null}
 
             {scheduleCreationError ? <p className="error-message">{scheduleCreationError}</p> : null}
+            {shiftCreationError ? <p className="error-message">{shiftCreationError}</p> : null}
 
             {createdSchedule ? (
               <div className="success-message">
@@ -442,6 +699,15 @@ function App() {
                 <span>
                   {createdSchedule.teamName}: {formatDate(createdSchedule.startDate)} to{" "}
                   {formatDate(createdSchedule.endDate)}
+                </span>
+              </div>
+            ) : null}
+
+            {createdShift ? (
+              <div className="success-message">
+                <strong>Shift #{createdShift.id} created</strong>
+                <span>
+                  {formatDateTime(createdShift.startTime)} to {formatDateTime(createdShift.endTime)}
                 </span>
               </div>
             ) : null}

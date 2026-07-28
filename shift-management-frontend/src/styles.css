@@ -355,6 +355,35 @@ nav a:hover,
   grid-template-columns: minmax(180px, 1.2fr) minmax(150px, 1fr) minmax(150px, 1fr) auto;
 }
 
+.manager-stack {
+  display: grid;
+  gap: 18px;
+}
+
+.manager-panel {
+  border: 1px solid #e1e6ef;
+  border-radius: 8px;
+  display: grid;
+  gap: 14px;
+  padding: 16px;
+}
+
+.manager-panel h3 {
+  margin-bottom: 0;
+}
+
+.shift-form {
+  align-items: end;
+  display: grid;
+  gap: 14px;
+  grid-template-columns: repeat(2, minmax(180px, 1fr));
+}
+
+.shift-form label:first-child,
+.shift-form label:nth-child(4) {
+  grid-column: 1 / -1;
+}
+
 .action-grid {
   display: grid;
   gap: 10px;
@@ -378,8 +407,14 @@ nav a:hover,
   .schedule-row,
   .details-summary,
   .shift-main,
-  .manager-form {
+  .manager-form,
+  .shift-form {
     grid-template-columns: 1fr;
+  }
+
+  .shift-form label:first-child,
+  .shift-form label:nth-child(4) {
+    grid-column: auto;
   }
 
   .shift-meta {

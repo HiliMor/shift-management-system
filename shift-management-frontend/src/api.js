@@ -56,3 +56,19 @@ export function createSchedule(token, schedule) {
     body: JSON.stringify(schedule),
   });
 }
+
+export function listManagedDraftSchedules(token) {
+  return request("/api/schedules/me/managed/drafts", { token });
+}
+
+export function listStaffingRoles(token, teamId) {
+  return request(`/api/teams/${teamId}/staffing-roles`, { token });
+}
+
+export function createShift(token, scheduleId, shift) {
+  return request(`/api/schedules/${scheduleId}/shifts`, {
+    method: "POST",
+    token,
+    body: JSON.stringify(shift),
+  });
+}

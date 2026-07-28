@@ -42,6 +42,8 @@ The current frontend is intentionally small. It is responsible for:
 - Loading the signed-in user's published schedules from `GET /api/schedules/me/published`.
 - Loading a manager's teams from `GET /api/teams/me/managed`.
 - Creating draft schedules through `POST /api/schedules`.
+- Loading managed draft schedules from `GET /api/schedules/me/managed/drafts`.
+- Creating shifts through `POST /api/schedules/{scheduleId}/shifts`.
 
 The backend remains the authority for authentication, authorization, validation,
 business rules, and persistence.
@@ -228,7 +230,7 @@ flowchart TD
     healthApi["Health<br/>GET /api/health"]
     authApi["Authentication<br/>POST /api/auth/login<br/>GET /api/auth/me"]
     teamsApi["Teams<br/>GET /api/teams/me/managed"]
-    schedulesApi["Schedules<br/>POST /api/schedules<br/>GET /api/schedules/me/published<br/>GET /api/schedules/me/published/{scheduleId}<br/>GET /api/schedules/{scheduleId}/publication-readiness<br/>POST /api/schedules/{scheduleId}/publish<br/>POST /api/schedules/{scheduleId}/reopen"]
+    schedulesApi["Schedules<br/>POST /api/schedules<br/>GET /api/schedules/me/published<br/>GET /api/schedules/me/published/{scheduleId}<br/>GET /api/schedules/me/managed/drafts<br/>GET /api/schedules/{scheduleId}/publication-readiness<br/>POST /api/schedules/{scheduleId}/publish<br/>POST /api/schedules/{scheduleId}/reopen"]
     shiftsApi["Shifts<br/>POST /api/schedules/{scheduleId}/shifts<br/>GET /api/schedules/{scheduleId}/shifts<br/>PUT /api/schedules/{scheduleId}/shifts/{shiftId}<br/>DELETE /api/schedules/{scheduleId}/shifts/{shiftId}"]
     assignmentsApi["Assignments<br/>POST /api/assignments<br/>GET /api/schedules/{scheduleId}/assignments<br/>DELETE /api/assignments/{assignmentId}"]
     availabilityApi["Availability Constraints<br/>POST /api/availability-constraints<br/>GET /api/availability-constraints/me<br/>DELETE /api/availability-constraints/{constraintId}"]
@@ -452,7 +454,7 @@ flowchart LR
 | `health` | Public health check endpoint. |
 | `user` | User entity and broad application role such as `MANAGER` or `EMPLOYEE`. |
 | `team` | Teams, active team membership, team managers, and managed team listing for manager UI. |
-| `schedule` | Draft schedule creation, schedule publication, explicit unfilled-publication confirmation, schedule reopening, publication readiness, employee published schedule list/details, and schedule lifecycle state fields. |
+| `schedule` | Draft schedule creation, managed draft schedule listing, schedule publication, explicit unfilled-publication confirmation, schedule reopening, publication readiness, employee published schedule list/details, and schedule lifecycle state fields. |
 | `shift` | Shift creation, listing, update, deletion, schedule-range validation, and optional required staffing role storage. |
 | `assignment` | Manual assignment creation/list/delete and business rule validation, including capacity, availability, overlap, rest, and required staffing roles. |
 | `availability` | Employee unavailable time ranges and conflict checks with assignments. |

@@ -137,6 +137,23 @@ public class ScheduleService {
     }
 
     @Transactional(readOnly = true)
+    public List<ScheduleResponse> listManagedDraftSchedules(String username) {
+        List<Long> teamIds = teamManagerRepository.findByManager_Username(username)
+                .stream()
+                .map(teamManager -> teamManager.getTeam().getId())
+                .toList();
+
+        if (teamIds.isEmpty()) {
+            return List.of();
+        }
+
+        return scheduleRepository.findByTeam_IdInAndStatusOrderByStartDateDesc(teamIds, ScheduleStatus.DRAFT)
+                .stream()
+                .map(ScheduleResponse::from)
+                .toList();
+    }
+
+    @Transactional(readOnly = true)
     public PublishedScheduleDetailsResponse getPublishedScheduleDetailsForUser(String username, Long scheduleId) {
         User user = userRepository.findByUsername(username)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "User not found"));

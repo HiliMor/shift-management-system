@@ -38,6 +38,11 @@ public class ScheduleController {
         return scheduleService.listPublishedSchedulesForUser(authentication.getName());
     }
 
+    @GetMapping("/me/managed/drafts")
+    public List<ScheduleResponse> listMyManagedDraftSchedules(Authentication authentication) {
+        return scheduleService.listManagedDraftSchedules(authentication.getName());
+    }
+
     @GetMapping("/me/published/{scheduleId}")
     public PublishedScheduleDetailsResponse getMyPublishedScheduleDetails(
             Authentication authentication,

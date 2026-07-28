@@ -55,6 +55,7 @@ Implemented:
 - Schedule reopen endpoint: `POST /api/schedules/{scheduleId}/reopen`.
 - Employee published schedule list endpoint: `GET /api/schedules/me/published`.
 - Employee published schedule details endpoint: `GET /api/schedules/me/published/{scheduleId}`.
+- Manager draft schedule list endpoint: `GET /api/schedules/me/managed/drafts`.
 - Publication readiness report endpoint: `GET /api/schedules/{scheduleId}/publication-readiness`.
 - Explicit confirmation for publishing schedules with unfilled shifts.
 
@@ -195,6 +196,32 @@ Expected response:
 ```
 
 Only managers assigned to the requested team can create schedules for that team.
+
+List draft schedules managed by the authenticated manager:
+
+```bash
+curl http://localhost:8080/api/schedules/me/managed/drafts \
+  -H "Authorization: Bearer <TOKEN>"
+```
+
+Expected response:
+
+```json
+[
+  {
+    "id": 1,
+    "teamId": 1,
+    "teamName": "Operations",
+    "startDate": "2026-07-05",
+    "endDate": "2026-07-11",
+    "status": "DRAFT",
+    "publicationNumber": 0,
+    "publishedAt": null
+  }
+]
+```
+
+Users who do not manage teams receive an empty list.
 
 Publish a draft schedule:
 

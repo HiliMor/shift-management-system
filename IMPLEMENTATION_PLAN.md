@@ -1,6 +1,6 @@
 # Implementation Plan - Shift Management System
 
-Last updated: 2026-07-24
+Last updated: 2026-07-28
 
 This document is the working implementation plan for the project.  
 The goal is to build the system in small, understandable steps, while keeping each part easy to explain during the final presentation.
@@ -654,7 +654,7 @@ Goal: build a minimal React interface connected to the backend.
 - [x] Initial published schedule view.
 - [x] Employee published schedule details view.
 - [x] Manager schedule creation screen.
-- [ ] Manager shift creation screen.
+- [x] Manager shift creation screen.
 - [ ] Simple manual assignment screen.
 - [x] Display backend errors clearly for login and published schedule loading.
 - [x] Display backend errors clearly for published schedule details loading.
@@ -665,7 +665,7 @@ Goal: build a minimal React interface connected to the backend.
 - [x] Frontend can call the published schedules backend endpoint.
 - [x] Employees can view published schedule details in the frontend.
 - [x] Managers can create draft schedules from the frontend.
-- [ ] Managers can create shifts.
+- [x] Managers can create shifts.
 - [ ] Assignment errors are displayed clearly.
 
 ### Document
@@ -1278,3 +1278,14 @@ Still open:
 - Added success and error states for schedule creation.
 - Verified `pnpm build` succeeds.
 - Verified `mvn -Dtest=TeamServiceTest test` succeeds outside the Codex sandbox.
+
+### 2026-07-28 - Phase 8 Manager Shift Creation Screen
+
+- Added `GET /api/schedules/me/managed/drafts` so the frontend can show draft schedules managed by the signed-in manager.
+- Added service tests for managed draft schedule listing.
+- Added frontend API calls for managed draft schedules, team staffing roles, and shift creation.
+- Added a manager-only shift creation form connected to `POST /api/schedules/{scheduleId}/shifts`.
+- The shift form supports draft schedule selection, start/end time, description, required workers, minimum rest hours, and optional required staffing role.
+- Added success and error states for shift creation.
+- Verified `pnpm build` succeeds.
+- Verified `mvn -Dtest=ScheduleServiceTest,ShiftServiceTest test` succeeds outside the Codex sandbox.

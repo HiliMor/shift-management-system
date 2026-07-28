@@ -28,6 +28,7 @@ import com.hilimor.shiftmanagement.shift.Shift;
 import com.hilimor.shiftmanagement.shift.ShiftRepository;
 import com.hilimor.shiftmanagement.team.SwapApprovalPolicy;
 import com.hilimor.shiftmanagement.team.Team;
+import com.hilimor.shiftmanagement.team.TeamManager;
 import com.hilimor.shiftmanagement.team.TeamManagerRepository;
 import com.hilimor.shiftmanagement.team.TeamMember;
 import com.hilimor.shiftmanagement.team.TeamMemberRepository;
@@ -128,6 +129,35 @@ class ScheduleServiceTest {
                         assertThat(exception.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST));
 
         verify(scheduleRepository, never()).save(any());
+    }
+
+    @Test
+    void listManagedDraftSchedulesReturnsDraftSchedulesForManagedTeams() {
+        User manager = manager();
+        Team team = team();
+        Schedule schedule = schedule(team, ScheduleStatus.DRAFT, 11L, LocalDate.of(2026, 8, 2));
+
+        when(teamManagerRepository.findByManager_Username("manager1"))
+                .thenReturn(List.of(new TeamManager(manager, team)));
+        when(scheduleRepository.findByTeam_IdInAndStatusOrderByStartDateDesc(List.of(1L), ScheduleStatus.DRAFT))
+                .thenReturn(List.of(schedule));
+
+        List<ScheduleResponse> responses = scheduleService.listManagedDraftSchedules("manager1");
+
+        assertThat(responses).hasSize(1);
+        assertThat(responses.get(0).id()).isEqualTo(11L);
+        assertThat(responses.get(0).status()).isEqualTo(ScheduleStatus.DRAFT);
+        assertThat(responses.get(0).teamName()).isEqualTo("Operations");
+    }
+
+    @Test
+    void listManagedDraftSchedulesReturnsEmptyListWhenUserManagesNoTeams() {
+        when(teamManagerRepository.findByManager_Username("employee1")).thenReturn(List.of());
+
+        List<ScheduleResponse> responses = scheduleService.listManagedDraftSchedules("employee1");
+
+        assertThat(responses).isEmpty();
+        verify(scheduleRepository, never()).findByTeam_IdInAndStatusOrderByStartDateDesc(any(), any());
     }
 
     @Test
@@ -513,6 +543,18 @@ class ScheduleServiceTest {
         Team team = new Team("Operations", SwapApprovalPolicy.MANAGER, 8, "Asia/Jerusalem");
         ReflectionTestUtils.setField(team, "id", 1L);
         return team;
+    }
+
+    private User manager() {
+        User user = new User(
+                "manager1",
+                "password-hash",
+                "Demo Manager",
+                "manager1@example.com",
+                ApplicationRole.MANAGER
+        );
+        ReflectionTestUtils.setField(user, "id", 1L);
+        return user;
     }
 
     private User employee() {

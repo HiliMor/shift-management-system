@@ -51,10 +51,12 @@ Frontend:
 - Shift and assignment display for selected published schedules.
 - Managed team list loaded from `GET /api/teams/me/managed`.
 - Manager draft schedule creation connected to `POST /api/schedules`.
+- Managed draft schedule list loaded from `GET /api/schedules/me/managed/drafts`.
+- Manager shift creation connected to `POST /api/schedules/{scheduleId}/shifts`.
 
 Planned next:
 
-- Manager shift creation screen.
+- Simple manual assignment screen.
 - Swap and transfer requests.
 - Notifications and JMS integration.
 
