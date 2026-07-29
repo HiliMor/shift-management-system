@@ -15,6 +15,7 @@ For end-to-end local run instructions, see:
 - Schedule details - authenticated screen section that shows shifts and assignments for a selected published schedule.
 - Create schedule - manager-only form for creating a draft schedule for a managed team.
 - Create shift - manager-only form for adding shifts to a managed draft schedule.
+- Assign employee - manager-only form for manually assigning an active team employee to a draft shift.
 
 ## Run Locally
 

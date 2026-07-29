@@ -72,3 +72,23 @@ export function createShift(token, scheduleId, shift) {
     body: JSON.stringify(shift),
   });
 }
+
+export function listShifts(token, scheduleId) {
+  return request(`/api/schedules/${scheduleId}/shifts`, { token });
+}
+
+export function listTeamEmployees(token, teamId) {
+  return request(`/api/teams/${teamId}/employees`, { token });
+}
+
+export function listScheduleAssignments(token, scheduleId) {
+  return request(`/api/schedules/${scheduleId}/assignments`, { token });
+}
+
+export function createAssignment(token, assignment) {
+  return request("/api/assignments", {
+    method: "POST",
+    token,
+    body: JSON.stringify(assignment),
+  });
+}

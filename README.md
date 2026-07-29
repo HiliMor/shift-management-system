@@ -20,6 +20,7 @@ Implemented:
 
 - JWT login and authenticated API access.
 - Users, teams, team members, and team managers.
+- Managed team employee listing.
 - Draft schedule creation.
 - Shift create, list, update, and delete operations.
 - Manual assignment create, list, and delete operations.
@@ -53,10 +54,11 @@ Frontend:
 - Manager draft schedule creation connected to `POST /api/schedules`.
 - Managed draft schedule list loaded from `GET /api/schedules/me/managed/drafts`.
 - Manager shift creation connected to `POST /api/schedules/{scheduleId}/shifts`.
+- Manager manual assignment screen connected to `POST /api/assignments`.
+- Assignment screen loads draft schedule shifts, team employees, and existing schedule assignments.
 
 Planned next:
 
-- Simple manual assignment screen.
 - Swap and transfer requests.
 - Notifications and JMS integration.
 

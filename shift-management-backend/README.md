@@ -24,6 +24,7 @@ Implemented:
 - JWT-based login.
 - Authenticated current-user endpoint: `GET /api/auth/me`.
 - Managed teams endpoint: `GET /api/teams/me/managed`.
+- Managed team employee endpoint: `GET /api/teams/{teamId}/employees`.
 - CORS support for the local React development server.
 - Initial schedule domain model.
 - Schedule creation endpoint: `POST /api/schedules`.
@@ -168,6 +169,32 @@ Expected response:
 ```
 
 Users who do not manage teams receive an empty list.
+
+List active employees in a managed team:
+
+```bash
+curl http://localhost:8080/api/teams/1/employees \
+  -H "Authorization: Bearer <TOKEN>"
+```
+
+Expected response:
+
+```json
+[
+  {
+    "id": 2,
+    "username": "employee1",
+    "fullName": "Demo Employee One"
+  },
+  {
+    "id": 3,
+    "username": "employee2",
+    "fullName": "Demo Employee Two"
+  }
+]
+```
+
+Only managers assigned to the requested team can list its employees.
 
 ## Schedule Endpoints
 

@@ -75,6 +75,7 @@ a {
 h1,
 h2,
 h3,
+h4,
 p {
   margin-top: 0;
 }
@@ -94,6 +95,11 @@ h2 {
 h3 {
   font-size: 1rem;
   margin-bottom: 4px;
+}
+
+h4 {
+  font-size: 0.95rem;
+  margin-bottom: 0;
 }
 
 .login-form {
@@ -379,9 +385,23 @@ nav a:hover,
   grid-template-columns: repeat(2, minmax(180px, 1fr));
 }
 
+.assignment-form {
+  align-items: end;
+  display: grid;
+  gap: 14px;
+  grid-template-columns: minmax(220px, 1.4fr) minmax(220px, 1.6fr) minmax(180px, 1fr) auto;
+}
+
 .shift-form label:first-child,
 .shift-form label:nth-child(4) {
   grid-column: 1 / -1;
+}
+
+.assignment-panel-list {
+  border-top: 1px solid #e1e6ef;
+  display: grid;
+  gap: 10px;
+  padding-top: 14px;
 }
 
 .action-grid {
@@ -408,7 +428,8 @@ nav a:hover,
   .details-summary,
   .shift-main,
   .manager-form,
-  .shift-form {
+  .shift-form,
+  .assignment-form {
     grid-template-columns: 1fr;
   }
 

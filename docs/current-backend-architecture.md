@@ -8,7 +8,7 @@ the implemented state only, not future planned features.
 
 ```mermaid
 flowchart LR
-    react["React Frontend<br/>Login and published schedule view"]
+    react["React Frontend<br/>Login, schedules, and manager workflows"]
     apiClient["API Client<br/>Postman or curl"]
     security["Spring Security<br/>JWT Authentication Filter"]
     cors["CORS Configuration<br/>Local frontend access"]
@@ -44,6 +44,10 @@ The current frontend is intentionally small. It is responsible for:
 - Creating draft schedules through `POST /api/schedules`.
 - Loading managed draft schedules from `GET /api/schedules/me/managed/drafts`.
 - Creating shifts through `POST /api/schedules/{scheduleId}/shifts`.
+- Loading draft schedule shifts from `GET /api/schedules/{scheduleId}/shifts`.
+- Loading active team employees from `GET /api/teams/{teamId}/employees`.
+- Loading draft schedule assignments from `GET /api/schedules/{scheduleId}/assignments`.
+- Creating manual assignments through `POST /api/assignments`.
 
 The backend remains the authority for authentication, authorization, validation,
 business rules, and persistence.
@@ -58,7 +62,7 @@ flowchart TD
     health["health<br/>HealthController"]
     auth["auth<br/>Login, JWT, current user"]
     user["user<br/>User and application role"]
-    team["team<br/>Team, team members, managers, and managed team listing"]
+    team["team<br/>Team, team members, managers, managed team listing, and team employee listing"]
     schedule["schedule<br/>Draft schedule creation, publication, reopening, readiness, and employee published views"]
     shift["shift<br/>Shift CRUD inside schedules"]
     assignment["assignment<br/>Manual assignment workflow and validations"]

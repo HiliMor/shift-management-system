@@ -1,12 +1,16 @@
 import { useEffect, useMemo, useState } from "react";
 import {
+  createAssignment,
   createSchedule,
   createShift,
   getMyPublishedScheduleDetails,
+  listScheduleAssignments,
   listManagedDraftSchedules,
   listMyManagedTeams,
   listMyPublishedSchedules,
   listStaffingRoles,
+  listShifts,
+  listTeamEmployees,
   login,
 } from "./api.js";
 
@@ -92,6 +96,24 @@ function App() {
   const [createdShift, setCreatedShift] = useState(null);
   const [shiftCreationError, setShiftCreationError] = useState("");
   const [isCreatingShift, setIsCreatingShift] = useState(false);
+  const [assignmentForm, setAssignmentForm] = useState({
+    scheduleId: "",
+    shiftId: "",
+    employeeId: "",
+  });
+  const [assignmentShifts, setAssignmentShifts] = useState([]);
+  const [isLoadingAssignmentShifts, setIsLoadingAssignmentShifts] = useState(false);
+  const [assignmentShiftsError, setAssignmentShiftsError] = useState("");
+  const [teamEmployees, setTeamEmployees] = useState([]);
+  const [isLoadingTeamEmployees, setIsLoadingTeamEmployees] = useState(false);
+  const [teamEmployeesError, setTeamEmployeesError] = useState("");
+  const [scheduleAssignments, setScheduleAssignments] = useState([]);
+  const [isLoadingScheduleAssignments, setIsLoadingScheduleAssignments] = useState(false);
+  const [scheduleAssignmentsError, setScheduleAssignmentsError] = useState("");
+  const [assignmentRefreshKey, setAssignmentRefreshKey] = useState(0);
+  const [createdAssignment, setCreatedAssignment] = useState(null);
+  const [assignmentCreationError, setAssignmentCreationError] = useState("");
+  const [isCreatingAssignment, setIsCreatingAssignment] = useState(false);
 
   const isManager = session?.user?.applicationRole === "MANAGER";
 
@@ -106,6 +128,16 @@ function App() {
   const selectedDraftSchedule = useMemo(
     () => managedDraftSchedules.find((schedule) => schedule.id.toString() === shiftForm.scheduleId) ?? null,
     [managedDraftSchedules, shiftForm.scheduleId],
+  );
+
+  const selectedAssignmentSchedule = useMemo(
+    () => managedDraftSchedules.find((schedule) => schedule.id.toString() === assignmentForm.scheduleId) ?? null,
+    [assignmentForm.scheduleId, managedDraftSchedules],
+  );
+
+  const assignmentShiftMap = useMemo(
+    () => new Map(assignmentShifts.map((shift) => [shift.id, shift])),
+    [assignmentShifts],
   );
 
   useEffect(() => {
@@ -179,6 +211,13 @@ function App() {
         minRestHours: "8",
         requiredStaffingRoleId: "",
       });
+      setAssignmentForm({ scheduleId: "", shiftId: "", employeeId: "" });
+      setAssignmentShifts([]);
+      setAssignmentShiftsError("");
+      setTeamEmployees([]);
+      setTeamEmployeesError("");
+      setScheduleAssignments([]);
+      setScheduleAssignmentsError("");
       return;
     }
 
@@ -189,6 +228,10 @@ function App() {
       .then((schedules) => {
         setManagedDraftSchedules(schedules);
         setShiftForm((current) => ({
+          ...current,
+          scheduleId: current.scheduleId || schedules[0]?.id?.toString() || "",
+        }));
+        setAssignmentForm((current) => ({
           ...current,
           scheduleId: current.scheduleId || schedules[0]?.id?.toString() || "",
         }));
@@ -212,6 +255,76 @@ function App() {
       .catch((error) => setStaffingRolesError(error.message))
       .finally(() => setIsLoadingStaffingRoles(false));
   }, [selectedDraftSchedule, session]);
+
+  useEffect(() => {
+    if (!session?.accessToken || !assignmentForm.scheduleId) {
+      setAssignmentShifts([]);
+      setAssignmentShiftsError("");
+      setAssignmentForm((current) => ({ ...current, shiftId: "" }));
+      return;
+    }
+
+    setIsLoadingAssignmentShifts(true);
+    setAssignmentShiftsError("");
+
+    listShifts(session.accessToken, assignmentForm.scheduleId)
+      .then((shifts) => {
+        setAssignmentShifts(shifts);
+        setAssignmentForm((current) => {
+          const currentShiftExists = shifts.some((shift) => shift.id.toString() === current.shiftId);
+
+          return {
+            ...current,
+            shiftId: currentShiftExists ? current.shiftId : shifts[0]?.id?.toString() || "",
+          };
+        });
+      })
+      .catch((error) => setAssignmentShiftsError(error.message))
+      .finally(() => setIsLoadingAssignmentShifts(false));
+  }, [assignmentForm.scheduleId, assignmentRefreshKey, session]);
+
+  useEffect(() => {
+    if (!session?.accessToken || !selectedAssignmentSchedule) {
+      setTeamEmployees([]);
+      setTeamEmployeesError("");
+      setAssignmentForm((current) => ({ ...current, employeeId: "" }));
+      return;
+    }
+
+    setIsLoadingTeamEmployees(true);
+    setTeamEmployeesError("");
+
+    listTeamEmployees(session.accessToken, selectedAssignmentSchedule.teamId)
+      .then((employees) => {
+        setTeamEmployees(employees);
+        setAssignmentForm((current) => {
+          const currentEmployeeExists = employees.some((employee) => employee.id.toString() === current.employeeId);
+
+          return {
+            ...current,
+            employeeId: currentEmployeeExists ? current.employeeId : employees[0]?.id?.toString() || "",
+          };
+        });
+      })
+      .catch((error) => setTeamEmployeesError(error.message))
+      .finally(() => setIsLoadingTeamEmployees(false));
+  }, [selectedAssignmentSchedule, session]);
+
+  useEffect(() => {
+    if (!session?.accessToken || !assignmentForm.scheduleId) {
+      setScheduleAssignments([]);
+      setScheduleAssignmentsError("");
+      return;
+    }
+
+    setIsLoadingScheduleAssignments(true);
+    setScheduleAssignmentsError("");
+
+    listScheduleAssignments(session.accessToken, assignmentForm.scheduleId)
+      .then(setScheduleAssignments)
+      .catch((error) => setScheduleAssignmentsError(error.message))
+      .finally(() => setIsLoadingScheduleAssignments(false));
+  }, [assignmentForm.scheduleId, assignmentRefreshKey, session]);
 
   async function handleLogin(event) {
     event.preventDefault();
@@ -258,6 +371,15 @@ function App() {
     });
     setCreatedShift(null);
     setShiftCreationError("");
+    setAssignmentForm({ scheduleId: "", shiftId: "", employeeId: "" });
+    setAssignmentShifts([]);
+    setAssignmentShiftsError("");
+    setTeamEmployees([]);
+    setTeamEmployeesError("");
+    setScheduleAssignments([]);
+    setScheduleAssignmentsError("");
+    setCreatedAssignment(null);
+    setAssignmentCreationError("");
   }
 
   function handleScheduleFormChange(event) {
@@ -288,6 +410,11 @@ function App() {
         minRestHours: managedTeams
           .find((team) => team.id === response.teamId)
           ?.defaultMinRestHours?.toString() || current.minRestHours,
+      }));
+      setAssignmentForm((current) => ({
+        ...current,
+        scheduleId: response.id.toString(),
+        shiftId: "",
       }));
       setDraftScheduleRefreshKey((current) => current + 1);
     } catch (error) {
@@ -329,10 +456,46 @@ function App() {
         endTime: "",
         description: "",
       }));
+      setAssignmentForm((current) => ({
+        ...current,
+        scheduleId: response.scheduleId.toString(),
+        shiftId: response.id.toString(),
+      }));
+      setAssignmentRefreshKey((current) => current + 1);
     } catch (error) {
       setShiftCreationError(error.message);
     } finally {
       setIsCreatingShift(false);
+    }
+  }
+
+  function handleAssignmentFormChange(event) {
+    const { name, value } = event.target;
+
+    setAssignmentForm((current) => ({
+      ...current,
+      [name]: value,
+      ...(name === "scheduleId" ? { shiftId: "", employeeId: "" } : {}),
+    }));
+  }
+
+  async function handleCreateAssignment(event) {
+    event.preventDefault();
+    setIsCreatingAssignment(true);
+    setAssignmentCreationError("");
+    setCreatedAssignment(null);
+
+    try {
+      const response = await createAssignment(session.accessToken, {
+        shiftId: Number(assignmentForm.shiftId),
+        employeeId: Number(assignmentForm.employeeId),
+      });
+      setCreatedAssignment(response);
+      setAssignmentRefreshKey((current) => current + 1);
+    } catch (error) {
+      setAssignmentCreationError(error.message);
+    } finally {
+      setIsCreatingAssignment(false);
     }
   }
 
@@ -687,11 +850,138 @@ function App() {
                     </form>
                   ) : null}
                 </section>
+
+                <section className="manager-panel">
+                  <h3>Assign employee</h3>
+
+                  {assignmentShiftsError ? <p className="error-message">{assignmentShiftsError}</p> : null}
+                  {teamEmployeesError ? <p className="error-message">{teamEmployeesError}</p> : null}
+                  {scheduleAssignmentsError ? <p className="error-message">{scheduleAssignmentsError}</p> : null}
+
+                  {!isLoadingDraftSchedules && !draftSchedulesError && managedDraftSchedules.length === 0 ? (
+                    <p className="muted">Create a draft schedule before assigning employees.</p>
+                  ) : null}
+
+                  {managedDraftSchedules.length > 0 ? (
+                    <form className="assignment-form" onSubmit={handleCreateAssignment}>
+                      <label>
+                        Draft schedule
+                        <select
+                          name="scheduleId"
+                          onChange={handleAssignmentFormChange}
+                          required
+                          value={assignmentForm.scheduleId}
+                        >
+                          {managedDraftSchedules.map((schedule) => (
+                            <option key={schedule.id} value={schedule.id}>
+                              #{schedule.id} - {schedule.teamName}, {formatDate(schedule.startDate)} to{" "}
+                              {formatDate(schedule.endDate)}
+                            </option>
+                          ))}
+                        </select>
+                      </label>
+
+                      <label>
+                        Shift
+                        <select
+                          disabled={isLoadingAssignmentShifts || assignmentShifts.length === 0}
+                          name="shiftId"
+                          onChange={handleAssignmentFormChange}
+                          required
+                          value={assignmentForm.shiftId}
+                        >
+                          {assignmentShifts.map((shift) => (
+                            <option key={shift.id} value={shift.id}>
+                              #{shift.id} - {shift.description || "Shift"}, {formatDateTime(shift.startTime)}
+                            </option>
+                          ))}
+                        </select>
+                      </label>
+
+                      <label>
+                        Employee
+                        <select
+                          disabled={isLoadingTeamEmployees || teamEmployees.length === 0}
+                          name="employeeId"
+                          onChange={handleAssignmentFormChange}
+                          required
+                          value={assignmentForm.employeeId}
+                        >
+                          {teamEmployees.map((employee) => (
+                            <option key={employee.id} value={employee.id}>
+                              {employee.fullName || employee.username}
+                            </option>
+                          ))}
+                        </select>
+                      </label>
+
+                      <button
+                        disabled={
+                          isCreatingAssignment ||
+                          isLoadingAssignmentShifts ||
+                          isLoadingTeamEmployees ||
+                          assignmentShifts.length === 0 ||
+                          teamEmployees.length === 0
+                        }
+                        type="submit"
+                      >
+                        {isCreatingAssignment ? "Assigning..." : "Assign employee"}
+                      </button>
+                    </form>
+                  ) : null}
+
+                  {isLoadingAssignmentShifts ? <p className="muted">Loading shifts...</p> : null}
+                  {isLoadingTeamEmployees ? <p className="muted">Loading employees...</p> : null}
+
+                  {!isLoadingAssignmentShifts &&
+                  !assignmentShiftsError &&
+                  managedDraftSchedules.length > 0 &&
+                  assignmentShifts.length === 0 ? (
+                    <p className="muted">Add a shift before assigning employees.</p>
+                  ) : null}
+
+                  {!isLoadingTeamEmployees &&
+                  !teamEmployeesError &&
+                  selectedAssignmentSchedule &&
+                  teamEmployees.length === 0 ? (
+                    <p className="muted">No active employees are available for this team.</p>
+                  ) : null}
+
+                  <div className="assignment-panel-list">
+                    <h4>Current assignments</h4>
+                    {isLoadingScheduleAssignments ? <p className="muted">Loading assignments...</p> : null}
+
+                    {!isLoadingScheduleAssignments &&
+                    !scheduleAssignmentsError &&
+                    assignmentForm.scheduleId &&
+                    scheduleAssignments.length === 0 ? (
+                      <p className="muted">No employees assigned in this draft schedule yet.</p>
+                    ) : null}
+
+                    {scheduleAssignments.map((assignment) => {
+                      const assignedShift = assignmentShiftMap.get(assignment.shiftId);
+
+                      return (
+                        <div className="assignment-row" key={assignment.id}>
+                          <strong>{assignment.employeeFullName || assignment.employeeUsername}</strong>
+                          <span>
+                            {assignedShift
+                              ? `#${assignedShift.id} - ${assignedShift.description || "Shift"}, ${formatDateTime(
+                                  assignedShift.startTime,
+                                )}`
+                              : `Shift #${assignment.shiftId}`}
+                          </span>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </section>
               </div>
             ) : null}
 
             {scheduleCreationError ? <p className="error-message">{scheduleCreationError}</p> : null}
             {shiftCreationError ? <p className="error-message">{shiftCreationError}</p> : null}
+            {assignmentCreationError ? <p className="error-message">{assignmentCreationError}</p> : null}
 
             {createdSchedule ? (
               <div className="success-message">
@@ -708,6 +998,16 @@ function App() {
                 <strong>Shift #{createdShift.id} created</strong>
                 <span>
                   {formatDateTime(createdShift.startTime)} to {formatDateTime(createdShift.endTime)}
+                </span>
+              </div>
+            ) : null}
+
+            {createdAssignment ? (
+              <div className="success-message">
+                <strong>Assignment #{createdAssignment.id} created</strong>
+                <span>
+                  {createdAssignment.employeeFullName || createdAssignment.employeeUsername} assigned to shift #
+                  {createdAssignment.shiftId}
                 </span>
               </div>
             ) : null}

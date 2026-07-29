@@ -1,6 +1,6 @@
 # Implementation Plan - Shift Management System
 
-Last updated: 2026-07-28
+Last updated: 2026-07-29
 
 This document is the working implementation plan for the project.  
 The goal is to build the system in small, understandable steps, while keeping each part easy to explain during the final presentation.
@@ -655,7 +655,7 @@ Goal: build a minimal React interface connected to the backend.
 - [x] Employee published schedule details view.
 - [x] Manager schedule creation screen.
 - [x] Manager shift creation screen.
-- [ ] Simple manual assignment screen.
+- [x] Simple manual assignment screen.
 - [x] Display backend errors clearly for login and published schedule loading.
 - [x] Display backend errors clearly for published schedule details loading.
 
@@ -666,7 +666,7 @@ Goal: build a minimal React interface connected to the backend.
 - [x] Employees can view published schedule details in the frontend.
 - [x] Managers can create draft schedules from the frontend.
 - [x] Managers can create shifts.
-- [ ] Assignment errors are displayed clearly.
+- [x] Assignment errors are displayed clearly.
 
 ### Document
 
@@ -1289,3 +1289,13 @@ Still open:
 - Added success and error states for shift creation.
 - Verified `pnpm build` succeeds.
 - Verified `mvn -Dtest=ScheduleServiceTest,ShiftServiceTest test` succeeds outside the Codex sandbox.
+
+### 2026-07-29 - Phase 8 Manual Assignment Screen
+
+- Added `GET /api/teams/{teamId}/employees` so the frontend can show active employees for a managed team.
+- Added `TeamEmployeeResponse` and service tests for managed team employee listing.
+- Added frontend API calls for draft schedule shifts, team employees, schedule assignments, and manual assignment creation.
+- Added a manager-only manual assignment form connected to `POST /api/assignments`.
+- The assignment form supports draft schedule selection, shift selection, employee selection, current assignment display, success states, and backend validation errors.
+- Verified `pnpm build` succeeds.
+- Verified `mvn -Dtest=TeamServiceTest,AssignmentServiceTest test` succeeds outside the Codex sandbox.
