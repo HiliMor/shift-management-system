@@ -15,6 +15,7 @@ import {
 } from "./api.js";
 
 const STORAGE_KEY = "shift-management-session";
+const SESSION_EXPIRED_MESSAGE = "Session expired. Please sign in again.";
 
 const dateFormatter = new Intl.DateTimeFormat("en-GB", {
   day: "2-digit",
@@ -140,6 +141,59 @@ function App() {
     [assignmentShifts],
   );
 
+  function clearAuthenticatedState() {
+    setPublishedSchedules([]);
+    setScheduleError("");
+    setSelectedScheduleId(null);
+    setSelectedScheduleDetails(null);
+    setDetailsError("");
+    setManagedTeams([]);
+    setManagedTeamsError("");
+    setScheduleForm({ teamId: "", startDate: "", endDate: "" });
+    setCreatedSchedule(null);
+    setScheduleCreationError("");
+    setManagedDraftSchedules([]);
+    setDraftSchedulesError("");
+    setStaffingRoles([]);
+    setStaffingRolesError("");
+    setShiftForm({
+      scheduleId: "",
+      startTime: "",
+      endTime: "",
+      description: "",
+      requiredWorkers: "1",
+      minRestHours: "8",
+      requiredStaffingRoleId: "",
+    });
+    setCreatedShift(null);
+    setShiftCreationError("");
+    setAssignmentForm({ scheduleId: "", shiftId: "", employeeId: "" });
+    setAssignmentShifts([]);
+    setAssignmentShiftsError("");
+    setTeamEmployees([]);
+    setTeamEmployeesError("");
+    setScheduleAssignments([]);
+    setScheduleAssignmentsError("");
+    setCreatedAssignment(null);
+    setAssignmentCreationError("");
+  }
+
+  function expireSession() {
+    localStorage.removeItem(STORAGE_KEY);
+    setSession(null);
+    clearAuthenticatedState();
+    setLoginError(SESSION_EXPIRED_MESSAGE);
+  }
+
+  function handleApiError(error, setError) {
+    if (error.status === 401) {
+      expireSession();
+      return;
+    }
+
+    setError(error.message);
+  }
+
   useEffect(() => {
     if (!session?.accessToken) {
       setPublishedSchedules([]);
@@ -152,7 +206,7 @@ function App() {
 
     listMyPublishedSchedules(session.accessToken)
       .then(setPublishedSchedules)
-      .catch((error) => setScheduleError(error.message))
+      .catch((error) => handleApiError(error, setScheduleError))
       .finally(() => setIsLoadingSchedules(false));
   }, [session]);
 
@@ -170,7 +224,7 @@ function App() {
       .then(setSelectedScheduleDetails)
       .catch((error) => {
         setSelectedScheduleDetails(null);
-        setDetailsError(error.message);
+        handleApiError(error, setDetailsError);
       })
       .finally(() => setIsLoadingDetails(false));
   }, [selectedScheduleId, session]);
@@ -194,7 +248,7 @@ function App() {
           teamId: current.teamId || teams[0]?.id?.toString() || "",
         }));
       })
-      .catch((error) => setManagedTeamsError(error.message))
+      .catch((error) => handleApiError(error, setManagedTeamsError))
       .finally(() => setIsLoadingManagedTeams(false));
   }, [isManager, session]);
 
@@ -236,7 +290,7 @@ function App() {
           scheduleId: current.scheduleId || schedules[0]?.id?.toString() || "",
         }));
       })
-      .catch((error) => setDraftSchedulesError(error.message))
+      .catch((error) => handleApiError(error, setDraftSchedulesError))
       .finally(() => setIsLoadingDraftSchedules(false));
   }, [draftScheduleRefreshKey, isManager, session]);
 
@@ -252,7 +306,7 @@ function App() {
 
     listStaffingRoles(session.accessToken, selectedDraftSchedule.teamId)
       .then(setStaffingRoles)
-      .catch((error) => setStaffingRolesError(error.message))
+      .catch((error) => handleApiError(error, setStaffingRolesError))
       .finally(() => setIsLoadingStaffingRoles(false));
   }, [selectedDraftSchedule, session]);
 
@@ -279,7 +333,7 @@ function App() {
           };
         });
       })
-      .catch((error) => setAssignmentShiftsError(error.message))
+      .catch((error) => handleApiError(error, setAssignmentShiftsError))
       .finally(() => setIsLoadingAssignmentShifts(false));
   }, [assignmentForm.scheduleId, assignmentRefreshKey, session]);
 
@@ -306,7 +360,7 @@ function App() {
           };
         });
       })
-      .catch((error) => setTeamEmployeesError(error.message))
+      .catch((error) => handleApiError(error, setTeamEmployeesError))
       .finally(() => setIsLoadingTeamEmployees(false));
   }, [selectedAssignmentSchedule, session]);
 
@@ -322,7 +376,7 @@ function App() {
 
     listScheduleAssignments(session.accessToken, assignmentForm.scheduleId)
       .then(setScheduleAssignments)
-      .catch((error) => setScheduleAssignmentsError(error.message))
+      .catch((error) => handleApiError(error, setScheduleAssignmentsError))
       .finally(() => setIsLoadingScheduleAssignments(false));
   }, [assignmentForm.scheduleId, assignmentRefreshKey, session]);
 
@@ -346,40 +400,8 @@ function App() {
   function handleLogout() {
     localStorage.removeItem(STORAGE_KEY);
     setSession(null);
-    setPublishedSchedules([]);
-    setScheduleError("");
-    setSelectedScheduleId(null);
-    setSelectedScheduleDetails(null);
-    setDetailsError("");
-    setManagedTeams([]);
-    setManagedTeamsError("");
-    setScheduleForm({ teamId: "", startDate: "", endDate: "" });
-    setCreatedSchedule(null);
-    setScheduleCreationError("");
-    setManagedDraftSchedules([]);
-    setDraftSchedulesError("");
-    setStaffingRoles([]);
-    setStaffingRolesError("");
-    setShiftForm({
-      scheduleId: "",
-      startTime: "",
-      endTime: "",
-      description: "",
-      requiredWorkers: "1",
-      minRestHours: "8",
-      requiredStaffingRoleId: "",
-    });
-    setCreatedShift(null);
-    setShiftCreationError("");
-    setAssignmentForm({ scheduleId: "", shiftId: "", employeeId: "" });
-    setAssignmentShifts([]);
-    setAssignmentShiftsError("");
-    setTeamEmployees([]);
-    setTeamEmployeesError("");
-    setScheduleAssignments([]);
-    setScheduleAssignmentsError("");
-    setCreatedAssignment(null);
-    setAssignmentCreationError("");
+    clearAuthenticatedState();
+    setLoginError("");
   }
 
   function handleScheduleFormChange(event) {
@@ -418,7 +440,7 @@ function App() {
       }));
       setDraftScheduleRefreshKey((current) => current + 1);
     } catch (error) {
-      setScheduleCreationError(error.message);
+      handleApiError(error, setScheduleCreationError);
     } finally {
       setIsCreatingSchedule(false);
     }
@@ -463,7 +485,7 @@ function App() {
       }));
       setAssignmentRefreshKey((current) => current + 1);
     } catch (error) {
-      setShiftCreationError(error.message);
+      handleApiError(error, setShiftCreationError);
     } finally {
       setIsCreatingShift(false);
     }
@@ -493,7 +515,7 @@ function App() {
       setCreatedAssignment(response);
       setAssignmentRefreshKey((current) => current + 1);
     } catch (error) {
-      setAssignmentCreationError(error.message);
+      handleApiError(error, setAssignmentCreationError);
     } finally {
       setIsCreatingAssignment(false);
     }

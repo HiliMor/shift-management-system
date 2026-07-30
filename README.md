@@ -46,6 +46,7 @@ Frontend:
 
 - Login screen connected to `POST /api/auth/login`.
 - JWT session stored in browser local storage.
+- Expired JWT sessions return to the login screen with a clear message.
 - Role-based workspace title and navigation.
 - Published schedule list loaded from `GET /api/schedules/me/published`.
 - Published schedule details loaded from `GET /api/schedules/me/published/{scheduleId}`.

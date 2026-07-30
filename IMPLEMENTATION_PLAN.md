@@ -1,6 +1,6 @@
 # Implementation Plan - Shift Management System
 
-Last updated: 2026-07-29
+Last updated: 2026-07-30
 
 This document is the working implementation plan for the project.  
 The goal is to build the system in small, understandable steps, while keeping each part easy to explain during the final presentation.
@@ -658,6 +658,7 @@ Goal: build a minimal React interface connected to the backend.
 - [x] Simple manual assignment screen.
 - [x] Display backend errors clearly for login and published schedule loading.
 - [x] Display backend errors clearly for published schedule details loading.
+- [x] Return expired JWT sessions to the login screen.
 
 ### Verify
 
@@ -667,6 +668,7 @@ Goal: build a minimal React interface connected to the backend.
 - [x] Managers can create draft schedules from the frontend.
 - [x] Managers can create shifts.
 - [x] Assignment errors are displayed clearly.
+- [x] Expired sessions are cleared and show a clear login message.
 
 ### Document
 
@@ -1299,3 +1301,10 @@ Still open:
 - The assignment form supports draft schedule selection, shift selection, employee selection, current assignment display, success states, and backend validation errors.
 - Verified `pnpm build` succeeds.
 - Verified `mvn -Dtest=TeamServiceTest,AssignmentServiceTest test` succeeds outside the Codex sandbox.
+
+### 2026-07-30 - Phase 8 Expired Session Handling
+
+- Added structured frontend API errors that include the HTTP status code.
+- Added shared frontend handling for `401 Unauthorized` responses.
+- Expired JWT sessions now clear local storage, reset authenticated screen state, and return to the login screen.
+- The login screen shows `Session expired. Please sign in again.` instead of leaving stale manager or employee data on screen.

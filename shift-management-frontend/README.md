@@ -11,6 +11,7 @@ For end-to-end local run instructions, see:
 ## Current Screens
 
 - Login screen - public screen for signing in with a backend user.
+- Expired session handling - expired JWT sessions are cleared and return to the login screen.
 - Published schedules - authenticated screen that lists published schedules visible to the signed-in user.
 - Schedule details - authenticated screen section that shows shifts and assignments for a selected published schedule.
 - Create schedule - manager-only form for creating a draft schedule for a managed team.
