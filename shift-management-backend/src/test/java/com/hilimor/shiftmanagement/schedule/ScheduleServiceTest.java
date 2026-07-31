@@ -3,6 +3,7 @@ package com.hilimor.shiftmanagement.schedule;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -24,6 +25,7 @@ import org.springframework.web.server.ResponseStatusException;
 
 import com.hilimor.shiftmanagement.assignment.Assignment;
 import com.hilimor.shiftmanagement.assignment.AssignmentRepository;
+import com.hilimor.shiftmanagement.messaging.EventOutboxService;
 import com.hilimor.shiftmanagement.shift.Shift;
 import com.hilimor.shiftmanagement.shift.ShiftRepository;
 import com.hilimor.shiftmanagement.team.SwapApprovalPolicy;
@@ -60,6 +62,9 @@ class ScheduleServiceTest {
 
     @Mock
     private AssignmentRepository assignmentRepository;
+
+    @Mock
+    private EventOutboxService eventOutboxService;
 
     @InjectMocks
     private ScheduleService scheduleService;
@@ -192,6 +197,14 @@ class ScheduleServiceTest {
         assertThat(schedule.getStatus()).isEqualTo(ScheduleStatus.PUBLISHED);
         assertThat(schedule.getPublicationNumber()).isEqualTo(1);
         assertThat(schedule.getPublishedAt()).isNotNull();
+
+        ArgumentCaptor<SchedulePublishedEvent> eventCaptor = ArgumentCaptor.forClass(SchedulePublishedEvent.class);
+        verify(eventOutboxService).createEvent(eq("schedule.published"), eventCaptor.capture());
+        assertThat(eventCaptor.getValue().scheduleId()).isEqualTo(10L);
+        assertThat(eventCaptor.getValue().teamId()).isEqualTo(1L);
+        assertThat(eventCaptor.getValue().teamName()).isEqualTo("Operations");
+        assertThat(eventCaptor.getValue().publicationNumber()).isEqualTo(1);
+        assertThat(eventCaptor.getValue().publishedAt()).isNotNull();
     }
 
     @Test
@@ -267,6 +280,7 @@ class ScheduleServiceTest {
         assertThat(schedule.getStatus()).isEqualTo(ScheduleStatus.PUBLISHED);
         verify(shiftRepository, never()).findBySchedule_IdOrderByStartTime(any());
         verify(assignmentRepository, never()).findByShift_Schedule_IdOrderByShift_StartTimeAscEmployee_FullNameAsc(any());
+        verify(eventOutboxService).createEvent(eq("schedule.published"), any(SchedulePublishedEvent.class));
     }
 
     @Test

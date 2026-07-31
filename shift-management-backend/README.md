@@ -59,12 +59,20 @@ Implemented:
 - Manager draft schedule list endpoint: `GET /api/schedules/me/managed/drafts`.
 - Publication readiness report endpoint: `GET /api/schedules/{scheduleId}/publication-readiness`.
 - Explicit confirmation for publishing schedules with unfilled shifts.
+- Notification persistence model.
+- Personal notification list endpoint: `GET /api/notifications`.
+- Personal unread notification count endpoint: `GET /api/notifications/unread-count`.
+- Mark notification as read endpoint: `POST /api/notifications/{notificationId}/read`.
+- Event outbox persistence model for pending asynchronous events.
+- Schedule publication records a pending `schedule.published` event in `event_outbox`.
 
 Not implemented yet:
 
 - Schedule list, update, and delete endpoints.
 - Assignment transfer endpoints.
 - Automatic assignment.
+- JMS dispatcher and consumer for delivering outbox events.
+- Frontend notification center.
 - Remaining team-scoped authorization for future manager workflows.
 
 ## Requirements
@@ -275,6 +283,7 @@ Expected response:
 Only managers assigned to the schedule's team can publish it.
 Only draft schedules can be published.
 Publishing sets the schedule status to `PUBLISHED`, records `publishedAt`, and increments `publicationNumber`.
+Publishing also stores a pending `schedule.published` event in `event_outbox`.
 Publishing without a request body is allowed only when the schedule readiness report has `readyToPublish: true`.
 When the readiness report has `readyToPublish: false`, publishing without confirmation returns `409 Conflict`.
 
@@ -439,6 +448,65 @@ Expected response:
 
 The authenticated user can view details only for published schedules belonging to active teams they are a member of.
 Draft schedules and schedules from unrelated teams return `404 Not Found`.
+
+## Notification Endpoints
+
+List notifications for the authenticated user:
+
+```bash
+curl http://localhost:8080/api/notifications \
+  -H "Authorization: Bearer <TOKEN>"
+```
+
+Expected empty response before any notifications have been created:
+
+```json
+[]
+```
+
+Expected response shape after notifications exist:
+
+```json
+[
+  {
+    "id": 1,
+    "eventId": "6f22d2a9-2e22-4d38-a2f8-bf820ae2a6d1",
+    "type": "SCHEDULE_PUBLISHED",
+    "title": "Schedule published",
+    "message": "The Operations schedule was published.",
+    "relatedEntityType": "SCHEDULE",
+    "relatedEntityId": 1,
+    "createdAt": "2026-07-31T18:00:00Z",
+    "readAt": null,
+    "read": false
+  }
+]
+```
+
+Count unread notifications for the authenticated user:
+
+```bash
+curl http://localhost:8080/api/notifications/unread-count \
+  -H "Authorization: Bearer <TOKEN>"
+```
+
+Expected response:
+
+```json
+{
+  "unreadCount": 0
+}
+```
+
+Mark one owned notification as read:
+
+```bash
+curl -X POST http://localhost:8080/api/notifications/1/read \
+  -H "Authorization: Bearer <TOKEN>"
+```
+
+The authenticated user can access only their own notifications.
+Missing notifications and notifications owned by another user return `404 Not Found`.
 
 Create a shift inside a draft schedule:
 

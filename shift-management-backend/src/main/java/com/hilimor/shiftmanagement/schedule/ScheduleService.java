@@ -7,6 +7,7 @@ import java.util.stream.Collectors;
 
 import com.hilimor.shiftmanagement.assignment.Assignment;
 import com.hilimor.shiftmanagement.assignment.AssignmentRepository;
+import com.hilimor.shiftmanagement.messaging.EventOutboxService;
 import com.hilimor.shiftmanagement.shift.ShiftRepository;
 import com.hilimor.shiftmanagement.team.Team;
 import com.hilimor.shiftmanagement.team.TeamManagerRepository;
@@ -23,6 +24,8 @@ import org.springframework.web.server.ResponseStatusException;
 @Service
 public class ScheduleService {
 
+    private static final String SCHEDULE_PUBLISHED_EVENT_TYPE = "schedule.published";
+
     private final ScheduleRepository scheduleRepository;
     private final TeamRepository teamRepository;
     private final TeamManagerRepository teamManagerRepository;
@@ -30,6 +33,7 @@ public class ScheduleService {
     private final UserRepository userRepository;
     private final ShiftRepository shiftRepository;
     private final AssignmentRepository assignmentRepository;
+    private final EventOutboxService eventOutboxService;
 
     public ScheduleService(
             ScheduleRepository scheduleRepository,
@@ -38,7 +42,8 @@ public class ScheduleService {
             TeamMemberRepository teamMemberRepository,
             UserRepository userRepository,
             ShiftRepository shiftRepository,
-            AssignmentRepository assignmentRepository
+            AssignmentRepository assignmentRepository,
+            EventOutboxService eventOutboxService
     ) {
         this.scheduleRepository = scheduleRepository;
         this.teamRepository = teamRepository;
@@ -47,6 +52,7 @@ public class ScheduleService {
         this.userRepository = userRepository;
         this.shiftRepository = shiftRepository;
         this.assignmentRepository = assignmentRepository;
+        this.eventOutboxService = eventOutboxService;
     }
 
     @Transactional
@@ -95,6 +101,8 @@ public class ScheduleService {
         } catch (IllegalStateException exception) {
             throw new ResponseStatusException(HttpStatus.CONFLICT, exception.getMessage());
         }
+
+        eventOutboxService.createEvent(SCHEDULE_PUBLISHED_EVENT_TYPE, SchedulePublishedEvent.from(schedule));
 
         return ScheduleResponse.from(schedule);
     }

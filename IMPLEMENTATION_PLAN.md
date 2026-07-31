@@ -1,6 +1,6 @@
 # Implementation Plan - Shift Management System
 
-Last updated: 2026-07-30
+Last updated: 2026-07-31
 
 This document is the working implementation plan for the project.  
 The goal is to build the system in small, understandable steps, while keeping each part easy to explain during the final presentation.
@@ -756,25 +756,29 @@ Goal: add internal notifications and satisfy the JMS requirement.
 
 ### Implement
 
-- [ ] Create `Notification`.
+- [x] Create `Notification`.
+- [x] Create `EventOutbox`.
+- [x] Store a pending `schedule.published` outbox event when a schedule is published.
+- [x] Add personal notification list, unread count, and mark-as-read backend endpoints.
 - [ ] Create a basic notification screen.
 - [ ] Create direct notifications when a schedule is published.
-- [ ] Create `NotificationOutbox`.
 - [ ] Add a dispatcher that sends outbox events to JMS.
 - [ ] Add a consumer that creates notifications.
 - [ ] Ensure idempotency with `eventId`.
 
 ### Verify
 
+- [x] Publishing a schedule stores a pending `schedule.published` outbox event.
 - [ ] Publishing a schedule creates a notification.
-- [ ] A user sees only personal notifications.
-- [ ] A notification can be marked as read.
+- [x] A user sees only personal notifications.
+- [x] A notification can be marked as read.
 - [ ] Reprocessing the same event does not create duplicates.
 
 ### Document
 
-- Event flow: publish schedule -> outbox -> JMS -> notification.
-- Existing notification types.
+- [x] Event flow foundation: publish schedule -> event outbox.
+- [ ] Full event flow: publish schedule -> outbox -> JMS -> notification.
+- [x] Existing notification types.
 
 ## Phase 12 - Testing, Hardening, And Submission
 
@@ -1308,3 +1312,16 @@ Still open:
 - Added shared frontend handling for `401 Unauthorized` responses.
 - Expired JWT sessions now clear local storage, reset authenticated screen state, and return to the login screen.
 - The login screen shows `Session expired. Please sign in again.` instead of leaving stale manager or employee data on screen.
+
+### 2026-07-31 - Phase 11 Notification And Event Outbox Foundation
+
+- Added `Notification` and `NotificationType`.
+- Added `EventOutbox` for pending asynchronous system events.
+- Added Flyway migration `V9__create_notifications_and_event_outbox.sql`.
+- Added personal notification APIs for listing notifications, counting unread notifications, and marking a notification as read.
+- Added an idempotent notification creation helper based on `eventId` and recipient.
+- Added `EventOutboxService` to store structured event payloads as JSON.
+- Updated schedule publication so publishing a schedule stores a pending `schedule.published` outbox event.
+- Kept JMS dispatcher and consumer for the next Phase 11 step.
+- Added unit tests for notifications, event outbox behavior, event creation, and schedule-publication event creation.
+- Verified `mvn -Dtest=EventOutboxTest,EventOutboxServiceTest,NotificationTest,NotificationServiceTest,ScheduleServiceTest test` succeeds outside the Codex sandbox.

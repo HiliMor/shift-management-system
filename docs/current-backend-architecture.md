@@ -14,6 +14,7 @@ flowchart LR
     cors["CORS Configuration<br/>Local frontend access"]
     controllers["REST Controllers"]
     services["Application Services<br/>Business Rules"]
+    outbox["Event Outbox<br/>Pending async events"]
     repositories["Spring Data JPA Repositories"]
     database["PostgreSQL Database"]
     flyway["Flyway Migrations"]
@@ -24,7 +25,9 @@ flowchart LR
     cors --> security
     security --> controllers
     controllers --> services
+    services --> outbox
     services --> repositories
+    outbox --> database
     repositories --> database
     flyway --> database
     seed --> repositories
@@ -68,6 +71,8 @@ flowchart TD
     assignment["assignment<br/>Manual assignment workflow and validations"]
     availability["availability<br/>Employee unavailable time ranges"]
     staffing["staffing<br/>Team staffing roles, member-role links, and role assignment API"]
+    messaging["messaging<br/>Event outbox for pending asynchronous events"]
+    notification["notification<br/>Personal notification model and API"]
 
     app --> config
     app --> health
@@ -79,11 +84,14 @@ flowchart TD
     app --> assignment
     app --> availability
     app --> staffing
+    app --> messaging
+    app --> notification
 
     auth --> user
     schedule --> team
     schedule --> shift
     schedule --> assignment
+    schedule --> messaging
     shift --> schedule
     assignment --> shift
     assignment --> team
@@ -93,6 +101,7 @@ flowchart TD
     availability --> user
     availability --> assignment
     staffing --> team
+    notification --> user
 ```
 
 ## Layer Pattern
@@ -137,6 +146,7 @@ erDiagram
     SHIFTS ||--o{ ASSIGNMENTS : receives
     USERS ||--o{ ASSIGNMENTS : assigned
     USERS ||--o{ AVAILABILITY_CONSTRAINTS : declares
+    USERS ||--o{ NOTIFICATIONS : receives
 
     TEAM_MEMBERS ||--o{ TEAM_MEMBER_STAFFING_ROLES : receives
     STAFFING_ROLES ||--o{ TEAM_MEMBER_STAFFING_ROLES : assigned
@@ -223,6 +233,28 @@ erDiagram
         bigint staffing_role_id FK
         timestamptz assigned_at
     }
+
+    NOTIFICATIONS {
+        bigint id PK
+        uuid event_id
+        bigint recipient_id FK
+        varchar type
+        varchar title
+        text message
+        varchar related_entity_type
+        bigint related_entity_id
+        timestamptz created_at
+        timestamptz read_at
+    }
+
+    EVENT_OUTBOX {
+        uuid event_id PK
+        varchar event_type
+        jsonb payload
+        timestamptz created_at
+        timestamptz sent_at
+        integer attempt_count
+    }
 ```
 
 ## Implemented API Areas
@@ -239,6 +271,7 @@ flowchart TD
     assignmentsApi["Assignments<br/>POST /api/assignments<br/>GET /api/schedules/{scheduleId}/assignments<br/>DELETE /api/assignments/{assignmentId}"]
     availabilityApi["Availability Constraints<br/>POST /api/availability-constraints<br/>GET /api/availability-constraints/me<br/>DELETE /api/availability-constraints/{constraintId}"]
     staffingApi["Staffing Roles<br/>POST /api/teams/{teamId}/staffing-roles<br/>GET /api/teams/{teamId}/staffing-roles<br/>POST /api/teams/{teamId}/employees/{employeeId}/staffing-roles<br/>GET /api/teams/{teamId}/employees/{employeeId}/staffing-roles"]
+    notificationApi["Notifications<br/>GET /api/notifications<br/>GET /api/notifications/unread-count<br/>POST /api/notifications/{notificationId}/read"]
 
     api --> healthApi
     api --> authApi
@@ -248,6 +281,7 @@ flowchart TD
     api --> assignmentsApi
     api --> availabilityApi
     api --> staffingApi
+    api --> notificationApi
 ```
 
 Assignment creation validates required staffing roles when a shift has a professional role requirement.
@@ -283,6 +317,8 @@ sequenceDiagram
     participant ScheduleController
     participant ScheduleService
     participant ScheduleRepository
+    participant EventOutboxService
+    participant EventOutboxRepository
 
     Client->>Security: POST /api/schedules/{scheduleId}/publish with Bearer token
     Security->>ScheduleController: authenticated request
@@ -291,8 +327,36 @@ sequenceDiagram
     ScheduleService->>ScheduleService: validate manager and draft status
     ScheduleService->>ScheduleService: require readiness or explicit unfilled confirmation
     ScheduleService->>ScheduleService: mark schedule PUBLISHED
+    ScheduleService->>EventOutboxService: createEvent("schedule.published", payload)
+    EventOutboxService->>EventOutboxRepository: save pending event
     ScheduleService-->>ScheduleController: ScheduleResponse
     ScheduleController-->>Client: 200 OK
+```
+
+### Notification List And Read State
+
+```mermaid
+sequenceDiagram
+    participant Client as React or API Client
+    participant Security as JwtAuthenticationFilter
+    participant NotificationController
+    participant NotificationService
+    participant NotificationRepository
+
+    Client->>Security: GET /api/notifications with Bearer token
+    Security->>NotificationController: authenticated request
+    NotificationController->>NotificationService: listMyNotifications(username)
+    NotificationService->>NotificationRepository: findByRecipient_UsernameOrderByCreatedAtDesc(username)
+    NotificationService-->>NotificationController: NotificationResponse list
+    NotificationController-->>Client: 200 OK
+
+    Client->>Security: POST /api/notifications/{notificationId}/read with Bearer token
+    Security->>NotificationController: authenticated request
+    NotificationController->>NotificationService: markMyNotificationRead(username, notificationId)
+    NotificationService->>NotificationRepository: findByIdAndRecipient_Username(notificationId, username)
+    NotificationService->>NotificationService: set readAt if unread
+    NotificationService-->>NotificationController: NotificationResponse
+    NotificationController-->>Client: 200 OK
 ```
 
 ### Publication Readiness
@@ -445,8 +509,9 @@ flowchart LR
     v6["V6<br/>Staffing roles"]
     v7["V7<br/>Team member staffing roles"]
     v8["V8<br/>Required staffing role on shifts"]
+    v9["V9<br/>Notifications and event outbox"]
 
-    v1 --> v2 --> v3 --> v4 --> v5 --> v6 --> v7 --> v8
+    v1 --> v2 --> v3 --> v4 --> v5 --> v6 --> v7 --> v8 --> v9
 ```
 
 ## Component Responsibilities
@@ -463,5 +528,7 @@ flowchart LR
 | `assignment` | Manual assignment creation/list/delete and business rule validation, including capacity, availability, overlap, rest, and required staffing roles. |
 | `availability` | Employee unavailable time ranges and conflict checks with assignments. |
 | `staffing` | Team-specific professional roles, role create/list API, employee role assignment/list API, and persistence for assigning roles to team members. |
+| `messaging` | Event outbox persistence and event creation for future JMS delivery. |
+| `notification` | Personal notifications, unread count, mark-as-read behavior, and idempotent notification creation. |
 | Flyway migrations | Versioned PostgreSQL schema changes. |
 | PostgreSQL | Persistent relational storage. |
