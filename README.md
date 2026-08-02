@@ -5,7 +5,7 @@ A course project for managing employee shifts across teams.
 The project is being implemented gradually. The current focus is a working
 Spring Boot backend with authentication, teams, schedules, shifts, manual
 assignment rules, availability constraint support, staffing role support, and
-notification/event-outbox foundations, plus the first React frontend screens.
+JMS-backed notification foundations, plus the first React frontend screens.
 
 ## Repository Structure
 
@@ -45,6 +45,9 @@ Implemented:
 - Personal notification list, unread count, and mark-as-read backend endpoints.
 - Event outbox persistence model for asynchronous messaging.
 - Schedule publication records a pending `schedule.published` outbox event.
+- ActiveMQ Artemis JMS configuration.
+- Scheduled outbox dispatcher that sends pending events to JMS.
+- JMS consumer that creates schedule-published notifications for active team members.
 
 Frontend:
 
@@ -65,7 +68,8 @@ Frontend:
 Planned next:
 
 - Swap and transfer requests.
-- JMS dispatcher and consumer for schedule-published notifications.
+- Frontend notification center.
+- Templates and automatic assignment.
 
 ## Backend Documentation
 

@@ -15,6 +15,9 @@ flowchart LR
     controllers["REST Controllers"]
     services["Application Services<br/>Business Rules"]
     outbox["Event Outbox<br/>Pending async events"]
+    dispatcher["Outbox Dispatcher<br/>Scheduled JMS sender"]
+    jms["ActiveMQ Artemis<br/>JMS queue notification.events"]
+    consumer["Notification Event Consumer<br/>JMS listener"]
     repositories["Spring Data JPA Repositories"]
     database["PostgreSQL Database"]
     flyway["Flyway Migrations"]
@@ -28,6 +31,10 @@ flowchart LR
     services --> outbox
     services --> repositories
     outbox --> database
+    dispatcher --> database
+    dispatcher --> jms
+    jms --> consumer
+    consumer --> services
     repositories --> database
     flyway --> database
     seed --> repositories
@@ -71,8 +78,8 @@ flowchart TD
     assignment["assignment<br/>Manual assignment workflow and validations"]
     availability["availability<br/>Employee unavailable time ranges"]
     staffing["staffing<br/>Team staffing roles, member-role links, and role assignment API"]
-    messaging["messaging<br/>Event outbox for pending asynchronous events"]
-    notification["notification<br/>Personal notification model and API"]
+    messaging["messaging<br/>Event outbox, dispatcher, and JMS event message"]
+    notification["notification<br/>Personal notification model, API, and JMS consumer"]
 
     app --> config
     app --> health
@@ -92,6 +99,7 @@ flowchart TD
     schedule --> shift
     schedule --> assignment
     schedule --> messaging
+    messaging --> notification
     shift --> schedule
     assignment --> shift
     assignment --> team
@@ -333,6 +341,31 @@ sequenceDiagram
     ScheduleController-->>Client: 200 OK
 ```
 
+The JMS delivery step happens asynchronously after the publish request returns.
+
+### Outbox JMS Notification Delivery
+
+```mermaid
+sequenceDiagram
+    participant OutboxEventDispatcher
+    participant EventOutboxRepository
+    participant Artemis as ActiveMQ Artemis
+    participant NotificationEventConsumer
+    participant SchedulePublishedNotificationService
+    participant TeamMemberRepository
+    participant NotificationService
+
+    OutboxEventDispatcher->>EventOutboxRepository: findTop50BySentAtIsNullOrderByCreatedAtAsc()
+    EventOutboxRepository-->>OutboxEventDispatcher: pending events
+    OutboxEventDispatcher->>Artemis: send OutboxEventMessage to notification.events
+    OutboxEventDispatcher->>OutboxEventDispatcher: mark event sent
+    Artemis->>NotificationEventConsumer: deliver JMS message
+    NotificationEventConsumer->>NotificationEventConsumer: parse event type and payload
+    NotificationEventConsumer->>SchedulePublishedNotificationService: createNotifications(eventId, schedulePublishedEvent)
+    SchedulePublishedNotificationService->>TeamMemberRepository: find active team members
+    SchedulePublishedNotificationService->>NotificationService: create notification per active member
+```
+
 ### Notification List And Read State
 
 ```mermaid
@@ -528,7 +561,8 @@ flowchart LR
 | `assignment` | Manual assignment creation/list/delete and business rule validation, including capacity, availability, overlap, rest, and required staffing roles. |
 | `availability` | Employee unavailable time ranges and conflict checks with assignments. |
 | `staffing` | Team-specific professional roles, role create/list API, employee role assignment/list API, and persistence for assigning roles to team members. |
-| `messaging` | Event outbox persistence and event creation for future JMS delivery. |
-| `notification` | Personal notifications, unread count, mark-as-read behavior, and idempotent notification creation. |
+| `messaging` | Event outbox persistence, event creation, scheduled outbox dispatch, and JMS message shape. |
+| `notification` | Personal notifications, unread count, mark-as-read behavior, JMS event consumption, schedule-published notification creation, and idempotent notification creation. |
 | Flyway migrations | Versioned PostgreSQL schema changes. |
 | PostgreSQL | Persistent relational storage. |
+| ActiveMQ Artemis | JMS broker used for asynchronous notification events. |

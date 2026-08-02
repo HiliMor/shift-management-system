@@ -1,6 +1,6 @@
 # Implementation Plan - Shift Management System
 
-Last updated: 2026-07-31
+Last updated: 2026-08-02
 
 This document is the working implementation plan for the project.  
 The goal is to build the system in small, understandable steps, while keeping each part easy to explain during the final presentation.
@@ -761,23 +761,23 @@ Goal: add internal notifications and satisfy the JMS requirement.
 - [x] Store a pending `schedule.published` outbox event when a schedule is published.
 - [x] Add personal notification list, unread count, and mark-as-read backend endpoints.
 - [ ] Create a basic notification screen.
-- [ ] Create direct notifications when a schedule is published.
-- [ ] Add a dispatcher that sends outbox events to JMS.
-- [ ] Add a consumer that creates notifications.
-- [ ] Ensure idempotency with `eventId`.
+- [x] Create notifications when a schedule is published.
+- [x] Add a dispatcher that sends outbox events to JMS.
+- [x] Add a consumer that creates notifications.
+- [x] Ensure idempotency with `eventId`.
 
 ### Verify
 
 - [x] Publishing a schedule stores a pending `schedule.published` outbox event.
-- [ ] Publishing a schedule creates a notification.
+- [x] Publishing a schedule creates a notification.
 - [x] A user sees only personal notifications.
 - [x] A notification can be marked as read.
-- [ ] Reprocessing the same event does not create duplicates.
+- [x] Reprocessing the same event does not create duplicates.
 
 ### Document
 
 - [x] Event flow foundation: publish schedule -> event outbox.
-- [ ] Full event flow: publish schedule -> outbox -> JMS -> notification.
+- [x] Full event flow: publish schedule -> outbox -> JMS -> notification.
 - [x] Existing notification types.
 
 ## Phase 12 - Testing, Hardening, And Submission
@@ -1325,3 +1325,21 @@ Still open:
 - Kept JMS dispatcher and consumer for the next Phase 11 step.
 - Added unit tests for notifications, event outbox behavior, event creation, and schedule-publication event creation.
 - Verified `mvn -Dtest=EventOutboxTest,EventOutboxServiceTest,NotificationTest,NotificationServiceTest,ScheduleServiceTest test` succeeds outside the Codex sandbox.
+
+### 2026-08-02 - Phase 11 JMS Notification Delivery
+
+- Added Spring JMS support with ActiveMQ Artemis.
+- Added ActiveMQ Artemis to `compose.yml`.
+- Added JMS connection settings and notification queue configuration in `application.yml`.
+- Enabled JMS listeners and scheduling in the Spring Boot application.
+- Added `OutboxEventDispatcher` to poll unsent `event_outbox` rows and send them to JMS queue `notification.events`.
+- Added `OutboxEventMessage` as the message shape sent through JMS.
+- Added `NotificationEventConsumer` to consume notification events from JMS.
+- Added `SchedulePublishedNotificationService` to create schedule-published notifications for active team members.
+- Kept notification creation idempotent by `eventId` and recipient.
+- Added tests for dispatcher success/failure behavior, JMS consumer routing, and schedule-published notification creation.
+- Verified focused JMS/notification tests succeed outside the Codex sandbox.
+- Verified ActiveMQ Artemis starts from Docker Compose.
+- Verified the backend starts with PostgreSQL and ActiveMQ Artemis.
+- Verified an end-to-end smoke test: publishing a schedule creates an employee notification through outbox -> JMS -> consumer.
+- Verified the created notification can be marked as read and the unread count updates.

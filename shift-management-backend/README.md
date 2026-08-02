@@ -16,7 +16,7 @@ Implemented:
 - Public health endpoint: `GET /api/health`.
 - Minimal Spring Security configuration.
 - PostgreSQL connection configuration.
-- Local PostgreSQL Docker Compose file.
+- Local PostgreSQL and ActiveMQ Artemis Docker Compose file.
 - Flyway database migrations.
 - Initial user and team domain model.
 - Spring Data repositories for users, teams, team members, and team managers.
@@ -65,13 +65,16 @@ Implemented:
 - Mark notification as read endpoint: `POST /api/notifications/{notificationId}/read`.
 - Event outbox persistence model for pending asynchronous events.
 - Schedule publication records a pending `schedule.published` event in `event_outbox`.
+- Spring JMS configuration with ActiveMQ Artemis.
+- Scheduled outbox dispatcher that sends pending events to JMS queue `notification.events`.
+- JMS consumer that creates schedule-published notifications for active team members.
+- Notification creation is idempotent by `eventId` and recipient.
 
 Not implemented yet:
 
 - Schedule list, update, and delete endpoints.
 - Assignment transfer endpoints.
 - Automatic assignment.
-- JMS dispatcher and consumer for delivering outbox events.
 - Frontend notification center.
 - Remaining team-scoped authorization for future manager workflows.
 
@@ -79,15 +82,21 @@ Not implemented yet:
 
 - Java 21
 - Maven
-- Docker Desktop, for local PostgreSQL
+- Docker Desktop, for local PostgreSQL and ActiveMQ Artemis
 
-## Run PostgreSQL
+## Run PostgreSQL And ActiveMQ Artemis
 
 From this directory:
 
 ```bash
 docker compose up -d
 ```
+
+The backend expects:
+
+- PostgreSQL on `localhost:5432`
+- ActiveMQ Artemis JMS on `localhost:61616`
+- ActiveMQ Artemis console on `http://localhost:8161`
 
 ## Run The Backend
 
@@ -284,6 +293,8 @@ Only managers assigned to the schedule's team can publish it.
 Only draft schedules can be published.
 Publishing sets the schedule status to `PUBLISHED`, records `publishedAt`, and increments `publicationNumber`.
 Publishing also stores a pending `schedule.published` event in `event_outbox`.
+The scheduled outbox dispatcher sends this event to JMS queue `notification.events`.
+The JMS consumer creates one notification for each active member of the schedule's team.
 Publishing without a request body is allowed only when the schedule readiness report has `readyToPublish: true`.
 When the readiness report has `readyToPublish: false`, publishing without confirmation returns `409 Conflict`.
 

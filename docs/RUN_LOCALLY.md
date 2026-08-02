@@ -7,7 +7,7 @@ development or presentation.
 
 - Java 21
 - Maven
-- Docker Desktop
+- Docker Desktop, for PostgreSQL and ActiveMQ Artemis
 - Node.js 20 or newer
 - pnpm
 
@@ -21,7 +21,7 @@ node -v
 pnpm -v
 ```
 
-## 1. Start PostgreSQL
+## 1. Start PostgreSQL And ActiveMQ Artemis
 
 From the backend directory:
 
@@ -31,7 +31,15 @@ docker compose up -d
 ```
 
 The backend uses PostgreSQL and applies database migrations with Flyway when it
-starts.
+starts. It also uses ActiveMQ Artemis for JMS notification events.
+
+Local infrastructure ports:
+
+| Service | URL or port |
+| --- | --- |
+| PostgreSQL | `localhost:5432` |
+| ActiveMQ Artemis JMS | `localhost:61616` |
+| ActiveMQ Artemis console | `http://localhost:8161` |
 
 ## 2. Start The Backend
 
@@ -108,7 +116,7 @@ VITE_API_BASE_URL=http://localhost:8081 pnpm dev
 
 Stop backend and frontend terminal processes with `Ctrl+C`.
 
-To stop PostgreSQL:
+To stop PostgreSQL and ActiveMQ Artemis:
 
 ```bash
 cd "/Users/hilimor/Java project/shift-management-backend"
