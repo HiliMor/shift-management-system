@@ -101,3 +101,18 @@ export function createAssignment(token, assignment) {
     body: JSON.stringify(assignment),
   });
 }
+
+export function listMyNotifications(token) {
+  return request("/api/notifications", { token });
+}
+
+export function countMyUnreadNotifications(token) {
+  return request("/api/notifications/unread-count", { token });
+}
+
+export function markNotificationRead(token, notificationId) {
+  return request(`/api/notifications/${notificationId}/read`, {
+    method: "POST",
+    token,
+  });
+}

@@ -58,6 +58,9 @@ The current frontend is intentionally small. It is responsible for:
 - Loading active team employees from `GET /api/teams/{teamId}/employees`.
 - Loading draft schedule assignments from `GET /api/schedules/{scheduleId}/assignments`.
 - Creating manual assignments through `POST /api/assignments`.
+- Loading personal notifications from `GET /api/notifications`.
+- Loading unread notification count from `GET /api/notifications/unread-count`.
+- Marking a personal notification as read through `POST /api/notifications/{notificationId}/read`.
 
 The backend remains the authority for authentication, authorization, validation,
 business rules, and persistence.

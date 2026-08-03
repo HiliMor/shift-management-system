@@ -1,6 +1,6 @@
 # Implementation Plan - Shift Management System
 
-Last updated: 2026-08-02
+Last updated: 2026-08-03
 
 This document is the working implementation plan for the project.  
 The goal is to build the system in small, understandable steps, while keeping each part easy to explain during the final presentation.
@@ -760,7 +760,7 @@ Goal: add internal notifications and satisfy the JMS requirement.
 - [x] Create `EventOutbox`.
 - [x] Store a pending `schedule.published` outbox event when a schedule is published.
 - [x] Add personal notification list, unread count, and mark-as-read backend endpoints.
-- [ ] Create a basic notification screen.
+- [x] Create a basic notification screen.
 - [x] Create notifications when a schedule is published.
 - [x] Add a dispatcher that sends outbox events to JMS.
 - [x] Add a consumer that creates notifications.
@@ -1343,3 +1343,12 @@ Still open:
 - Verified the backend starts with PostgreSQL and ActiveMQ Artemis.
 - Verified an end-to-end smoke test: publishing a schedule creates an employee notification through outbox -> JMS -> consumer.
 - Verified the created notification can be marked as read and the unread count updates.
+
+### 2026-08-03 - Frontend Notification Center
+
+- Added frontend API calls for personal notification list, unread count, and mark-as-read.
+- Added an authenticated notification center to the React workspace.
+- Added unread count display in the sidebar and notification section.
+- Added a manual refresh action so users can reload notifications after asynchronous JMS delivery.
+- Added mark-as-read behavior that updates the notification list and unread count in the UI.
+- Updated project documentation to reflect that the notification center is implemented.

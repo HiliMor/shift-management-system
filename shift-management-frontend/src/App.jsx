@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import {
+  countMyUnreadNotifications,
   createAssignment,
   createSchedule,
   createShift,
@@ -12,6 +13,8 @@ import {
   listShifts,
   listTeamEmployees,
   login,
+  listMyNotifications,
+  markNotificationRead,
 } from "./api.js";
 
 const STORAGE_KEY = "shift-management-session";
@@ -115,6 +118,12 @@ function App() {
   const [createdAssignment, setCreatedAssignment] = useState(null);
   const [assignmentCreationError, setAssignmentCreationError] = useState("");
   const [isCreatingAssignment, setIsCreatingAssignment] = useState(false);
+  const [notifications, setNotifications] = useState([]);
+  const [unreadNotificationCount, setUnreadNotificationCount] = useState(0);
+  const [notificationsError, setNotificationsError] = useState("");
+  const [isLoadingNotifications, setIsLoadingNotifications] = useState(false);
+  const [markingNotificationId, setMarkingNotificationId] = useState(null);
+  const [notificationRefreshKey, setNotificationRefreshKey] = useState(0);
 
   const isManager = session?.user?.applicationRole === "MANAGER";
 
@@ -176,6 +185,11 @@ function App() {
     setScheduleAssignmentsError("");
     setCreatedAssignment(null);
     setAssignmentCreationError("");
+    setNotifications([]);
+    setUnreadNotificationCount(0);
+    setNotificationsError("");
+    setMarkingNotificationId(null);
+    setNotificationRefreshKey(0);
   }
 
   function expireSession() {
@@ -209,6 +223,29 @@ function App() {
       .catch((error) => handleApiError(error, setScheduleError))
       .finally(() => setIsLoadingSchedules(false));
   }, [session]);
+
+  useEffect(() => {
+    if (!session?.accessToken) {
+      setNotifications([]);
+      setUnreadNotificationCount(0);
+      setNotificationsError("");
+      return;
+    }
+
+    setIsLoadingNotifications(true);
+    setNotificationsError("");
+
+    Promise.all([
+      listMyNotifications(session.accessToken),
+      countMyUnreadNotifications(session.accessToken),
+    ])
+      .then(([notificationList, unreadCount]) => {
+        setNotifications(notificationList);
+        setUnreadNotificationCount(unreadCount.unreadCount);
+      })
+      .catch((error) => handleApiError(error, setNotificationsError))
+      .finally(() => setIsLoadingNotifications(false));
+  }, [notificationRefreshKey, session]);
 
   useEffect(() => {
     if (!session?.accessToken || !selectedScheduleId) {
@@ -521,6 +558,31 @@ function App() {
     }
   }
 
+  async function handleMarkNotificationRead(notificationId) {
+    setMarkingNotificationId(notificationId);
+    setNotificationsError("");
+
+    try {
+      const updatedNotification = await markNotificationRead(session.accessToken, notificationId);
+      const wasUnread = notifications.some(
+        (notification) => notification.id === updatedNotification.id && !notification.read,
+      );
+
+      setNotifications((current) =>
+        current.map((notification) =>
+          notification.id === updatedNotification.id ? updatedNotification : notification,
+        ),
+      );
+      if (wasUnread) {
+        setUnreadNotificationCount((current) => Math.max(0, current - 1));
+      }
+    } catch (error) {
+      handleApiError(error, setNotificationsError);
+    } finally {
+      setMarkingNotificationId(null);
+    }
+  }
+
   if (!session) {
     return (
       <main className="auth-layout">
@@ -576,6 +638,10 @@ function App() {
           <a className="active-link" href="#schedules">
             Published schedules
           </a>
+          <a href="#notifications">
+            Notifications
+            {unreadNotificationCount > 0 ? <span className="nav-count">{unreadNotificationCount}</span> : null}
+          </a>
           {isManager ? <a href="#manager">Manager actions</a> : null}
         </nav>
       </aside>
@@ -591,6 +657,65 @@ function App() {
             Sign out
           </button>
         </header>
+
+        <section className="section-block" id="notifications">
+          <div className="section-heading">
+            <h2>Notifications</h2>
+            <div className="section-actions">
+              <span>{unreadNotificationCount} unread</span>
+              <button
+                className="secondary-button compact-button"
+                disabled={isLoadingNotifications}
+                onClick={() => setNotificationRefreshKey((current) => current + 1)}
+                type="button"
+              >
+                Refresh
+              </button>
+            </div>
+          </div>
+
+          {isLoadingNotifications ? <p className="muted">Loading notifications...</p> : null}
+          {notificationsError ? <p className="error-message">{notificationsError}</p> : null}
+
+          {!isLoadingNotifications && !notificationsError && notifications.length === 0 ? (
+            <p className="muted">No notifications are available for this user.</p>
+          ) : null}
+
+          {notifications.length > 0 ? (
+            <div className="notification-list">
+              {notifications.map((notification) => (
+                <article
+                  className={notification.read ? "notification-row" : "notification-row unread-notification"}
+                  key={notification.id}
+                >
+                  <div>
+                    <div className="notification-title-row">
+                      <h3>{notification.title}</h3>
+                      {!notification.read ? <span>Unread</span> : null}
+                    </div>
+                    <p>{notification.message}</p>
+                    <p className="notification-meta">
+                      {notification.type} - {formatDateTime(notification.createdAt)}
+                    </p>
+                  </div>
+
+                  {!notification.read ? (
+                    <button
+                      className="secondary-button compact-button"
+                      disabled={markingNotificationId === notification.id}
+                      onClick={() => handleMarkNotificationRead(notification.id)}
+                      type="button"
+                    >
+                      {markingNotificationId === notification.id ? "Updating..." : "Mark as read"}
+                    </button>
+                  ) : (
+                    <span className="read-state">Read</span>
+                  )}
+                </article>
+              ))}
+            </div>
+          ) : null}
+        </section>
 
         <section className="section-block" id="schedules">
           <div className="section-heading">

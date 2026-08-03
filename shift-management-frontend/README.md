@@ -17,6 +17,7 @@ For end-to-end local run instructions, see:
 - Create schedule - manager-only form for creating a draft schedule for a managed team.
 - Create shift - manager-only form for adding shifts to a managed draft schedule.
 - Assign employee - manager-only form for manually assigning an active team employee to a draft shift.
+- Notifications - authenticated screen section that lists personal notifications, shows unread count, and marks notifications as read.
 
 ## Run Locally
 

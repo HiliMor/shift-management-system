@@ -75,7 +75,6 @@ Not implemented yet:
 - Schedule list, update, and delete endpoints.
 - Assignment transfer endpoints.
 - Automatic assignment.
-- Frontend notification center.
 - Remaining team-scoped authorization for future manager workflows.
 
 ## Requirements
