@@ -48,6 +48,8 @@ Implemented:
 - ActiveMQ Artemis JMS configuration.
 - Scheduled outbox dispatcher that sends pending events to JMS.
 - JMS consumer that creates schedule-published notifications for active team members.
+- Transfer request persistence model.
+- Transfer request creation endpoint for published assignments.
 
 Frontend:
 
@@ -68,7 +70,7 @@ Frontend:
 
 Planned next:
 
-- Swap and transfer requests.
+- Transfer approval and full swap requests.
 - Templates and automatic assignment.
 
 ## Backend Documentation

@@ -69,11 +69,14 @@ Implemented:
 - Scheduled outbox dispatcher that sends pending events to JMS queue `notification.events`.
 - JMS consumer that creates schedule-published notifications for active team members.
 - Notification creation is idempotent by `eventId` and recipient.
+- Transfer request persistence model.
+- Transfer request creation endpoint: `POST /api/requests/transfers`.
 
 Not implemented yet:
 
 - Schedule list, update, and delete endpoints.
-- Assignment transfer endpoints.
+- Transfer approval and assignment move execution.
+- Full shift swap endpoints.
 - Automatic assignment.
 - Remaining team-scoped authorization for future manager workflows.
 
@@ -708,6 +711,52 @@ Scheduling validation failures return a stable error code:
   "message": "Employee does not have the staffing role required for this shift"
 }
 ```
+
+## Transfer Request Endpoints
+
+Create a transfer request for one of the authenticated employee's published assignments:
+
+```bash
+curl -X POST http://localhost:8080/api/requests/transfers \
+  -H 'Content-Type: application/json' \
+  -H "Authorization: Bearer <TOKEN>" \
+  -d '{"sourceAssignmentId":1,"targetEmployeeId":3}'
+```
+
+Expected response:
+
+```json
+{
+  "id": 1,
+  "type": "TRANSFER",
+  "status": "PENDING_EMPLOYEE",
+  "requesterId": 2,
+  "requesterUsername": "employee1",
+  "requesterFullName": "Demo Employee One",
+  "sourceAssignmentId": 1,
+  "sourceShiftId": 1,
+  "targetEmployeeId": 3,
+  "targetEmployeeUsername": "employee2",
+  "targetEmployeeFullName": "Demo Employee Two",
+  "targetAssignmentId": null,
+  "employeeApprovedAt": null,
+  "managerApprovedById": null,
+  "managerApprovedAt": null,
+  "createdAt": "2026-08-04T18:00:00.000000Z",
+  "updatedAt": "2026-08-04T18:00:00.000000Z"
+}
+```
+
+Current transfer request rules:
+
+1. Only an `EMPLOYEE` user can create a transfer request.
+2. The source assignment must belong to the authenticated employee.
+3. The source assignment must belong to a `PUBLISHED` schedule.
+4. The target employee must be a different `EMPLOYEE` user.
+5. The target employee must be an active member of the source shift's team.
+6. Only one active request can exist for the same source assignment.
+
+This endpoint creates the request only. Target approval, manager approval, and the final assignment move are planned next.
 
 ## Availability Constraint Endpoints
 

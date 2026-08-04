@@ -1,6 +1,6 @@
 # Implementation Plan - Shift Management System
 
-Last updated: 2026-08-03
+Last updated: 2026-08-04
 
 This document is the working implementation plan for the project.  
 The goal is to build the system in small, understandable steps, while keeping each part easy to explain during the final presentation.
@@ -687,9 +687,9 @@ Goal: allow employees to transfer a shift or request a shift swap.
 
 ### Implement
 
-- [ ] Create `SwapRequest`.
-- [ ] Start with transfer only.
-- [ ] Add statuses: `PENDING_EMPLOYEE`, `APPROVED`, `REJECTED`, `CANCELLED`, `INVALIDATED`.
+- [x] Create `SwapRequest`.
+- [x] Start with transfer only.
+- [x] Add statuses: `PENDING_EMPLOYEE`, `PENDING_MANAGER`, `APPROVED`, `REJECTED`, `CANCELLED`, `INVALIDATED`.
 - [ ] Allow the target employee to approve or reject.
 - [ ] Run assignment validations before final approval.
 - [ ] Move the assignment to the target employee after transfer approval.
@@ -698,7 +698,7 @@ Goal: allow employees to transfer a shift or request a shift swap.
 
 ### Verify
 
-- [ ] An employee can create a transfer request.
+- [x] An employee can create a transfer request.
 - [ ] The target employee can approve it.
 - [ ] Another employee cannot approve a request not addressed to them.
 - [ ] A request becomes invalidated if assignment is no longer possible.
@@ -1352,3 +1352,15 @@ Still open:
 - Added a manual refresh action so users can reload notifications after asynchronous JMS delivery.
 - Added mark-as-read behavior that updates the notification list and unread count in the UI.
 - Updated project documentation to reflect that the notification center is implemented.
+
+### 2026-08-04 - Transfer Request MVP
+
+- Added `SwapRequest`, `SwapRequestType`, and `SwapRequestStatus`.
+- Added Flyway migration `V10__create_swap_requests.sql`.
+- Added `POST /api/requests/transfers` for creating transfer requests.
+- Transfer request creation currently supports only the first workflow step: requester creates a `TRANSFER` request in `PENDING_EMPLOYEE`.
+- Validation ensures the requester is an employee, owns the source assignment, the source schedule is published, the target is a different employee, the target is an active member of the shift team, and there is no active request for the same source assignment.
+- Added focused unit tests for the transfer request model and service.
+- Verified focused request tests succeed outside the Codex sandbox.
+- Verified the full backend test suite succeeds outside the Codex sandbox.
+- Verified Spring Boot starts against PostgreSQL and ActiveMQ Artemis, Flyway migrates the schema to `V10`, and Hibernate validates the mappings.

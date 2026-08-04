@@ -79,6 +79,7 @@ flowchart TD
     schedule["schedule<br/>Draft schedule creation, publication, reopening, readiness, and employee published views"]
     shift["shift<br/>Shift CRUD inside schedules"]
     assignment["assignment<br/>Manual assignment workflow and validations"]
+    request["request<br/>Transfer and swap request workflow"]
     availability["availability<br/>Employee unavailable time ranges"]
     staffing["staffing<br/>Team staffing roles, member-role links, and role assignment API"]
     messaging["messaging<br/>Event outbox, dispatcher, and JMS event message"]
@@ -92,6 +93,7 @@ flowchart TD
     app --> schedule
     app --> shift
     app --> assignment
+    app --> request
     app --> availability
     app --> staffing
     app --> messaging
@@ -109,6 +111,9 @@ flowchart TD
     assignment --> user
     assignment --> availability
     assignment --> staffing
+    request --> assignment
+    request --> team
+    request --> user
     availability --> user
     availability --> assignment
     staffing --> team
@@ -158,6 +163,11 @@ erDiagram
     USERS ||--o{ ASSIGNMENTS : assigned
     USERS ||--o{ AVAILABILITY_CONSTRAINTS : declares
     USERS ||--o{ NOTIFICATIONS : receives
+    USERS ||--o{ SWAP_REQUESTS : requests
+    USERS ||--o{ SWAP_REQUESTS : receives_transfer
+    USERS ||--o{ SWAP_REQUESTS : manager_approves
+    ASSIGNMENTS ||--o{ SWAP_REQUESTS : source
+    ASSIGNMENTS |o--o{ SWAP_REQUESTS : target
 
     TEAM_MEMBERS ||--o{ TEAM_MEMBER_STAFFING_ROLES : receives
     STAFFING_ROLES ||--o{ TEAM_MEMBER_STAFFING_ROLES : assigned
@@ -258,6 +268,22 @@ erDiagram
         timestamptz read_at
     }
 
+    SWAP_REQUESTS {
+        bigint id PK
+        varchar type
+        bigint requester_id FK
+        bigint source_assignment_id FK
+        bigint target_employee_id FK
+        bigint target_assignment_id FK
+        varchar status
+        timestamptz employee_approved_at
+        bigint manager_approved_by FK
+        timestamptz manager_approved_at
+        timestamptz created_at
+        timestamptz updated_at
+        bigint version
+    }
+
     EVENT_OUTBOX {
         uuid event_id PK
         varchar event_type
@@ -283,6 +309,7 @@ flowchart TD
     availabilityApi["Availability Constraints<br/>POST /api/availability-constraints<br/>GET /api/availability-constraints/me<br/>DELETE /api/availability-constraints/{constraintId}"]
     staffingApi["Staffing Roles<br/>POST /api/teams/{teamId}/staffing-roles<br/>GET /api/teams/{teamId}/staffing-roles<br/>POST /api/teams/{teamId}/employees/{employeeId}/staffing-roles<br/>GET /api/teams/{teamId}/employees/{employeeId}/staffing-roles"]
     notificationApi["Notifications<br/>GET /api/notifications<br/>GET /api/notifications/unread-count<br/>POST /api/notifications/{notificationId}/read"]
+    requestsApi["Requests<br/>POST /api/requests/transfers"]
 
     api --> healthApi
     api --> authApi
@@ -293,6 +320,7 @@ flowchart TD
     api --> availabilityApi
     api --> staffingApi
     api --> notificationApi
+    api --> requestsApi
 ```
 
 Assignment creation validates required staffing roles when a shift has a professional role requirement.
@@ -533,6 +561,29 @@ sequenceDiagram
     AvailabilityConstraintController-->>Client: 201 Created
 ```
 
+### Transfer Request Creation
+
+```mermaid
+sequenceDiagram
+    participant Client as React or API Client
+    participant Security
+    participant SwapRequestController
+    participant SwapRequestService
+    participant Repositories
+    participant Database
+
+    Client->>Security: POST /api/requests/transfers with Bearer token
+    Security->>SwapRequestController: authenticated request
+    SwapRequestController->>SwapRequestService: createTransferRequest(username, request)
+    SwapRequestService->>Repositories: load requester, source assignment, target employee
+    Repositories->>Database: queries
+    SwapRequestService->>SwapRequestService: validate employee requester, ownership, published schedule, target team membership, no active request
+    SwapRequestService->>Repositories: save SwapRequest
+    Repositories->>Database: insert swap_requests row
+    SwapRequestService-->>SwapRequestController: SwapRequestResponse
+    SwapRequestController-->>Client: 201 Created
+```
+
 ## Database Migration Timeline
 
 ```mermaid
@@ -546,8 +597,9 @@ flowchart LR
     v7["V7<br/>Team member staffing roles"]
     v8["V8<br/>Required staffing role on shifts"]
     v9["V9<br/>Notifications and event outbox"]
+    v10["V10<br/>Swap requests"]
 
-    v1 --> v2 --> v3 --> v4 --> v5 --> v6 --> v7 --> v8 --> v9
+    v1 --> v2 --> v3 --> v4 --> v5 --> v6 --> v7 --> v8 --> v9 --> v10
 ```
 
 ## Component Responsibilities
@@ -562,6 +614,7 @@ flowchart LR
 | `schedule` | Draft schedule creation, managed draft schedule listing, schedule publication, explicit unfilled-publication confirmation, schedule reopening, publication readiness, employee published schedule list/details, and schedule lifecycle state fields. |
 | `shift` | Shift creation, listing, update, deletion, schedule-range validation, and optional required staffing role storage. |
 | `assignment` | Manual assignment creation/list/delete and business rule validation, including capacity, availability, overlap, rest, and required staffing roles. |
+| `request` | Transfer and swap request model, request statuses, and current transfer request creation workflow. |
 | `availability` | Employee unavailable time ranges and conflict checks with assignments. |
 | `staffing` | Team-specific professional roles, role create/list API, employee role assignment/list API, and persistence for assigning roles to team members. |
 | `messaging` | Event outbox persistence, event creation, scheduled outbox dispatch, and JMS message shape. |
