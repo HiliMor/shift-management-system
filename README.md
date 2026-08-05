@@ -50,6 +50,7 @@ Implemented:
 - JMS consumer that creates schedule-published notifications for active team members.
 - Transfer request persistence model.
 - Transfer request creation endpoint for published assignments.
+- Target employee approval endpoint for transfer requests.
 
 Frontend:
 
@@ -70,7 +71,7 @@ Frontend:
 
 Planned next:
 
-- Transfer approval and full swap requests.
+- Transfer execution, manager approval, and full swap requests.
 - Templates and automatic assignment.
 
 ## Backend Documentation

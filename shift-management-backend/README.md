@@ -71,11 +71,13 @@ Implemented:
 - Notification creation is idempotent by `eventId` and recipient.
 - Transfer request persistence model.
 - Transfer request creation endpoint: `POST /api/requests/transfers`.
+- Target employee approval endpoint: `POST /api/requests/{requestId}/employee-approve`.
 
 Not implemented yet:
 
 - Schedule list, update, and delete endpoints.
-- Transfer approval and assignment move execution.
+- Transfer assignment move execution.
+- Manager approval for teams with `MANAGER` approval policy.
 - Full shift swap endpoints.
 - Automatic assignment.
 - Remaining team-scoped authorization for future manager workflows.
@@ -756,7 +758,45 @@ Current transfer request rules:
 5. The target employee must be an active member of the source shift's team.
 6. Only one active request can exist for the same source assignment.
 
-This endpoint creates the request only. Target approval, manager approval, and the final assignment move are planned next.
+Approve an incoming transfer request as the target employee:
+
+```bash
+curl -X POST http://localhost:8080/api/requests/1/employee-approve \
+  -H "Authorization: Bearer <TOKEN>"
+```
+
+Expected response for a team with `MANAGER` approval policy:
+
+```json
+{
+  "id": 1,
+  "type": "TRANSFER",
+  "status": "PENDING_MANAGER",
+  "requesterId": 2,
+  "requesterUsername": "employee1",
+  "requesterFullName": "Demo Employee One",
+  "sourceAssignmentId": 1,
+  "sourceShiftId": 1,
+  "targetEmployeeId": 3,
+  "targetEmployeeUsername": "employee2",
+  "targetEmployeeFullName": "Demo Employee Two",
+  "targetAssignmentId": null,
+  "employeeApprovedAt": "2026-08-05T18:00:00.000000Z",
+  "managerApprovedById": null,
+  "managerApprovedAt": null,
+  "createdAt": "2026-08-04T18:00:00.000000Z",
+  "updatedAt": "2026-08-05T18:00:00.000000Z"
+}
+```
+
+Employee approval rules:
+
+1. Only the target employee can approve the request.
+2. Requests can be approved only while their status is `PENDING_EMPLOYEE`.
+3. If the team's approval policy is `EMPLOYEE`, the request status becomes `APPROVED`.
+4. If the team's approval policy is `MANAGER`, the request status becomes `PENDING_MANAGER`.
+
+These endpoints create and approve the request state only. Manager approval and the final assignment move are planned next.
 
 ## Availability Constraint Endpoints
 

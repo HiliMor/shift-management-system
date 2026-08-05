@@ -4,6 +4,7 @@ import java.time.Instant;
 import java.util.Objects;
 
 import com.hilimor.shiftmanagement.assignment.Assignment;
+import com.hilimor.shiftmanagement.team.SwapApprovalPolicy;
 import com.hilimor.shiftmanagement.user.User;
 
 import jakarta.persistence.Column;
@@ -115,6 +116,21 @@ public class SwapRequest {
                 SwapRequestStatus.PENDING_EMPLOYEE,
                 createdAt
         );
+    }
+
+    public void approveByTargetEmployee(Instant approvedAt, SwapApprovalPolicy approvalPolicy) {
+        Objects.requireNonNull(approvedAt, "approvedAt must not be null");
+        Objects.requireNonNull(approvalPolicy, "approvalPolicy must not be null");
+
+        if (status != SwapRequestStatus.PENDING_EMPLOYEE) {
+            throw new IllegalStateException("Only requests pending employee approval can be approved by the target employee");
+        }
+
+        employeeApprovedAt = approvedAt;
+        updatedAt = approvedAt;
+        status = approvalPolicy == SwapApprovalPolicy.MANAGER
+                ? SwapRequestStatus.PENDING_MANAGER
+                : SwapRequestStatus.APPROVED;
     }
 
     public Long getId() {

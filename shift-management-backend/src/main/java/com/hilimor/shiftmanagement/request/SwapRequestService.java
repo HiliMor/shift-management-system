@@ -92,6 +92,30 @@ public class SwapRequestService {
         return SwapRequestResponse.from(swapRequestRepository.save(swapRequest));
     }
 
+    @Transactional
+    public SwapRequestResponse approveByTargetEmployee(String username, Long requestId) {
+        User targetEmployee = currentUser(username);
+        requireEmployee(targetEmployee, "Only employees can approve incoming transfer requests");
+
+        SwapRequest request = swapRequestRepository.findById(requestId)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Request not found"));
+
+        if (!Objects.equals(request.getTargetEmployee().getId(), targetEmployee.getId())) {
+            throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Request not found");
+        }
+
+        try {
+            request.approveByTargetEmployee(
+                    Instant.now(),
+                    request.getSourceAssignment().getShift().getSchedule().getTeam().getSwapApprovalPolicy()
+            );
+        } catch (IllegalStateException exception) {
+            throw new ResponseStatusException(HttpStatus.CONFLICT, exception.getMessage(), exception);
+        }
+
+        return SwapRequestResponse.from(request);
+    }
+
     private User currentUser(String username) {
         return userRepository.findByUsername(username)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Authenticated user not found"));

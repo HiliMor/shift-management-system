@@ -51,6 +51,52 @@ class SwapRequestTest {
         )).isInstanceOf(NullPointerException.class);
     }
 
+    @Test
+    void approveByTargetEmployeeApprovesRequestWhenPolicyIsEmployee() {
+        SwapRequest request = transferRequest();
+        Instant approvedAt = Instant.parse("2026-08-04T19:00:00Z");
+
+        request.approveByTargetEmployee(approvedAt, SwapApprovalPolicy.EMPLOYEE);
+
+        assertThat(request.getStatus()).isEqualTo(SwapRequestStatus.APPROVED);
+        assertThat(request.getEmployeeApprovedAt()).isEqualTo(approvedAt);
+        assertThat(request.getUpdatedAt()).isEqualTo(approvedAt);
+    }
+
+    @Test
+    void approveByTargetEmployeeMovesRequestToManagerApprovalWhenPolicyIsManager() {
+        SwapRequest request = transferRequest();
+        Instant approvedAt = Instant.parse("2026-08-04T19:00:00Z");
+
+        request.approveByTargetEmployee(approvedAt, SwapApprovalPolicy.MANAGER);
+
+        assertThat(request.getStatus()).isEqualTo(SwapRequestStatus.PENDING_MANAGER);
+        assertThat(request.getEmployeeApprovedAt()).isEqualTo(approvedAt);
+        assertThat(request.getUpdatedAt()).isEqualTo(approvedAt);
+    }
+
+    @Test
+    void approveByTargetEmployeeRejectsRequestThatIsNotPendingEmployeeApproval() {
+        SwapRequest request = transferRequest();
+        request.approveByTargetEmployee(Instant.parse("2026-08-04T19:00:00Z"), SwapApprovalPolicy.MANAGER);
+
+        assertThatThrownBy(() -> request.approveByTargetEmployee(
+                Instant.parse("2026-08-04T20:00:00Z"),
+                SwapApprovalPolicy.MANAGER
+        )).isInstanceOf(IllegalStateException.class);
+    }
+
+    private SwapRequest transferRequest() {
+        User requester = user("employee1", 2L);
+        User targetEmployee = user("employee2", 3L);
+        return SwapRequest.createTransfer(
+                requester,
+                assignment(requester),
+                targetEmployee,
+                Instant.parse("2026-08-04T18:00:00Z")
+        );
+    }
+
     private Assignment assignment(User employee) {
         Team team = new Team("Operations", SwapApprovalPolicy.MANAGER, 8, "Asia/Jerusalem");
         ReflectionTestUtils.setField(team, "id", 1L);

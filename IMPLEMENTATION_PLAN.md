@@ -1,6 +1,6 @@
 # Implementation Plan - Shift Management System
 
-Last updated: 2026-08-04
+Last updated: 2026-08-05
 
 This document is the working implementation plan for the project.  
 The goal is to build the system in small, understandable steps, while keeping each part easy to explain during the final presentation.
@@ -690,7 +690,8 @@ Goal: allow employees to transfer a shift or request a shift swap.
 - [x] Create `SwapRequest`.
 - [x] Start with transfer only.
 - [x] Add statuses: `PENDING_EMPLOYEE`, `PENDING_MANAGER`, `APPROVED`, `REJECTED`, `CANCELLED`, `INVALIDATED`.
-- [ ] Allow the target employee to approve or reject.
+- [x] Allow the target employee to approve.
+- [ ] Allow the target employee to reject.
 - [ ] Run assignment validations before final approval.
 - [ ] Move the assignment to the target employee after transfer approval.
 - [ ] Add full swap.
@@ -699,8 +700,8 @@ Goal: allow employees to transfer a shift or request a shift swap.
 ### Verify
 
 - [x] An employee can create a transfer request.
-- [ ] The target employee can approve it.
-- [ ] Another employee cannot approve a request not addressed to them.
+- [x] The target employee can approve it.
+- [x] Another employee cannot approve a request not addressed to them.
 - [ ] A request becomes invalidated if assignment is no longer possible.
 - [ ] A swap exchanges two assignments.
 
@@ -1364,3 +1365,15 @@ Still open:
 - Verified focused request tests succeed outside the Codex sandbox.
 - Verified the full backend test suite succeeds outside the Codex sandbox.
 - Verified Spring Boot starts against PostgreSQL and ActiveMQ Artemis, Flyway migrates the schema to `V10`, and Hibernate validates the mappings.
+
+### 2026-08-05 - Transfer Request Employee Approval
+
+- Added `POST /api/requests/{requestId}/employee-approve`.
+- Added domain behavior for target employee approval on `SwapRequest`.
+- Target approval sets `employeeApprovedAt` and `updatedAt`.
+- If the source team's approval policy is `EMPLOYEE`, the request moves from `PENDING_EMPLOYEE` to `APPROVED`.
+- If the source team's approval policy is `MANAGER`, the request moves from `PENDING_EMPLOYEE` to `PENDING_MANAGER`.
+- Validation ensures only the target employee can approve the request.
+- Re-approval of a request that is no longer `PENDING_EMPLOYEE` returns a conflict.
+- Added focused tests for domain status transitions and approval authorization.
+- Verified the full backend test suite succeeds outside the Codex sandbox.

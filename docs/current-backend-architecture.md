@@ -309,7 +309,7 @@ flowchart TD
     availabilityApi["Availability Constraints<br/>POST /api/availability-constraints<br/>GET /api/availability-constraints/me<br/>DELETE /api/availability-constraints/{constraintId}"]
     staffingApi["Staffing Roles<br/>POST /api/teams/{teamId}/staffing-roles<br/>GET /api/teams/{teamId}/staffing-roles<br/>POST /api/teams/{teamId}/employees/{employeeId}/staffing-roles<br/>GET /api/teams/{teamId}/employees/{employeeId}/staffing-roles"]
     notificationApi["Notifications<br/>GET /api/notifications<br/>GET /api/notifications/unread-count<br/>POST /api/notifications/{notificationId}/read"]
-    requestsApi["Requests<br/>POST /api/requests/transfers"]
+    requestsApi["Requests<br/>POST /api/requests/transfers<br/>POST /api/requests/{requestId}/employee-approve"]
 
     api --> healthApi
     api --> authApi
@@ -582,6 +582,26 @@ sequenceDiagram
     Repositories->>Database: insert swap_requests row
     SwapRequestService-->>SwapRequestController: SwapRequestResponse
     SwapRequestController-->>Client: 201 Created
+```
+
+### Transfer Request Target Approval
+
+```mermaid
+sequenceDiagram
+    participant Client as React or API Client
+    participant Security
+    participant SwapRequestController
+    participant SwapRequestService
+    participant SwapRequest
+
+    Client->>Security: POST /api/requests/{requestId}/employee-approve with Bearer token
+    Security->>SwapRequestController: authenticated request
+    SwapRequestController->>SwapRequestService: approveByTargetEmployee(username, requestId)
+    SwapRequestService->>SwapRequestService: validate current user is the target employee
+    SwapRequestService->>SwapRequest: approveByTargetEmployee(now, teamApprovalPolicy)
+    SwapRequest->>SwapRequest: PENDING_EMPLOYEE to APPROVED or PENDING_MANAGER
+    SwapRequestService-->>SwapRequestController: SwapRequestResponse
+    SwapRequestController-->>Client: 200 OK
 ```
 
 ## Database Migration Timeline

@@ -10,6 +10,7 @@ import static org.mockito.Mockito.when;
 
 import java.time.Instant;
 import java.time.LocalDate;
+import java.util.List;
 import java.util.Optional;
 
 import com.hilimor.shiftmanagement.assignment.Assignment;
@@ -64,7 +65,7 @@ class SwapRequestServiceTest {
         when(teamMemberRepository.existsByUser_IdAndTeam_IdAndActiveTrue(3L, 1L)).thenReturn(true);
         when(swapRequestRepository.existsBySourceAssignment_IdAndStatusIn(
                 30L,
-                java.util.List.of(SwapRequestStatus.PENDING_EMPLOYEE, SwapRequestStatus.PENDING_MANAGER)
+                List.of(SwapRequestStatus.PENDING_EMPLOYEE, SwapRequestStatus.PENDING_MANAGER)
         )).thenReturn(false);
         when(swapRequestRepository.save(any(SwapRequest.class))).thenAnswer(invocation -> {
             SwapRequest request = invocation.getArgument(0);
@@ -191,7 +192,7 @@ class SwapRequestServiceTest {
         when(teamMemberRepository.existsByUser_IdAndTeam_IdAndActiveTrue(3L, 1L)).thenReturn(true);
         when(swapRequestRepository.existsBySourceAssignment_IdAndStatusIn(
                 30L,
-                java.util.List.of(SwapRequestStatus.PENDING_EMPLOYEE, SwapRequestStatus.PENDING_MANAGER)
+                List.of(SwapRequestStatus.PENDING_EMPLOYEE, SwapRequestStatus.PENDING_MANAGER)
         )).thenReturn(true);
 
         assertResponseStatus(
@@ -200,6 +201,105 @@ class SwapRequestServiceTest {
         );
 
         verify(swapRequestRepository, never()).save(any());
+    }
+
+    @Test
+    void approveByTargetEmployeeMovesRequestToPendingManagerWhenTeamPolicyRequiresManager() {
+        User requester = employee("employee1", 2L);
+        User targetEmployee = employee("employee2", 3L);
+        SwapRequest request = transferRequest(
+                requester,
+                targetEmployee,
+                schedule(ScheduleStatus.PUBLISHED, SwapApprovalPolicy.MANAGER)
+        );
+
+        when(userRepository.findByUsername("employee2")).thenReturn(Optional.of(targetEmployee));
+        when(swapRequestRepository.findById(40L)).thenReturn(Optional.of(request));
+
+        SwapRequestResponse response = swapRequestService.approveByTargetEmployee("employee2", 40L);
+
+        assertThat(response.status()).isEqualTo(SwapRequestStatus.PENDING_MANAGER);
+        assertThat(response.employeeApprovedAt()).isNotNull();
+        assertThat(response.updatedAt()).isEqualTo(response.employeeApprovedAt());
+    }
+
+    @Test
+    void approveByTargetEmployeeApprovesRequestWhenTeamPolicyIsEmployeeOnly() {
+        User requester = employee("employee1", 2L);
+        User targetEmployee = employee("employee2", 3L);
+        SwapRequest request = transferRequest(
+                requester,
+                targetEmployee,
+                schedule(ScheduleStatus.PUBLISHED, SwapApprovalPolicy.EMPLOYEE)
+        );
+
+        when(userRepository.findByUsername("employee2")).thenReturn(Optional.of(targetEmployee));
+        when(swapRequestRepository.findById(40L)).thenReturn(Optional.of(request));
+
+        SwapRequestResponse response = swapRequestService.approveByTargetEmployee("employee2", 40L);
+
+        assertThat(response.status()).isEqualTo(SwapRequestStatus.APPROVED);
+        assertThat(response.employeeApprovedAt()).isNotNull();
+        assertThat(response.updatedAt()).isEqualTo(response.employeeApprovedAt());
+    }
+
+    @Test
+    void approveByTargetEmployeeRejectsRequesterApproval() {
+        User requester = employee("employee1", 2L);
+        User targetEmployee = employee("employee2", 3L);
+        SwapRequest request = transferRequest(
+                requester,
+                targetEmployee,
+                schedule(ScheduleStatus.PUBLISHED, SwapApprovalPolicy.MANAGER)
+        );
+
+        when(userRepository.findByUsername("employee1")).thenReturn(Optional.of(requester));
+        when(swapRequestRepository.findById(40L)).thenReturn(Optional.of(request));
+
+        assertResponseStatus(
+                () -> swapRequestService.approveByTargetEmployee("employee1", 40L),
+                HttpStatus.NOT_FOUND
+        );
+    }
+
+    @Test
+    void approveByTargetEmployeeRejectsEmployeeWhoIsNotTarget() {
+        User requester = employee("employee1", 2L);
+        User targetEmployee = employee("employee2", 3L);
+        User otherEmployee = employee("employee3", 4L);
+        SwapRequest request = transferRequest(
+                requester,
+                targetEmployee,
+                schedule(ScheduleStatus.PUBLISHED, SwapApprovalPolicy.MANAGER)
+        );
+
+        when(userRepository.findByUsername("employee3")).thenReturn(Optional.of(otherEmployee));
+        when(swapRequestRepository.findById(40L)).thenReturn(Optional.of(request));
+
+        assertResponseStatus(
+                () -> swapRequestService.approveByTargetEmployee("employee3", 40L),
+                HttpStatus.NOT_FOUND
+        );
+    }
+
+    @Test
+    void approveByTargetEmployeeRejectsRequestThatIsNotPendingEmployeeApproval() {
+        User requester = employee("employee1", 2L);
+        User targetEmployee = employee("employee2", 3L);
+        SwapRequest request = transferRequest(
+                requester,
+                targetEmployee,
+                schedule(ScheduleStatus.PUBLISHED, SwapApprovalPolicy.MANAGER)
+        );
+        request.approveByTargetEmployee(Instant.parse("2026-08-04T19:00:00Z"), SwapApprovalPolicy.MANAGER);
+
+        when(userRepository.findByUsername("employee2")).thenReturn(Optional.of(targetEmployee));
+        when(swapRequestRepository.findById(40L)).thenReturn(Optional.of(request));
+
+        assertResponseStatus(
+                () -> swapRequestService.approveByTargetEmployee("employee2", 40L),
+                HttpStatus.CONFLICT
+        );
     }
 
     private void assertResponseStatus(Runnable action, HttpStatus expectedStatus) {
@@ -225,13 +325,28 @@ class SwapRequestServiceTest {
     }
 
     private Schedule schedule(ScheduleStatus status) {
-        Team team = new Team("Operations", SwapApprovalPolicy.MANAGER, 8, "Asia/Jerusalem");
+        return schedule(status, SwapApprovalPolicy.MANAGER);
+    }
+
+    private Schedule schedule(ScheduleStatus status, SwapApprovalPolicy approvalPolicy) {
+        Team team = new Team("Operations", approvalPolicy, 8, "Asia/Jerusalem");
         ReflectionTestUtils.setField(team, "id", 1L);
 
         Schedule schedule = new Schedule(team, LocalDate.of(2026, 8, 4), LocalDate.of(2026, 8, 10));
         ReflectionTestUtils.setField(schedule, "id", 10L);
         ReflectionTestUtils.setField(schedule, "status", status);
         return schedule;
+    }
+
+    private SwapRequest transferRequest(User requester, User targetEmployee, Schedule schedule) {
+        SwapRequest request = SwapRequest.createTransfer(
+                requester,
+                assignment(schedule, requester, 30L),
+                targetEmployee,
+                Instant.parse("2026-08-04T18:00:00Z")
+        );
+        ReflectionTestUtils.setField(request, "id", 40L);
+        return request;
     }
 
     private User employee(String username, Long id) {

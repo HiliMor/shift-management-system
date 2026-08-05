@@ -4,6 +4,7 @@ import jakarta.validation.Valid;
 
 import org.springframework.http.HttpStatus;
 import org.springframework.security.core.Authentication;
+import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -27,5 +28,13 @@ public class SwapRequestController {
             @Valid @RequestBody CreateTransferRequest request
     ) {
         return swapRequestService.createTransferRequest(authentication.getName(), request);
+    }
+
+    @PostMapping("/{requestId}/employee-approve")
+    public SwapRequestResponse approveByTargetEmployee(
+            Authentication authentication,
+            @PathVariable Long requestId
+    ) {
+        return swapRequestService.approveByTargetEmployee(authentication.getName(), requestId);
     }
 }
