@@ -72,11 +72,12 @@ Implemented:
 - Transfer request persistence model.
 - Transfer request creation endpoint: `POST /api/requests/transfers`.
 - Target employee approval endpoint: `POST /api/requests/{requestId}/employee-approve`.
+- Transfer execution for teams with `EMPLOYEE` approval policy.
 
 Not implemented yet:
 
 - Schedule list, update, and delete endpoints.
-- Transfer assignment move execution.
+- Transfer assignment move execution for teams with `MANAGER` approval policy.
 - Manager approval for teams with `MANAGER` approval policy.
 - Full shift swap endpoints.
 - Automatic assignment.
@@ -793,10 +794,12 @@ Employee approval rules:
 
 1. Only the target employee can approve the request.
 2. Requests can be approved only while their status is `PENDING_EMPLOYEE`.
-3. If the team's approval policy is `EMPLOYEE`, the request status becomes `APPROVED`.
+3. If the team's approval policy is `EMPLOYEE`, the request status becomes `APPROVED` and the source assignment moves to the target employee.
 4. If the team's approval policy is `MANAGER`, the request status becomes `PENDING_MANAGER`.
+5. Before moving the assignment, the backend re-runs transfer eligibility checks for the target employee.
 
-These endpoints create and approve the request state only. Manager approval and the final assignment move are planned next.
+If transfer eligibility fails during an `EMPLOYEE` policy approval, the request becomes `INVALIDATED` and the assignment remains unchanged.
+Manager approval and final assignment movement for `MANAGER` policy teams are planned next.
 
 ## Availability Constraint Endpoints
 

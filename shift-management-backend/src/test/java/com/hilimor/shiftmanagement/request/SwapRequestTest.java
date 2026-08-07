@@ -86,6 +86,17 @@ class SwapRequestTest {
         )).isInstanceOf(IllegalStateException.class);
     }
 
+    @Test
+    void invalidateMovesRequestToInvalidated() {
+        SwapRequest request = transferRequest();
+        Instant invalidatedAt = Instant.parse("2026-08-04T20:00:00Z");
+
+        request.invalidate(invalidatedAt);
+
+        assertThat(request.getStatus()).isEqualTo(SwapRequestStatus.INVALIDATED);
+        assertThat(request.getUpdatedAt()).isEqualTo(invalidatedAt);
+    }
+
     private SwapRequest transferRequest() {
         User requester = user("employee1", 2L);
         User targetEmployee = user("employee2", 3L);

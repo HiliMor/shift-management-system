@@ -437,6 +437,37 @@ class AssignmentServiceTest {
     }
 
     @Test
+    void validateEmployeeCanReceiveTransferredAssignmentDoesNotRequireOpenCapacity() {
+        Shift shift = shift(schedule(ScheduleStatus.PUBLISHED), 20L);
+        User employee = employee();
+
+        when(teamMemberRepository.existsByUser_IdAndTeam_IdAndActiveTrue(2L, 1L)).thenReturn(true);
+        when(assignmentRepository.existsByShift_IdAndEmployee_Id(20L, 2L)).thenReturn(false);
+        when(availabilityConstraintRepository.findByEmployee_IdAndStartTimeLessThanAndEndTimeGreaterThan(
+                2L,
+                shift.getEndTime(),
+                shift.getStartTime()
+        )).thenReturn(List.of());
+        when(assignmentRepository.findByEmployee_IdAndShift_StartTimeLessThanAndShift_EndTimeGreaterThan(
+                2L,
+                shift.getEndTime(),
+                shift.getStartTime()
+        )).thenReturn(List.of());
+        when(assignmentRepository.findTopByEmployee_IdAndShift_EndTimeLessThanEqualOrderByShift_EndTimeDesc(
+                2L,
+                shift.getStartTime()
+        )).thenReturn(Optional.empty());
+        when(assignmentRepository.findTopByEmployee_IdAndShift_StartTimeGreaterThanEqualOrderByShift_StartTimeAsc(
+                2L,
+                shift.getEndTime()
+        )).thenReturn(Optional.empty());
+
+        assignmentService.validateEmployeeCanReceiveTransferredAssignment(shift, employee);
+
+        verify(assignmentRepository, never()).countByShift_Id(20L);
+    }
+
+    @Test
     void deleteAssignmentRemovesAssignmentFromManagedDraftSchedule() {
         Shift shift = shift(schedule(ScheduleStatus.DRAFT), 20L);
         Assignment assignment = assignment(shift, employee());

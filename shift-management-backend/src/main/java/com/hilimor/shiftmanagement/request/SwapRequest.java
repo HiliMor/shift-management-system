@@ -133,6 +133,13 @@ public class SwapRequest {
                 : SwapRequestStatus.APPROVED;
     }
 
+    public void invalidate(Instant invalidatedAt) {
+        Objects.requireNonNull(invalidatedAt, "invalidatedAt must not be null");
+
+        status = SwapRequestStatus.INVALIDATED;
+        updatedAt = invalidatedAt;
+    }
+
     public Long getId() {
         return id;
     }

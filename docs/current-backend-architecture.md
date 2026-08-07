@@ -593,6 +593,8 @@ sequenceDiagram
     participant SwapRequestController
     participant SwapRequestService
     participant SwapRequest
+    participant AssignmentService
+    participant Assignment
 
     Client->>Security: POST /api/requests/{requestId}/employee-approve with Bearer token
     Security->>SwapRequestController: authenticated request
@@ -600,6 +602,16 @@ sequenceDiagram
     SwapRequestService->>SwapRequestService: validate current user is the target employee
     SwapRequestService->>SwapRequest: approveByTargetEmployee(now, teamApprovalPolicy)
     SwapRequest->>SwapRequest: PENDING_EMPLOYEE to APPROVED or PENDING_MANAGER
+    alt Team policy is EMPLOYEE
+        SwapRequestService->>AssignmentService: validateEmployeeCanReceiveTransferredAssignment(shift, targetEmployee)
+        alt Target employee is eligible
+            SwapRequestService->>Assignment: transferTo(targetEmployee, approvedAt)
+        else Target employee is not eligible
+            SwapRequestService->>SwapRequest: invalidate(approvedAt)
+        end
+    else Team policy is MANAGER
+        SwapRequestService->>SwapRequestService: wait for manager approval
+    end
     SwapRequestService-->>SwapRequestController: SwapRequestResponse
     SwapRequestController-->>Client: 200 OK
 ```

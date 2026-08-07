@@ -6,6 +6,8 @@ import java.util.Objects;
 
 import com.hilimor.shiftmanagement.assignment.Assignment;
 import com.hilimor.shiftmanagement.assignment.AssignmentRepository;
+import com.hilimor.shiftmanagement.assignment.AssignmentService;
+import com.hilimor.shiftmanagement.assignment.AssignmentValidationException;
 import com.hilimor.shiftmanagement.schedule.Schedule;
 import com.hilimor.shiftmanagement.schedule.ScheduleStatus;
 import com.hilimor.shiftmanagement.team.TeamMemberRepository;
@@ -28,17 +30,20 @@ public class SwapRequestService {
 
     private final SwapRequestRepository swapRequestRepository;
     private final AssignmentRepository assignmentRepository;
+    private final AssignmentService assignmentService;
     private final UserRepository userRepository;
     private final TeamMemberRepository teamMemberRepository;
 
     public SwapRequestService(
             SwapRequestRepository swapRequestRepository,
             AssignmentRepository assignmentRepository,
+            AssignmentService assignmentService,
             UserRepository userRepository,
             TeamMemberRepository teamMemberRepository
     ) {
         this.swapRequestRepository = swapRequestRepository;
         this.assignmentRepository = assignmentRepository;
+        this.assignmentService = assignmentService;
         this.userRepository = userRepository;
         this.teamMemberRepository = teamMemberRepository;
     }
@@ -104,16 +109,37 @@ public class SwapRequestService {
             throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Request not found");
         }
 
+        Instant approvedAt = Instant.now();
         try {
             request.approveByTargetEmployee(
-                    Instant.now(),
+                    approvedAt,
                     request.getSourceAssignment().getShift().getSchedule().getTeam().getSwapApprovalPolicy()
             );
         } catch (IllegalStateException exception) {
             throw new ResponseStatusException(HttpStatus.CONFLICT, exception.getMessage(), exception);
         }
 
+        executeApprovedTransferIfReady(request, approvedAt);
+
         return SwapRequestResponse.from(request);
+    }
+
+    private void executeApprovedTransferIfReady(SwapRequest request, Instant executedAt) {
+        if (request.getType() != SwapRequestType.TRANSFER || request.getStatus() != SwapRequestStatus.APPROVED) {
+            return;
+        }
+
+        Assignment sourceAssignment = request.getSourceAssignment();
+        User targetEmployee = request.getTargetEmployee();
+
+        try {
+            assignmentService.validateEmployeeCanReceiveTransferredAssignment(sourceAssignment.getShift(), targetEmployee);
+        } catch (AssignmentValidationException exception) {
+            request.invalidate(executedAt);
+            return;
+        }
+
+        sourceAssignment.transferTo(targetEmployee, executedAt);
     }
 
     private User currentUser(String username) {

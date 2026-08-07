@@ -51,6 +51,7 @@ Implemented:
 - Transfer request persistence model.
 - Transfer request creation endpoint for published assignments.
 - Target employee approval endpoint for transfer requests.
+- Transfer execution for teams with `EMPLOYEE` approval policy.
 
 Frontend:
 
@@ -71,7 +72,7 @@ Frontend:
 
 Planned next:
 
-- Transfer execution, manager approval, and full swap requests.
+- Manager approval and full swap requests.
 - Templates and automatic assignment.
 
 ## Backend Documentation

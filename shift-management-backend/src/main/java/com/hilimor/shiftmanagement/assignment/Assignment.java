@@ -56,6 +56,11 @@ public class Assignment {
         this.assignedAt = Objects.requireNonNull(assignedAt, "assignedAt must not be null");
     }
 
+    public void transferTo(User employee, Instant assignedAt) {
+        this.employee = Objects.requireNonNull(employee, "employee must not be null");
+        this.assignedAt = Objects.requireNonNull(assignedAt, "assignedAt must not be null");
+    }
+
     public Long getId() {
         return id;
     }

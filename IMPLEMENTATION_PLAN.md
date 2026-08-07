@@ -1,6 +1,6 @@
 # Implementation Plan - Shift Management System
 
-Last updated: 2026-08-05
+Last updated: 2026-08-07
 
 This document is the working implementation plan for the project.  
 The goal is to build the system in small, understandable steps, while keeping each part easy to explain during the final presentation.
@@ -692,8 +692,10 @@ Goal: allow employees to transfer a shift or request a shift swap.
 - [x] Add statuses: `PENDING_EMPLOYEE`, `PENDING_MANAGER`, `APPROVED`, `REJECTED`, `CANCELLED`, `INVALIDATED`.
 - [x] Allow the target employee to approve.
 - [ ] Allow the target employee to reject.
-- [ ] Run assignment validations before final approval.
-- [ ] Move the assignment to the target employee after transfer approval.
+- [x] Run assignment validations before employee-policy final approval.
+- [ ] Run assignment validations before manager final approval.
+- [x] Move the assignment to the target employee after employee-policy transfer approval.
+- [ ] Move the assignment to the target employee after manager approval.
 - [ ] Add full swap.
 - [ ] Add manager approval according to team policy.
 
@@ -702,7 +704,7 @@ Goal: allow employees to transfer a shift or request a shift swap.
 - [x] An employee can create a transfer request.
 - [x] The target employee can approve it.
 - [x] Another employee cannot approve a request not addressed to them.
-- [ ] A request becomes invalidated if assignment is no longer possible.
+- [x] An employee-policy transfer request becomes invalidated if assignment is no longer possible.
 - [ ] A swap exchanges two assignments.
 
 ### Document
@@ -1377,3 +1379,12 @@ Still open:
 - Re-approval of a request that is no longer `PENDING_EMPLOYEE` returns a conflict.
 - Added focused tests for domain status transitions and approval authorization.
 - Verified the full backend test suite succeeds outside the Codex sandbox.
+
+### 2026-08-07 - Employee-Policy Transfer Execution
+
+- Added `Assignment.transferTo(...)` so an existing assignment can move to a different employee.
+- Added transfer-specific assignment validation that reuses assignment business rules but does not require open shift capacity, because transfer replaces an employee inside an existing assignment slot.
+- Updated employee approval so `EMPLOYEE` policy transfers execute immediately after target approval.
+- If transfer validation fails during execution, the request becomes `INVALIDATED` and the assignment remains unchanged.
+- `MANAGER` policy transfers still stop at `PENDING_MANAGER`; manager approval and execution are planned next.
+- Added focused tests for successful transfer execution, invalidation on validation failure, and capacity-independent transfer validation.

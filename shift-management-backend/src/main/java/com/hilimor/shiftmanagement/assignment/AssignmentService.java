@@ -110,6 +110,19 @@ public class AssignmentService {
         assignmentRepository.delete(assignment);
     }
 
+    @Transactional(readOnly = true)
+    public void validateEmployeeCanReceiveTransferredAssignment(Shift shift, User employee) {
+        Long teamId = shift.getSchedule().getTeam().getId();
+        Long employeeId = employee.getId();
+
+        validateTeamMembership(employeeId, teamId);
+        validateRequiredStaffingRole(shift, employeeId, teamId);
+        validateNotAlreadyAssigned(shift.getId(), employeeId);
+        validateAvailability(shift, employeeId);
+        validateNoOverlap(shift, employeeId);
+        validateMinimumRest(shift, employeeId);
+    }
+
     private Long requireManagedSchedule(String managerUsername, Schedule schedule, String errorMessage) {
         Long teamId = schedule.getTeam().getId();
         if (!teamManagerRepository.existsByManager_UsernameAndTeam_Id(managerUsername, teamId)) {
