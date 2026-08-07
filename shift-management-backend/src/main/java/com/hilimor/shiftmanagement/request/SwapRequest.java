@@ -133,6 +133,20 @@ public class SwapRequest {
                 : SwapRequestStatus.APPROVED;
     }
 
+    public void approveByManager(User manager, Instant approvedAt) {
+        Objects.requireNonNull(manager, "manager must not be null");
+        Objects.requireNonNull(approvedAt, "approvedAt must not be null");
+
+        if (status != SwapRequestStatus.PENDING_MANAGER) {
+            throw new IllegalStateException("Only requests pending manager approval can be approved by a manager");
+        }
+
+        managerApprovedBy = manager;
+        managerApprovedAt = approvedAt;
+        updatedAt = approvedAt;
+        status = SwapRequestStatus.APPROVED;
+    }
+
     public void invalidate(Instant invalidatedAt) {
         Objects.requireNonNull(invalidatedAt, "invalidatedAt must not be null");
 

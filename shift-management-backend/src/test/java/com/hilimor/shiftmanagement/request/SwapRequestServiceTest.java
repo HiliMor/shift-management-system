@@ -23,6 +23,7 @@ import com.hilimor.shiftmanagement.schedule.ScheduleStatus;
 import com.hilimor.shiftmanagement.shift.Shift;
 import com.hilimor.shiftmanagement.team.SwapApprovalPolicy;
 import com.hilimor.shiftmanagement.team.Team;
+import com.hilimor.shiftmanagement.team.TeamManagerRepository;
 import com.hilimor.shiftmanagement.team.TeamMemberRepository;
 import com.hilimor.shiftmanagement.user.ApplicationRole;
 import com.hilimor.shiftmanagement.user.User;
@@ -55,6 +56,9 @@ class SwapRequestServiceTest {
 
     @Mock
     private TeamMemberRepository teamMemberRepository;
+
+    @Mock
+    private TeamManagerRepository teamManagerRepository;
 
     @InjectMocks
     private SwapRequestService swapRequestService;
@@ -348,6 +352,133 @@ class SwapRequestServiceTest {
                 HttpStatus.CONFLICT
         );
 
+        verifyNoInteractions(assignmentService);
+    }
+
+    @Test
+    void approveByManagerTransfersAssignmentWhenManagerApprovalCompletes() {
+        User requester = employee("employee1", 2L);
+        User targetEmployee = employee("employee2", 3L);
+        User manager = user("manager1", 4L, ApplicationRole.MANAGER);
+        SwapRequest request = transferRequest(
+                requester,
+                targetEmployee,
+                schedule(ScheduleStatus.PUBLISHED, SwapApprovalPolicy.MANAGER)
+        );
+        request.approveByTargetEmployee(Instant.parse("2026-08-04T19:00:00Z"), SwapApprovalPolicy.MANAGER);
+
+        when(userRepository.findByUsername("manager1")).thenReturn(Optional.of(manager));
+        when(swapRequestRepository.findById(40L)).thenReturn(Optional.of(request));
+        when(teamManagerRepository.existsByManager_UsernameAndTeam_Id("manager1", 1L)).thenReturn(true);
+
+        SwapRequestResponse response = swapRequestService.approveByManager("manager1", 40L);
+
+        assertThat(response.status()).isEqualTo(SwapRequestStatus.APPROVED);
+        assertThat(response.managerApprovedById()).isEqualTo(4L);
+        assertThat(response.managerApprovedAt()).isNotNull();
+        assertThat(response.updatedAt()).isEqualTo(response.managerApprovedAt());
+        assertThat(request.getSourceAssignment().getEmployee()).isSameAs(targetEmployee);
+        assertThat(request.getSourceAssignment().getAssignedAt()).isEqualTo(response.managerApprovedAt());
+        verify(assignmentService).validateEmployeeCanReceiveTransferredAssignment(
+                request.getSourceAssignment().getShift(),
+                targetEmployee
+        );
+    }
+
+    @Test
+    void approveByManagerInvalidatesRequestWhenTransferValidationFails() {
+        User requester = employee("employee1", 2L);
+        User targetEmployee = employee("employee2", 3L);
+        User manager = user("manager1", 4L, ApplicationRole.MANAGER);
+        SwapRequest request = transferRequest(
+                requester,
+                targetEmployee,
+                schedule(ScheduleStatus.PUBLISHED, SwapApprovalPolicy.MANAGER)
+        );
+        request.approveByTargetEmployee(Instant.parse("2026-08-04T19:00:00Z"), SwapApprovalPolicy.MANAGER);
+
+        when(userRepository.findByUsername("manager1")).thenReturn(Optional.of(manager));
+        when(swapRequestRepository.findById(40L)).thenReturn(Optional.of(request));
+        when(teamManagerRepository.existsByManager_UsernameAndTeam_Id("manager1", 1L)).thenReturn(true);
+        doThrow(new AssignmentValidationException(
+                HttpStatus.CONFLICT,
+                "SHIFT_OVERLAP",
+                "Employee already has an overlapping assignment"
+        )).when(assignmentService).validateEmployeeCanReceiveTransferredAssignment(
+                request.getSourceAssignment().getShift(),
+                targetEmployee
+        );
+
+        SwapRequestResponse response = swapRequestService.approveByManager("manager1", 40L);
+
+        assertThat(response.status()).isEqualTo(SwapRequestStatus.INVALIDATED);
+        assertThat(response.managerApprovedById()).isEqualTo(4L);
+        assertThat(response.managerApprovedAt()).isNotNull();
+        assertThat(response.updatedAt()).isEqualTo(response.managerApprovedAt());
+        assertThat(request.getSourceAssignment().getEmployee()).isSameAs(requester);
+    }
+
+    @Test
+    void approveByManagerRejectsEmployeeUser() {
+        User targetEmployee = employee("employee2", 3L);
+
+        when(userRepository.findByUsername("employee2")).thenReturn(Optional.of(targetEmployee));
+
+        assertResponseStatus(
+                () -> swapRequestService.approveByManager("employee2", 40L),
+                HttpStatus.FORBIDDEN
+        );
+
+        verify(swapRequestRepository, never()).findById(any());
+        verifyNoInteractions(assignmentService);
+    }
+
+    @Test
+    void approveByManagerRejectsManagerOutsideSourceTeam() {
+        User requester = employee("employee1", 2L);
+        User targetEmployee = employee("employee2", 3L);
+        User manager = user("manager1", 4L, ApplicationRole.MANAGER);
+        SwapRequest request = transferRequest(
+                requester,
+                targetEmployee,
+                schedule(ScheduleStatus.PUBLISHED, SwapApprovalPolicy.MANAGER)
+        );
+        request.approveByTargetEmployee(Instant.parse("2026-08-04T19:00:00Z"), SwapApprovalPolicy.MANAGER);
+
+        when(userRepository.findByUsername("manager1")).thenReturn(Optional.of(manager));
+        when(swapRequestRepository.findById(40L)).thenReturn(Optional.of(request));
+        when(teamManagerRepository.existsByManager_UsernameAndTeam_Id("manager1", 1L)).thenReturn(false);
+
+        assertResponseStatus(
+                () -> swapRequestService.approveByManager("manager1", 40L),
+                HttpStatus.FORBIDDEN
+        );
+
+        assertThat(request.getSourceAssignment().getEmployee()).isSameAs(requester);
+        verifyNoInteractions(assignmentService);
+    }
+
+    @Test
+    void approveByManagerRejectsRequestThatIsNotPendingManagerApproval() {
+        User requester = employee("employee1", 2L);
+        User targetEmployee = employee("employee2", 3L);
+        User manager = user("manager1", 4L, ApplicationRole.MANAGER);
+        SwapRequest request = transferRequest(
+                requester,
+                targetEmployee,
+                schedule(ScheduleStatus.PUBLISHED, SwapApprovalPolicy.MANAGER)
+        );
+
+        when(userRepository.findByUsername("manager1")).thenReturn(Optional.of(manager));
+        when(swapRequestRepository.findById(40L)).thenReturn(Optional.of(request));
+        when(teamManagerRepository.existsByManager_UsernameAndTeam_Id("manager1", 1L)).thenReturn(true);
+
+        assertResponseStatus(
+                () -> swapRequestService.approveByManager("manager1", 40L),
+                HttpStatus.CONFLICT
+        );
+
+        assertThat(request.getSourceAssignment().getEmployee()).isSameAs(requester);
         verifyNoInteractions(assignmentService);
     }
 

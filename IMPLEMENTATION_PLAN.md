@@ -693,11 +693,11 @@ Goal: allow employees to transfer a shift or request a shift swap.
 - [x] Allow the target employee to approve.
 - [ ] Allow the target employee to reject.
 - [x] Run assignment validations before employee-policy final approval.
-- [ ] Run assignment validations before manager final approval.
+- [x] Run assignment validations before manager final approval.
 - [x] Move the assignment to the target employee after employee-policy transfer approval.
-- [ ] Move the assignment to the target employee after manager approval.
+- [x] Move the assignment to the target employee after manager approval.
 - [ ] Add full swap.
-- [ ] Add manager approval according to team policy.
+- [x] Add manager approval according to team policy.
 
 ### Verify
 
@@ -705,6 +705,8 @@ Goal: allow employees to transfer a shift or request a shift swap.
 - [x] The target employee can approve it.
 - [x] Another employee cannot approve a request not addressed to them.
 - [x] An employee-policy transfer request becomes invalidated if assignment is no longer possible.
+- [x] A manager-policy transfer request can be approved by a manager of the source team.
+- [x] A manager-policy transfer request becomes invalidated if assignment is no longer possible.
 - [ ] A swap exchanges two assignments.
 
 ### Document
@@ -1386,5 +1388,14 @@ Still open:
 - Added transfer-specific assignment validation that reuses assignment business rules but does not require open shift capacity, because transfer replaces an employee inside an existing assignment slot.
 - Updated employee approval so `EMPLOYEE` policy transfers execute immediately after target approval.
 - If transfer validation fails during execution, the request becomes `INVALIDATED` and the assignment remains unchanged.
-- `MANAGER` policy transfers still stop at `PENDING_MANAGER`; manager approval and execution are planned next.
 - Added focused tests for successful transfer execution, invalidation on validation failure, and capacity-independent transfer validation.
+
+### 2026-08-07 - Manager-Policy Transfer Execution
+
+- Added `POST /api/requests/{requestId}/manager-approve`.
+- Added domain behavior for manager approval on `SwapRequest`.
+- Manager approval is allowed only when a request is `PENDING_MANAGER`.
+- Validation ensures the authenticated user is a manager of the source shift's team.
+- Manager approval re-runs transfer eligibility checks before moving the assignment.
+- If transfer validation fails during manager approval, the request becomes `INVALIDATED` and the assignment remains unchanged.
+- Added focused tests for manager approval, team-scoped authorization, invalidation on validation failure, and invalid status conflicts.

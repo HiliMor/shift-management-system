@@ -10,6 +10,7 @@ import com.hilimor.shiftmanagement.assignment.AssignmentService;
 import com.hilimor.shiftmanagement.assignment.AssignmentValidationException;
 import com.hilimor.shiftmanagement.schedule.Schedule;
 import com.hilimor.shiftmanagement.schedule.ScheduleStatus;
+import com.hilimor.shiftmanagement.team.TeamManagerRepository;
 import com.hilimor.shiftmanagement.team.TeamMemberRepository;
 import com.hilimor.shiftmanagement.user.ApplicationRole;
 import com.hilimor.shiftmanagement.user.User;
@@ -33,19 +34,22 @@ public class SwapRequestService {
     private final AssignmentService assignmentService;
     private final UserRepository userRepository;
     private final TeamMemberRepository teamMemberRepository;
+    private final TeamManagerRepository teamManagerRepository;
 
     public SwapRequestService(
             SwapRequestRepository swapRequestRepository,
             AssignmentRepository assignmentRepository,
             AssignmentService assignmentService,
             UserRepository userRepository,
-            TeamMemberRepository teamMemberRepository
+            TeamMemberRepository teamMemberRepository,
+            TeamManagerRepository teamManagerRepository
     ) {
         this.swapRequestRepository = swapRequestRepository;
         this.assignmentRepository = assignmentRepository;
         this.assignmentService = assignmentService;
         this.userRepository = userRepository;
         this.teamMemberRepository = teamMemberRepository;
+        this.teamManagerRepository = teamManagerRepository;
     }
 
     @Transactional
@@ -124,6 +128,34 @@ public class SwapRequestService {
         return SwapRequestResponse.from(request);
     }
 
+    @Transactional
+    public SwapRequestResponse approveByManager(String username, Long requestId) {
+        User manager = currentUser(username);
+        requireManager(manager, "Only managers can approve transfer requests");
+
+        SwapRequest request = swapRequestRepository.findById(requestId)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Request not found"));
+
+        Long teamId = request.getSourceAssignment().getShift().getSchedule().getTeam().getId();
+        if (!teamManagerRepository.existsByManager_UsernameAndTeam_Id(username, teamId)) {
+            throw new ResponseStatusException(
+                    HttpStatus.FORBIDDEN,
+                    "Only a manager of the source shift team can approve this request"
+            );
+        }
+
+        Instant approvedAt = Instant.now();
+        try {
+            request.approveByManager(manager, approvedAt);
+        } catch (IllegalStateException exception) {
+            throw new ResponseStatusException(HttpStatus.CONFLICT, exception.getMessage(), exception);
+        }
+
+        executeApprovedTransferIfReady(request, approvedAt);
+
+        return SwapRequestResponse.from(request);
+    }
+
     private void executeApprovedTransferIfReady(SwapRequest request, Instant executedAt) {
         if (request.getType() != SwapRequestType.TRANSFER || request.getStatus() != SwapRequestStatus.APPROVED) {
             return;
@@ -149,6 +181,12 @@ public class SwapRequestService {
 
     private void requireEmployee(User user, String message) {
         if (user.getApplicationRole() != ApplicationRole.EMPLOYEE) {
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, message);
+        }
+    }
+
+    private void requireManager(User user, String message) {
+        if (user.getApplicationRole() != ApplicationRole.MANAGER) {
             throw new ResponseStatusException(HttpStatus.FORBIDDEN, message);
         }
     }

@@ -73,12 +73,13 @@ Implemented:
 - Transfer request creation endpoint: `POST /api/requests/transfers`.
 - Target employee approval endpoint: `POST /api/requests/{requestId}/employee-approve`.
 - Transfer execution for teams with `EMPLOYEE` approval policy.
+- Manager approval endpoint: `POST /api/requests/{requestId}/manager-approve`.
+- Transfer execution for teams with `MANAGER` approval policy.
 
 Not implemented yet:
 
 - Schedule list, update, and delete endpoints.
-- Transfer assignment move execution for teams with `MANAGER` approval policy.
-- Manager approval for teams with `MANAGER` approval policy.
+- Transfer request rejection and cancellation endpoints.
 - Full shift swap endpoints.
 - Automatic assignment.
 - Remaining team-scoped authorization for future manager workflows.
@@ -796,10 +797,49 @@ Employee approval rules:
 2. Requests can be approved only while their status is `PENDING_EMPLOYEE`.
 3. If the team's approval policy is `EMPLOYEE`, the request status becomes `APPROVED` and the source assignment moves to the target employee.
 4. If the team's approval policy is `MANAGER`, the request status becomes `PENDING_MANAGER`.
-5. Before moving the assignment, the backend re-runs transfer eligibility checks for the target employee.
+5. For `EMPLOYEE` policy teams, the backend re-runs transfer eligibility checks before moving the assignment.
 
 If transfer eligibility fails during an `EMPLOYEE` policy approval, the request becomes `INVALIDATED` and the assignment remains unchanged.
-Manager approval and final assignment movement for `MANAGER` policy teams are planned next.
+
+Approve a pending transfer request as a manager:
+
+```bash
+curl -X POST http://localhost:8080/api/requests/1/manager-approve \
+  -H "Authorization: Bearer <TOKEN>"
+```
+
+Expected response when the target employee is still eligible:
+
+```json
+{
+  "id": 1,
+  "type": "TRANSFER",
+  "status": "APPROVED",
+  "requesterId": 2,
+  "requesterUsername": "employee1",
+  "requesterFullName": "Demo Employee One",
+  "sourceAssignmentId": 1,
+  "sourceShiftId": 1,
+  "targetEmployeeId": 3,
+  "targetEmployeeUsername": "employee2",
+  "targetEmployeeFullName": "Demo Employee Two",
+  "targetAssignmentId": null,
+  "employeeApprovedAt": "2026-08-05T18:00:00.000000Z",
+  "managerApprovedById": 1,
+  "managerApprovedAt": "2026-08-05T18:30:00.000000Z",
+  "createdAt": "2026-08-04T18:00:00.000000Z",
+  "updatedAt": "2026-08-05T18:30:00.000000Z"
+}
+```
+
+Manager approval rules:
+
+1. Only a `MANAGER` user can approve at this step.
+2. The manager must manage the source shift's team.
+3. Requests can be manager-approved only while their status is `PENDING_MANAGER`.
+4. Before moving the assignment, the backend re-runs transfer eligibility checks for the target employee.
+
+If transfer eligibility fails during manager approval, the request becomes `INVALIDATED` and the assignment remains unchanged.
 
 ## Availability Constraint Endpoints
 

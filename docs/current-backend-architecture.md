@@ -309,7 +309,7 @@ flowchart TD
     availabilityApi["Availability Constraints<br/>POST /api/availability-constraints<br/>GET /api/availability-constraints/me<br/>DELETE /api/availability-constraints/{constraintId}"]
     staffingApi["Staffing Roles<br/>POST /api/teams/{teamId}/staffing-roles<br/>GET /api/teams/{teamId}/staffing-roles<br/>POST /api/teams/{teamId}/employees/{employeeId}/staffing-roles<br/>GET /api/teams/{teamId}/employees/{employeeId}/staffing-roles"]
     notificationApi["Notifications<br/>GET /api/notifications<br/>GET /api/notifications/unread-count<br/>POST /api/notifications/{notificationId}/read"]
-    requestsApi["Requests<br/>POST /api/requests/transfers<br/>POST /api/requests/{requestId}/employee-approve"]
+    requestsApi["Requests<br/>POST /api/requests/transfers<br/>POST /api/requests/{requestId}/employee-approve<br/>POST /api/requests/{requestId}/manager-approve"]
 
     api --> healthApi
     api --> authApi
@@ -616,6 +616,36 @@ sequenceDiagram
     SwapRequestController-->>Client: 200 OK
 ```
 
+### Transfer Request Manager Approval
+
+```mermaid
+sequenceDiagram
+    participant Client as React or API Client
+    participant Security
+    participant SwapRequestController
+    participant SwapRequestService
+    participant SwapRequest
+    participant TeamManagerRepository
+    participant AssignmentService
+    participant Assignment
+
+    Client->>Security: POST /api/requests/{requestId}/manager-approve with Bearer token
+    Security->>SwapRequestController: authenticated request
+    SwapRequestController->>SwapRequestService: approveByManager(username, requestId)
+    SwapRequestService->>SwapRequestService: validate current user has MANAGER application role
+    SwapRequestService->>TeamManagerRepository: confirm manager owns the source shift team
+    SwapRequestService->>SwapRequest: approveByManager(manager, now)
+    SwapRequest->>SwapRequest: PENDING_MANAGER to APPROVED
+    SwapRequestService->>AssignmentService: validateEmployeeCanReceiveTransferredAssignment(shift, targetEmployee)
+    alt Target employee is eligible
+        SwapRequestService->>Assignment: transferTo(targetEmployee, approvedAt)
+    else Target employee is not eligible
+        SwapRequestService->>SwapRequest: invalidate(approvedAt)
+    end
+    SwapRequestService-->>SwapRequestController: SwapRequestResponse
+    SwapRequestController-->>Client: 200 OK
+```
+
 ## Database Migration Timeline
 
 ```mermaid
@@ -646,7 +676,7 @@ flowchart LR
 | `schedule` | Draft schedule creation, managed draft schedule listing, schedule publication, explicit unfilled-publication confirmation, schedule reopening, publication readiness, employee published schedule list/details, and schedule lifecycle state fields. |
 | `shift` | Shift creation, listing, update, deletion, schedule-range validation, and optional required staffing role storage. |
 | `assignment` | Manual assignment creation/list/delete and business rule validation, including capacity, availability, overlap, rest, and required staffing roles. |
-| `request` | Transfer and swap request model, request statuses, and current transfer request creation workflow. |
+| `request` | Transfer and swap request model, request statuses, transfer creation, target employee approval, manager approval, and transfer execution. |
 | `availability` | Employee unavailable time ranges and conflict checks with assignments. |
 | `staffing` | Team-specific professional roles, role create/list API, employee role assignment/list API, and persistence for assigning roles to team members. |
 | `messaging` | Event outbox persistence, event creation, scheduled outbox dispatch, and JMS message shape. |

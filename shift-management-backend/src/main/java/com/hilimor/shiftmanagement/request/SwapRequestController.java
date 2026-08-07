@@ -37,4 +37,12 @@ public class SwapRequestController {
     ) {
         return swapRequestService.approveByTargetEmployee(authentication.getName(), requestId);
     }
+
+    @PostMapping("/{requestId}/manager-approve")
+    public SwapRequestResponse approveByManager(
+            Authentication authentication,
+            @PathVariable Long requestId
+    ) {
+        return swapRequestService.approveByManager(authentication.getName(), requestId);
+    }
 }

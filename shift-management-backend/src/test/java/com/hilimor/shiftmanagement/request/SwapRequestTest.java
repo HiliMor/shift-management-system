@@ -87,6 +87,33 @@ class SwapRequestTest {
     }
 
     @Test
+    void approveByManagerApprovesRequestThatIsPendingManagerApproval() {
+        SwapRequest request = transferRequest();
+        User manager = user("manager1", 4L, ApplicationRole.MANAGER);
+        Instant employeeApprovedAt = Instant.parse("2026-08-04T19:00:00Z");
+        Instant managerApprovedAt = Instant.parse("2026-08-04T20:00:00Z");
+        request.approveByTargetEmployee(employeeApprovedAt, SwapApprovalPolicy.MANAGER);
+
+        request.approveByManager(manager, managerApprovedAt);
+
+        assertThat(request.getStatus()).isEqualTo(SwapRequestStatus.APPROVED);
+        assertThat(request.getManagerApprovedBy()).isSameAs(manager);
+        assertThat(request.getManagerApprovedAt()).isEqualTo(managerApprovedAt);
+        assertThat(request.getUpdatedAt()).isEqualTo(managerApprovedAt);
+    }
+
+    @Test
+    void approveByManagerRejectsRequestThatIsNotPendingManagerApproval() {
+        SwapRequest request = transferRequest();
+        User manager = user("manager1", 4L, ApplicationRole.MANAGER);
+
+        assertThatThrownBy(() -> request.approveByManager(
+                manager,
+                Instant.parse("2026-08-04T20:00:00Z")
+        )).isInstanceOf(IllegalStateException.class);
+    }
+
+    @Test
     void invalidateMovesRequestToInvalidated() {
         SwapRequest request = transferRequest();
         Instant invalidatedAt = Instant.parse("2026-08-04T20:00:00Z");
@@ -131,12 +158,16 @@ class SwapRequestTest {
     }
 
     private User user(String username, Long id) {
+        return user(username, id, ApplicationRole.EMPLOYEE);
+    }
+
+    private User user(String username, Long id, ApplicationRole role) {
         User user = new User(
                 username,
                 "password-hash",
                 "Demo " + username,
                 username + "@example.com",
-                ApplicationRole.EMPLOYEE
+                role
         );
         ReflectionTestUtils.setField(user, "id", id);
         return user;
