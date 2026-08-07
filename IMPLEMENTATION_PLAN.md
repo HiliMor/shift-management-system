@@ -1399,3 +1399,10 @@ Still open:
 - Manager approval re-runs transfer eligibility checks before moving the assignment.
 - If transfer validation fails during manager approval, the request becomes `INVALIDATED` and the assignment remains unchanged.
 - Added focused tests for manager approval, team-scoped authorization, invalidation on validation failure, and invalid status conflicts.
+
+### 2026-08-07 - Postman API Collection
+
+- Added a Postman collection for the implemented backend API.
+- Added a local Postman environment with development variables and empty token storage.
+- Login requests save the returned JWT into `accessToken` automatically.
+- Added a suggested manual demo flow for health, auth, teams, schedules, shifts, assignments, publication, transfer requests, and manager approval.

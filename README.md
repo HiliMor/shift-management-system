@@ -102,6 +102,12 @@ Frontend setup and run instructions are documented in:
 shift-management-frontend/README.md
 ```
 
+Postman collection import instructions are documented in:
+
+```text
+docs/postman/README.md
+```
+
 ## Development Approach
 
 The project is built in small phases. Each phase adds a limited piece of
