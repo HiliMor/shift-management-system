@@ -16,6 +16,8 @@ import com.hilimor.shiftmanagement.team.TeamRepository;
 import com.hilimor.shiftmanagement.user.User;
 import com.hilimor.shiftmanagement.user.UserRepository;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -24,6 +26,7 @@ import org.springframework.web.server.ResponseStatusException;
 @Service
 public class ScheduleService {
 
+    private static final Logger log = LoggerFactory.getLogger(ScheduleService.class);
     private static final String SCHEDULE_PUBLISHED_EVENT_TYPE = "schedule.published";
 
     private final ScheduleRepository scheduleRepository;
@@ -70,6 +73,12 @@ public class ScheduleService {
 
         Schedule schedule = new Schedule(team, request.startDate(), request.endDate());
         Schedule savedSchedule = scheduleRepository.save(schedule);
+        log.info(
+                "Draft schedule {} created for team {} by manager {}",
+                savedSchedule.getId(),
+                team.getId(),
+                username
+        );
 
         return ScheduleResponse.from(savedSchedule);
     }
@@ -103,6 +112,12 @@ public class ScheduleService {
         }
 
         eventOutboxService.createEvent(SCHEDULE_PUBLISHED_EVENT_TYPE, SchedulePublishedEvent.from(schedule));
+        log.info(
+                "Schedule {} published by manager {} with confirmation {}",
+                schedule.getId(),
+                username,
+                confirmUnfilled
+        );
 
         return ScheduleResponse.from(schedule);
     }
@@ -120,6 +135,7 @@ public class ScheduleService {
         } catch (IllegalStateException exception) {
             throw new ResponseStatusException(HttpStatus.CONFLICT, exception.getMessage());
         }
+        log.info("Schedule {} reopened by manager {}", schedule.getId(), username);
 
         return ScheduleResponse.from(schedule);
     }

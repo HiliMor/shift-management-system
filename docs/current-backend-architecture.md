@@ -147,6 +147,20 @@ flowchart TD
 Not every package has every layer yet.
 For example, the basic schedule lifecycle, publication readiness report, explicit unfilled-publication confirmation, and employee published schedule views are already implemented.
 
+## Operational Logging
+
+The backend uses Spring Boot's default SLF4J logging for focused business events.
+Current logging is intentionally limited to workflow checkpoints:
+
+- Schedule creation, publication, and reopening.
+- Assignment creation and deletion.
+- Transfer request creation, approval, rejection, cancellation, invalidation, and assignment transfer execution.
+- Outbox event dispatch and schedule-published notification creation.
+
+Logs include operational identifiers such as schedule IDs, assignment IDs, user IDs,
+team IDs, event IDs, and request IDs. They do not log passwords, JWT tokens, or full
+request payloads.
+
 ## Domain Model
 
 ```mermaid

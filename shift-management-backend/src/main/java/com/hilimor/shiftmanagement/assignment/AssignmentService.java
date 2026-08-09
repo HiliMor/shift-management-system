@@ -16,6 +16,8 @@ import com.hilimor.shiftmanagement.team.TeamMemberRepository;
 import com.hilimor.shiftmanagement.user.User;
 import com.hilimor.shiftmanagement.user.UserRepository;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -23,6 +25,8 @@ import org.springframework.web.server.ResponseStatusException;
 
 @Service
 public class AssignmentService {
+
+    private static final Logger log = LoggerFactory.getLogger(AssignmentService.class);
 
     private final AssignmentRepository assignmentRepository;
     private final ScheduleRepository scheduleRepository;
@@ -78,6 +82,13 @@ public class AssignmentService {
 
         Assignment assignment = new Assignment(shift, employee, Instant.now());
         Assignment savedAssignment = assignmentRepository.save(assignment);
+        log.info(
+                "Assignment {} created for shift {} and employee {} by manager {}",
+                savedAssignment.getId(),
+                shift.getId(),
+                employee.getId(),
+                managerUsername
+        );
 
         return AssignmentResponse.from(savedAssignment);
     }
@@ -108,6 +119,12 @@ public class AssignmentService {
         }
 
         assignmentRepository.delete(assignment);
+        log.info(
+                "Assignment {} deleted from shift {} by manager {}",
+                assignment.getId(),
+                assignment.getShift().getId(),
+                managerUsername
+        );
     }
 
     @Transactional(readOnly = true)

@@ -805,7 +805,7 @@ Goal: make the project ready for submission and presentation.
 - [ ] Repository integration tests.
 - [ ] Basic security tests.
 - [ ] Unified error handling with `ControllerAdvice`.
-- [ ] Basic logging.
+- [x] Basic logging.
 - [ ] Seed data for the demo.
 
 ### Verify
@@ -1419,3 +1419,11 @@ Still open:
 - Requester cancellation is allowed only while a request is `PENDING_EMPLOYEE` or `PENDING_MANAGER`.
 - Rejection and cancellation update request status only; assignments remain unchanged.
 - Added focused tests for valid transitions, authorization checks, and invalid status conflicts.
+
+### 2026-08-09 - Basic Business Logging
+
+- Added focused SLF4J logging for schedule creation, publication, and reopening.
+- Added focused logging for assignment creation and deletion.
+- Added focused logging for transfer request creation, approval, rejection, cancellation, invalidation, and assignment transfer execution.
+- Added logging for successful outbox dispatch and schedule-published notification creation.
+- Avoided logging passwords, JWT tokens, and full request payloads.

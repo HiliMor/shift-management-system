@@ -8,11 +8,15 @@ import com.hilimor.shiftmanagement.schedule.SchedulePublishedEvent;
 import com.hilimor.shiftmanagement.team.TeamMember;
 import com.hilimor.shiftmanagement.team.TeamMemberRepository;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 @Service
 public class SchedulePublishedNotificationService {
+
+    private static final Logger log = LoggerFactory.getLogger(SchedulePublishedNotificationService.class);
 
     private static final String RELATED_ENTITY_TYPE = "SCHEDULE";
 
@@ -44,6 +48,11 @@ public class SchedulePublishedNotificationService {
                     createdAt
             );
         }
+        log.info(
+                "Created schedule-published notifications for schedule {} and {} active team members",
+                event.scheduleId(),
+                activeTeamMembers.size()
+        );
     }
 
     private String publishedScheduleMessage(SchedulePublishedEvent event) {

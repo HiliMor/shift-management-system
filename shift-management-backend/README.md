@@ -77,6 +77,7 @@ Implemented:
 - Transfer execution for teams with `EMPLOYEE` approval policy.
 - Manager approval endpoint: `POST /api/requests/{requestId}/manager-approve`.
 - Transfer execution for teams with `MANAGER` approval policy.
+- Basic business logging for schedule, assignment, transfer request, outbox, and notification workflows.
 
 Not implemented yet:
 

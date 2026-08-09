@@ -55,6 +55,7 @@ Implemented:
 - Requester cancellation endpoint for active transfer requests.
 - Transfer execution for teams with `EMPLOYEE` approval policy.
 - Manager approval and transfer execution for teams with `MANAGER` approval policy.
+- Basic business logging for schedule, assignment, transfer request, outbox, and notification workflows.
 
 Frontend:
 

@@ -16,6 +16,8 @@ import com.hilimor.shiftmanagement.user.ApplicationRole;
 import com.hilimor.shiftmanagement.user.User;
 import com.hilimor.shiftmanagement.user.UserRepository;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -23,6 +25,8 @@ import org.springframework.web.server.ResponseStatusException;
 
 @Service
 public class SwapRequestService {
+
+    private static final Logger log = LoggerFactory.getLogger(SwapRequestService.class);
 
     private static final List<SwapRequestStatus> ACTIVE_REQUEST_STATUSES = List.of(
             SwapRequestStatus.PENDING_EMPLOYEE,
@@ -98,7 +102,16 @@ public class SwapRequestService {
                 targetEmployee,
                 Instant.now()
         );
-        return SwapRequestResponse.from(swapRequestRepository.save(swapRequest));
+        SwapRequest savedRequest = swapRequestRepository.save(swapRequest);
+        log.info(
+                "Transfer request {} created for assignment {} from employee {} to employee {}",
+                savedRequest.getId(),
+                sourceAssignment.getId(),
+                requester.getId(),
+                targetEmployee.getId()
+        );
+
+        return SwapRequestResponse.from(savedRequest);
     }
 
     @Transactional
@@ -124,6 +137,12 @@ public class SwapRequestService {
         }
 
         executeApprovedTransferIfReady(request, approvedAt);
+        log.info(
+                "Transfer request {} approved by target employee {}; status is {}",
+                request.getId(),
+                targetEmployee.getId(),
+                request.getStatus()
+        );
 
         return SwapRequestResponse.from(request);
     }
@@ -152,6 +171,12 @@ public class SwapRequestService {
         }
 
         executeApprovedTransferIfReady(request, approvedAt);
+        log.info(
+                "Transfer request {} approved by manager {}; status is {}",
+                request.getId(),
+                manager.getId(),
+                request.getStatus()
+        );
 
         return SwapRequestResponse.from(request);
     }
@@ -173,6 +198,7 @@ public class SwapRequestService {
         } catch (IllegalStateException exception) {
             throw new ResponseStatusException(HttpStatus.CONFLICT, exception.getMessage(), exception);
         }
+        log.info("Transfer request {} rejected by target employee {}", request.getId(), targetEmployee.getId());
 
         return SwapRequestResponse.from(request);
     }
@@ -194,6 +220,7 @@ public class SwapRequestService {
         } catch (IllegalStateException exception) {
             throw new ResponseStatusException(HttpStatus.CONFLICT, exception.getMessage(), exception);
         }
+        log.info("Transfer request {} cancelled by requester {}", request.getId(), requester.getId());
 
         return SwapRequestResponse.from(request);
     }
@@ -210,10 +237,25 @@ public class SwapRequestService {
             assignmentService.validateEmployeeCanReceiveTransferredAssignment(sourceAssignment.getShift(), targetEmployee);
         } catch (AssignmentValidationException exception) {
             request.invalidate(executedAt);
+            log.warn(
+                    "Transfer request {} invalidated before assignment transfer; assignment={}, targetEmployee={}, reason={}",
+                    request.getId(),
+                    sourceAssignment.getId(),
+                    targetEmployee.getId(),
+                    exception.getCode()
+            );
             return;
         }
 
+        Long previousEmployeeId = sourceAssignment.getEmployee().getId();
         sourceAssignment.transferTo(targetEmployee, executedAt);
+        log.info(
+                "Assignment {} transferred from employee {} to employee {} through transfer request {}",
+                sourceAssignment.getId(),
+                previousEmployeeId,
+                targetEmployee.getId(),
+                request.getId()
+        );
     }
 
     private User currentUser(String username) {

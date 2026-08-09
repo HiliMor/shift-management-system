@@ -54,6 +54,12 @@ public class OutboxEventDispatcher {
                 String message = objectMapper.writeValueAsString(OutboxEventMessage.from(event));
                 jmsTemplate.convertAndSend(notificationQueue, message);
                 event.markSent(Instant.now());
+                log.info(
+                        "Dispatched outbox event {} of type {} to queue {}",
+                        event.getEventId(),
+                        event.getEventType(),
+                        notificationQueue
+                );
             } catch (JsonProcessingException | JmsException exception) {
                 event.recordFailedAttempt();
                 log.warn("Failed to dispatch outbox event {}: {}", event.getEventId(), exception.getMessage());
