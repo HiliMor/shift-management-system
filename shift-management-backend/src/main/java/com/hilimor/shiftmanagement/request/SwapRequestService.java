@@ -156,6 +156,48 @@ public class SwapRequestService {
         return SwapRequestResponse.from(request);
     }
 
+    @Transactional
+    public SwapRequestResponse rejectByTargetEmployee(String username, Long requestId) {
+        User targetEmployee = currentUser(username);
+        requireEmployee(targetEmployee, "Only employees can reject incoming transfer requests");
+
+        SwapRequest request = swapRequestRepository.findById(requestId)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Request not found"));
+
+        if (!Objects.equals(request.getTargetEmployee().getId(), targetEmployee.getId())) {
+            throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Request not found");
+        }
+
+        try {
+            request.rejectByTargetEmployee(Instant.now());
+        } catch (IllegalStateException exception) {
+            throw new ResponseStatusException(HttpStatus.CONFLICT, exception.getMessage(), exception);
+        }
+
+        return SwapRequestResponse.from(request);
+    }
+
+    @Transactional
+    public SwapRequestResponse cancelByRequester(String username, Long requestId) {
+        User requester = currentUser(username);
+        requireEmployee(requester, "Only employees can cancel transfer requests");
+
+        SwapRequest request = swapRequestRepository.findById(requestId)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Request not found"));
+
+        if (!Objects.equals(request.getRequester().getId(), requester.getId())) {
+            throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Request not found");
+        }
+
+        try {
+            request.cancelByRequester(Instant.now());
+        } catch (IllegalStateException exception) {
+            throw new ResponseStatusException(HttpStatus.CONFLICT, exception.getMessage(), exception);
+        }
+
+        return SwapRequestResponse.from(request);
+    }
+
     private void executeApprovedTransferIfReady(SwapRequest request, Instant executedAt) {
         if (request.getType() != SwapRequestType.TRANSFER || request.getStatus() != SwapRequestStatus.APPROVED) {
             return;

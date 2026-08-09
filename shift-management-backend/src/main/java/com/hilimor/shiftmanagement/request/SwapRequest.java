@@ -147,6 +147,28 @@ public class SwapRequest {
         status = SwapRequestStatus.APPROVED;
     }
 
+    public void rejectByTargetEmployee(Instant rejectedAt) {
+        Objects.requireNonNull(rejectedAt, "rejectedAt must not be null");
+
+        if (status != SwapRequestStatus.PENDING_EMPLOYEE) {
+            throw new IllegalStateException("Only requests pending employee approval can be rejected by the target employee");
+        }
+
+        status = SwapRequestStatus.REJECTED;
+        updatedAt = rejectedAt;
+    }
+
+    public void cancelByRequester(Instant cancelledAt) {
+        Objects.requireNonNull(cancelledAt, "cancelledAt must not be null");
+
+        if (status != SwapRequestStatus.PENDING_EMPLOYEE && status != SwapRequestStatus.PENDING_MANAGER) {
+            throw new IllegalStateException("Only active requests can be cancelled");
+        }
+
+        status = SwapRequestStatus.CANCELLED;
+        updatedAt = cancelledAt;
+    }
+
     public void invalidate(Instant invalidatedAt) {
         Objects.requireNonNull(invalidatedAt, "invalidatedAt must not be null");
 

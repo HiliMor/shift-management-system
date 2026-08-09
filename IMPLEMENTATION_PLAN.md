@@ -691,7 +691,8 @@ Goal: allow employees to transfer a shift or request a shift swap.
 - [x] Start with transfer only.
 - [x] Add statuses: `PENDING_EMPLOYEE`, `PENDING_MANAGER`, `APPROVED`, `REJECTED`, `CANCELLED`, `INVALIDATED`.
 - [x] Allow the target employee to approve.
-- [ ] Allow the target employee to reject.
+- [x] Allow the target employee to reject.
+- [x] Allow the requester to cancel an active transfer request.
 - [x] Run assignment validations before employee-policy final approval.
 - [x] Run assignment validations before manager final approval.
 - [x] Move the assignment to the target employee after employee-policy transfer approval.
@@ -707,6 +708,8 @@ Goal: allow employees to transfer a shift or request a shift swap.
 - [x] An employee-policy transfer request becomes invalidated if assignment is no longer possible.
 - [x] A manager-policy transfer request can be approved by a manager of the source team.
 - [x] A manager-policy transfer request becomes invalidated if assignment is no longer possible.
+- [x] The target employee can reject a pending transfer request.
+- [x] The requester can cancel an active transfer request.
 - [ ] A swap exchanges two assignments.
 
 ### Document
@@ -1406,3 +1409,13 @@ Still open:
 - Added a local Postman environment with development variables and empty token storage.
 - Login requests save the returned JWT into `accessToken` automatically.
 - Added a suggested manual demo flow for health, auth, teams, schedules, shifts, assignments, publication, transfer requests, and manager approval.
+
+### 2026-08-09 - Transfer Request Reject And Cancel
+
+- Added `POST /api/requests/{requestId}/employee-reject`.
+- Added `POST /api/requests/{requestId}/cancel`.
+- Added domain behavior for target employee rejection and requester cancellation on `SwapRequest`.
+- Target rejection is allowed only while a request is `PENDING_EMPLOYEE`.
+- Requester cancellation is allowed only while a request is `PENDING_EMPLOYEE` or `PENDING_MANAGER`.
+- Rejection and cancellation update request status only; assignments remain unchanged.
+- Added focused tests for valid transitions, authorization checks, and invalid status conflicts.

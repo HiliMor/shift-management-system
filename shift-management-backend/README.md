@@ -72,6 +72,8 @@ Implemented:
 - Transfer request persistence model.
 - Transfer request creation endpoint: `POST /api/requests/transfers`.
 - Target employee approval endpoint: `POST /api/requests/{requestId}/employee-approve`.
+- Target employee rejection endpoint: `POST /api/requests/{requestId}/employee-reject`.
+- Requester cancellation endpoint: `POST /api/requests/{requestId}/cancel`.
 - Transfer execution for teams with `EMPLOYEE` approval policy.
 - Manager approval endpoint: `POST /api/requests/{requestId}/manager-approve`.
 - Transfer execution for teams with `MANAGER` approval policy.
@@ -79,7 +81,6 @@ Implemented:
 Not implemented yet:
 
 - Schedule list, update, and delete endpoints.
-- Transfer request rejection and cancellation endpoints.
 - Full shift swap endpoints.
 - Automatic assignment.
 - Remaining team-scoped authorization for future manager workflows.
@@ -800,6 +801,34 @@ Employee approval rules:
 5. For `EMPLOYEE` policy teams, the backend re-runs transfer eligibility checks before moving the assignment.
 
 If transfer eligibility fails during an `EMPLOYEE` policy approval, the request becomes `INVALIDATED` and the assignment remains unchanged.
+
+Reject an incoming transfer request as the target employee:
+
+```bash
+curl -X POST http://localhost:8080/api/requests/1/employee-reject \
+  -H "Authorization: Bearer <TOKEN>"
+```
+
+Employee rejection rules:
+
+1. Only the target employee can reject the request.
+2. Requests can be rejected only while their status is `PENDING_EMPLOYEE`.
+3. Rejection changes the request status to `REJECTED`.
+4. Rejection never changes the assignment.
+
+Cancel an active transfer request as the requester:
+
+```bash
+curl -X POST http://localhost:8080/api/requests/1/cancel \
+  -H "Authorization: Bearer <TOKEN>"
+```
+
+Cancellation rules:
+
+1. Only the employee who created the request can cancel it.
+2. Requests can be cancelled only while their status is `PENDING_EMPLOYEE` or `PENDING_MANAGER`.
+3. Cancellation changes the request status to `CANCELLED`.
+4. Cancellation never changes the assignment.
 
 Approve a pending transfer request as a manager:
 

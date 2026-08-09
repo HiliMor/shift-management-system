@@ -1131,6 +1131,48 @@
           "response": []
         },
         {
+          "name": "Reject Transfer As Target Employee",
+          "description": "Alternative flow: run `Login as Employee Two` before this request when Employee Two is the transfer target. Use this instead of approving the same transfer request.",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/requests/{{transferRequestId}}/employee-reject",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "requests",
+                "{{transferRequestId}}",
+                "employee-reject"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Cancel Transfer As Requester",
+          "description": "Alternative flow: run `Login as Employee One` before this request when Employee One created the transfer request. Can be used while the request is still PENDING_EMPLOYEE or PENDING_MANAGER.",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/requests/{{transferRequestId}}/cancel",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "requests",
+                "{{transferRequestId}}",
+                "cancel"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
           "name": "Approve Transfer As Manager",
           "description": "Run `Login as Manager` before this request for teams with MANAGER transfer approval policy.",
           "request": {

@@ -51,6 +51,8 @@ Implemented:
 - Transfer request persistence model.
 - Transfer request creation endpoint for published assignments.
 - Target employee approval endpoint for transfer requests.
+- Target employee rejection endpoint for transfer requests.
+- Requester cancellation endpoint for active transfer requests.
 - Transfer execution for teams with `EMPLOYEE` approval policy.
 - Manager approval and transfer execution for teams with `MANAGER` approval policy.
 

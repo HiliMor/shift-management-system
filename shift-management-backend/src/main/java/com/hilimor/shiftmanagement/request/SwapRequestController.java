@@ -45,4 +45,20 @@ public class SwapRequestController {
     ) {
         return swapRequestService.approveByManager(authentication.getName(), requestId);
     }
+
+    @PostMapping("/{requestId}/employee-reject")
+    public SwapRequestResponse rejectByTargetEmployee(
+            Authentication authentication,
+            @PathVariable Long requestId
+    ) {
+        return swapRequestService.rejectByTargetEmployee(authentication.getName(), requestId);
+    }
+
+    @PostMapping("/{requestId}/cancel")
+    public SwapRequestResponse cancelByRequester(
+            Authentication authentication,
+            @PathVariable Long requestId
+    ) {
+        return swapRequestService.cancelByRequester(authentication.getName(), requestId);
+    }
 }

@@ -114,6 +114,60 @@ class SwapRequestTest {
     }
 
     @Test
+    void rejectByTargetEmployeeRejectsPendingEmployeeRequest() {
+        SwapRequest request = transferRequest();
+        Instant rejectedAt = Instant.parse("2026-08-04T19:00:00Z");
+
+        request.rejectByTargetEmployee(rejectedAt);
+
+        assertThat(request.getStatus()).isEqualTo(SwapRequestStatus.REJECTED);
+        assertThat(request.getUpdatedAt()).isEqualTo(rejectedAt);
+    }
+
+    @Test
+    void rejectByTargetEmployeeRejectsRequestThatIsNotPendingEmployeeApproval() {
+        SwapRequest request = transferRequest();
+        request.approveByTargetEmployee(Instant.parse("2026-08-04T19:00:00Z"), SwapApprovalPolicy.MANAGER);
+
+        assertThatThrownBy(() -> request.rejectByTargetEmployee(
+                Instant.parse("2026-08-04T20:00:00Z")
+        )).isInstanceOf(IllegalStateException.class);
+    }
+
+    @Test
+    void cancelByRequesterCancelsPendingEmployeeRequest() {
+        SwapRequest request = transferRequest();
+        Instant cancelledAt = Instant.parse("2026-08-04T19:00:00Z");
+
+        request.cancelByRequester(cancelledAt);
+
+        assertThat(request.getStatus()).isEqualTo(SwapRequestStatus.CANCELLED);
+        assertThat(request.getUpdatedAt()).isEqualTo(cancelledAt);
+    }
+
+    @Test
+    void cancelByRequesterCancelsPendingManagerRequest() {
+        SwapRequest request = transferRequest();
+        request.approveByTargetEmployee(Instant.parse("2026-08-04T19:00:00Z"), SwapApprovalPolicy.MANAGER);
+        Instant cancelledAt = Instant.parse("2026-08-04T20:00:00Z");
+
+        request.cancelByRequester(cancelledAt);
+
+        assertThat(request.getStatus()).isEqualTo(SwapRequestStatus.CANCELLED);
+        assertThat(request.getUpdatedAt()).isEqualTo(cancelledAt);
+    }
+
+    @Test
+    void cancelByRequesterRejectsCompletedRequest() {
+        SwapRequest request = transferRequest();
+        request.approveByTargetEmployee(Instant.parse("2026-08-04T19:00:00Z"), SwapApprovalPolicy.EMPLOYEE);
+
+        assertThatThrownBy(() -> request.cancelByRequester(
+                Instant.parse("2026-08-04T20:00:00Z")
+        )).isInstanceOf(IllegalStateException.class);
+    }
+
+    @Test
     void invalidateMovesRequestToInvalidated() {
         SwapRequest request = transferRequest();
         Instant invalidatedAt = Instant.parse("2026-08-04T20:00:00Z");

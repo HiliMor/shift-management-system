@@ -482,6 +482,161 @@ class SwapRequestServiceTest {
         verifyNoInteractions(assignmentService);
     }
 
+    @Test
+    void rejectByTargetEmployeeRejectsPendingRequest() {
+        User requester = employee("employee1", 2L);
+        User targetEmployee = employee("employee2", 3L);
+        SwapRequest request = transferRequest(
+                requester,
+                targetEmployee,
+                schedule(ScheduleStatus.PUBLISHED, SwapApprovalPolicy.MANAGER)
+        );
+
+        when(userRepository.findByUsername("employee2")).thenReturn(Optional.of(targetEmployee));
+        when(swapRequestRepository.findById(40L)).thenReturn(Optional.of(request));
+
+        SwapRequestResponse response = swapRequestService.rejectByTargetEmployee("employee2", 40L);
+
+        assertThat(response.status()).isEqualTo(SwapRequestStatus.REJECTED);
+        assertThat(response.updatedAt()).isNotEqualTo(response.createdAt());
+        assertThat(request.getSourceAssignment().getEmployee()).isSameAs(requester);
+        verifyNoInteractions(assignmentService);
+    }
+
+    @Test
+    void rejectByTargetEmployeeRejectsEmployeeWhoIsNotTarget() {
+        User requester = employee("employee1", 2L);
+        User targetEmployee = employee("employee2", 3L);
+        User otherEmployee = employee("employee3", 4L);
+        SwapRequest request = transferRequest(
+                requester,
+                targetEmployee,
+                schedule(ScheduleStatus.PUBLISHED, SwapApprovalPolicy.MANAGER)
+        );
+
+        when(userRepository.findByUsername("employee3")).thenReturn(Optional.of(otherEmployee));
+        when(swapRequestRepository.findById(40L)).thenReturn(Optional.of(request));
+
+        assertResponseStatus(
+                () -> swapRequestService.rejectByTargetEmployee("employee3", 40L),
+                HttpStatus.NOT_FOUND
+        );
+
+        assertThat(request.getStatus()).isEqualTo(SwapRequestStatus.PENDING_EMPLOYEE);
+        verifyNoInteractions(assignmentService);
+    }
+
+    @Test
+    void rejectByTargetEmployeeRejectsRequestThatIsNotPendingEmployeeApproval() {
+        User requester = employee("employee1", 2L);
+        User targetEmployee = employee("employee2", 3L);
+        SwapRequest request = transferRequest(
+                requester,
+                targetEmployee,
+                schedule(ScheduleStatus.PUBLISHED, SwapApprovalPolicy.MANAGER)
+        );
+        request.approveByTargetEmployee(Instant.parse("2026-08-04T19:00:00Z"), SwapApprovalPolicy.MANAGER);
+
+        when(userRepository.findByUsername("employee2")).thenReturn(Optional.of(targetEmployee));
+        when(swapRequestRepository.findById(40L)).thenReturn(Optional.of(request));
+
+        assertResponseStatus(
+                () -> swapRequestService.rejectByTargetEmployee("employee2", 40L),
+                HttpStatus.CONFLICT
+        );
+
+        assertThat(request.getStatus()).isEqualTo(SwapRequestStatus.PENDING_MANAGER);
+        verifyNoInteractions(assignmentService);
+    }
+
+    @Test
+    void cancelByRequesterCancelsPendingEmployeeRequest() {
+        User requester = employee("employee1", 2L);
+        User targetEmployee = employee("employee2", 3L);
+        SwapRequest request = transferRequest(
+                requester,
+                targetEmployee,
+                schedule(ScheduleStatus.PUBLISHED, SwapApprovalPolicy.MANAGER)
+        );
+
+        when(userRepository.findByUsername("employee1")).thenReturn(Optional.of(requester));
+        when(swapRequestRepository.findById(40L)).thenReturn(Optional.of(request));
+
+        SwapRequestResponse response = swapRequestService.cancelByRequester("employee1", 40L);
+
+        assertThat(response.status()).isEqualTo(SwapRequestStatus.CANCELLED);
+        assertThat(response.updatedAt()).isNotEqualTo(response.createdAt());
+        assertThat(request.getSourceAssignment().getEmployee()).isSameAs(requester);
+        verifyNoInteractions(assignmentService);
+    }
+
+    @Test
+    void cancelByRequesterCancelsPendingManagerRequest() {
+        User requester = employee("employee1", 2L);
+        User targetEmployee = employee("employee2", 3L);
+        SwapRequest request = transferRequest(
+                requester,
+                targetEmployee,
+                schedule(ScheduleStatus.PUBLISHED, SwapApprovalPolicy.MANAGER)
+        );
+        request.approveByTargetEmployee(Instant.parse("2026-08-04T19:00:00Z"), SwapApprovalPolicy.MANAGER);
+
+        when(userRepository.findByUsername("employee1")).thenReturn(Optional.of(requester));
+        when(swapRequestRepository.findById(40L)).thenReturn(Optional.of(request));
+
+        SwapRequestResponse response = swapRequestService.cancelByRequester("employee1", 40L);
+
+        assertThat(response.status()).isEqualTo(SwapRequestStatus.CANCELLED);
+        assertThat(response.updatedAt()).isNotEqualTo(response.createdAt());
+        assertThat(request.getSourceAssignment().getEmployee()).isSameAs(requester);
+        verifyNoInteractions(assignmentService);
+    }
+
+    @Test
+    void cancelByRequesterRejectsEmployeeWhoIsNotRequester() {
+        User requester = employee("employee1", 2L);
+        User targetEmployee = employee("employee2", 3L);
+        SwapRequest request = transferRequest(
+                requester,
+                targetEmployee,
+                schedule(ScheduleStatus.PUBLISHED, SwapApprovalPolicy.MANAGER)
+        );
+
+        when(userRepository.findByUsername("employee2")).thenReturn(Optional.of(targetEmployee));
+        when(swapRequestRepository.findById(40L)).thenReturn(Optional.of(request));
+
+        assertResponseStatus(
+                () -> swapRequestService.cancelByRequester("employee2", 40L),
+                HttpStatus.NOT_FOUND
+        );
+
+        assertThat(request.getStatus()).isEqualTo(SwapRequestStatus.PENDING_EMPLOYEE);
+        verifyNoInteractions(assignmentService);
+    }
+
+    @Test
+    void cancelByRequesterRejectsCompletedRequest() {
+        User requester = employee("employee1", 2L);
+        User targetEmployee = employee("employee2", 3L);
+        SwapRequest request = transferRequest(
+                requester,
+                targetEmployee,
+                schedule(ScheduleStatus.PUBLISHED, SwapApprovalPolicy.EMPLOYEE)
+        );
+        request.approveByTargetEmployee(Instant.parse("2026-08-04T19:00:00Z"), SwapApprovalPolicy.EMPLOYEE);
+
+        when(userRepository.findByUsername("employee1")).thenReturn(Optional.of(requester));
+        when(swapRequestRepository.findById(40L)).thenReturn(Optional.of(request));
+
+        assertResponseStatus(
+                () -> swapRequestService.cancelByRequester("employee1", 40L),
+                HttpStatus.CONFLICT
+        );
+
+        assertThat(request.getStatus()).isEqualTo(SwapRequestStatus.APPROVED);
+        verifyNoInteractions(assignmentService);
+    }
+
     private void assertResponseStatus(Runnable action, HttpStatus expectedStatus) {
         assertThatThrownBy(action::run)
                 .isInstanceOfSatisfying(ResponseStatusException.class, exception ->

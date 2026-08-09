@@ -38,6 +38,11 @@ If the backend is running on another port, update the environment `baseUrl`.
 14. `Auth / Login as Manager`
 15. `Transfer Requests / Approve Transfer As Manager`
 
+Alternative transfer endings:
+
+- `Transfer Requests / Reject Transfer As Target Employee` can be run instead of employee approval.
+- `Transfer Requests / Cancel Transfer As Requester` can be run by the requester while the request is still active.
+
 Some requests save IDs into the environment automatically, such as `scheduleId`,
 `shiftId`, `assignmentId`, and `transferRequestId`.
 
