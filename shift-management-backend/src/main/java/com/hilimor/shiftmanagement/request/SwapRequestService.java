@@ -114,6 +114,51 @@ public class SwapRequestService {
         return SwapRequestResponse.from(savedRequest);
     }
 
+    @Transactional(readOnly = true)
+    public List<SwapRequestResponse> listMyOutgoingRequests(String username) {
+        User requester = currentUser(username);
+        requireEmployee(requester, "Only employees can view outgoing transfer requests");
+
+        return swapRequestRepository.findByRequester_UsernameOrderByCreatedAtDesc(username)
+                .stream()
+                .map(SwapRequestResponse::from)
+                .toList();
+    }
+
+    @Transactional(readOnly = true)
+    public List<SwapRequestResponse> listMyIncomingRequests(String username) {
+        User targetEmployee = currentUser(username);
+        requireEmployee(targetEmployee, "Only employees can view incoming transfer requests");
+
+        return swapRequestRepository.findByTargetEmployee_UsernameOrderByCreatedAtDesc(username)
+                .stream()
+                .map(SwapRequestResponse::from)
+                .toList();
+    }
+
+    @Transactional(readOnly = true)
+    public List<SwapRequestResponse> listPendingManagerRequests(String username) {
+        User manager = currentUser(username);
+        requireManager(manager, "Only managers can view pending manager transfer requests");
+
+        List<Long> teamIds = teamManagerRepository.findByManager_Username(username)
+                .stream()
+                .map(teamManager -> teamManager.getTeam().getId())
+                .toList();
+
+        if (teamIds.isEmpty()) {
+            return List.of();
+        }
+
+        return swapRequestRepository.findByStatusAndSourceAssignment_Shift_Schedule_Team_IdInOrderByCreatedAtDesc(
+                SwapRequestStatus.PENDING_MANAGER,
+                teamIds
+        )
+                .stream()
+                .map(SwapRequestResponse::from)
+                .toList();
+    }
+
     @Transactional
     public SwapRequestResponse approveByTargetEmployee(String username, Long requestId) {
         User targetEmployee = currentUser(username);

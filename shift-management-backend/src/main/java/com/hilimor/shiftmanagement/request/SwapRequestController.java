@@ -1,9 +1,12 @@
 package com.hilimor.shiftmanagement.request;
 
+import java.util.List;
+
 import jakarta.validation.Valid;
 
 import org.springframework.http.HttpStatus;
 import org.springframework.security.core.Authentication;
+import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
@@ -28,6 +31,21 @@ public class SwapRequestController {
             @Valid @RequestBody CreateTransferRequest request
     ) {
         return swapRequestService.createTransferRequest(authentication.getName(), request);
+    }
+
+    @GetMapping("/me/outgoing")
+    public List<SwapRequestResponse> listMyOutgoingRequests(Authentication authentication) {
+        return swapRequestService.listMyOutgoingRequests(authentication.getName());
+    }
+
+    @GetMapping("/me/incoming")
+    public List<SwapRequestResponse> listMyIncomingRequests(Authentication authentication) {
+        return swapRequestService.listMyIncomingRequests(authentication.getName());
+    }
+
+    @GetMapping("/manager/pending")
+    public List<SwapRequestResponse> listPendingManagerRequests(Authentication authentication) {
+        return swapRequestService.listPendingManagerRequests(authentication.getName());
     }
 
     @PostMapping("/{requestId}/employee-approve")

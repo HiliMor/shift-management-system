@@ -23,6 +23,7 @@ import com.hilimor.shiftmanagement.schedule.ScheduleStatus;
 import com.hilimor.shiftmanagement.shift.Shift;
 import com.hilimor.shiftmanagement.team.SwapApprovalPolicy;
 import com.hilimor.shiftmanagement.team.Team;
+import com.hilimor.shiftmanagement.team.TeamManager;
 import com.hilimor.shiftmanagement.team.TeamManagerRepository;
 import com.hilimor.shiftmanagement.team.TeamMemberRepository;
 import com.hilimor.shiftmanagement.user.ApplicationRole;
@@ -211,6 +212,92 @@ class SwapRequestServiceTest {
         );
 
         verify(swapRequestRepository, never()).save(any());
+    }
+
+    @Test
+    void listMyOutgoingRequestsReturnsRequestsCreatedByCurrentEmployee() {
+        User requester = employee("employee1", 2L);
+        User targetEmployee = employee("employee2", 3L);
+        SwapRequest request = transferRequest(
+                requester,
+                targetEmployee,
+                schedule(ScheduleStatus.PUBLISHED, SwapApprovalPolicy.MANAGER)
+        );
+
+        when(userRepository.findByUsername("employee1")).thenReturn(Optional.of(requester));
+        when(swapRequestRepository.findByRequester_UsernameOrderByCreatedAtDesc("employee1")).thenReturn(List.of(request));
+
+        List<SwapRequestResponse> responses = swapRequestService.listMyOutgoingRequests("employee1");
+
+        assertThat(responses).hasSize(1);
+        assertThat(responses.getFirst().id()).isEqualTo(40L);
+        assertThat(responses.getFirst().requesterUsername()).isEqualTo("employee1");
+        assertThat(responses.getFirst().targetEmployeeUsername()).isEqualTo("employee2");
+    }
+
+    @Test
+    void listMyIncomingRequestsReturnsRequestsTargetingCurrentEmployee() {
+        User requester = employee("employee1", 2L);
+        User targetEmployee = employee("employee2", 3L);
+        SwapRequest request = transferRequest(
+                requester,
+                targetEmployee,
+                schedule(ScheduleStatus.PUBLISHED, SwapApprovalPolicy.MANAGER)
+        );
+
+        when(userRepository.findByUsername("employee2")).thenReturn(Optional.of(targetEmployee));
+        when(swapRequestRepository.findByTargetEmployee_UsernameOrderByCreatedAtDesc("employee2")).thenReturn(List.of(request));
+
+        List<SwapRequestResponse> responses = swapRequestService.listMyIncomingRequests("employee2");
+
+        assertThat(responses).hasSize(1);
+        assertThat(responses.getFirst().id()).isEqualTo(40L);
+        assertThat(responses.getFirst().requesterUsername()).isEqualTo("employee1");
+        assertThat(responses.getFirst().targetEmployeeUsername()).isEqualTo("employee2");
+    }
+
+    @Test
+    void listPendingManagerRequestsReturnsRequestsWaitingForManagedTeamApproval() {
+        User requester = employee("employee1", 2L);
+        User targetEmployee = employee("employee2", 3L);
+        User manager = user("manager1", 4L, ApplicationRole.MANAGER);
+        SwapRequest request = transferRequest(
+                requester,
+                targetEmployee,
+                schedule(ScheduleStatus.PUBLISHED, SwapApprovalPolicy.MANAGER)
+        );
+        request.approveByTargetEmployee(Instant.parse("2026-08-04T19:00:00Z"), SwapApprovalPolicy.MANAGER);
+        TeamManager teamManager = new TeamManager(manager, request.getSourceAssignment().getShift().getSchedule().getTeam());
+
+        when(userRepository.findByUsername("manager1")).thenReturn(Optional.of(manager));
+        when(teamManagerRepository.findByManager_Username("manager1")).thenReturn(List.of(teamManager));
+        when(swapRequestRepository.findByStatusAndSourceAssignment_Shift_Schedule_Team_IdInOrderByCreatedAtDesc(
+                SwapRequestStatus.PENDING_MANAGER,
+                List.of(1L)
+        ))
+                .thenReturn(List.of(request));
+
+        List<SwapRequestResponse> responses = swapRequestService.listPendingManagerRequests("manager1");
+
+        assertThat(responses).hasSize(1);
+        assertThat(responses.getFirst().id()).isEqualTo(40L);
+        assertThat(responses.getFirst().status()).isEqualTo(SwapRequestStatus.PENDING_MANAGER);
+        assertThat(responses.getFirst().requesterUsername()).isEqualTo("employee1");
+        assertThat(responses.getFirst().targetEmployeeUsername()).isEqualTo("employee2");
+    }
+
+    @Test
+    void listPendingManagerRequestsReturnsEmptyListWhenManagerHasNoTeams() {
+        User manager = user("manager1", 4L, ApplicationRole.MANAGER);
+
+        when(userRepository.findByUsername("manager1")).thenReturn(Optional.of(manager));
+        when(teamManagerRepository.findByManager_Username("manager1")).thenReturn(List.of());
+
+        List<SwapRequestResponse> responses = swapRequestService.listPendingManagerRequests("manager1");
+
+        assertThat(responses).isEmpty();
+        verify(swapRequestRepository, never())
+                .findByStatusAndSourceAssignment_Shift_Schedule_Team_IdInOrderByCreatedAtDesc(any(), any());
     }
 
     @Test

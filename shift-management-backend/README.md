@@ -71,6 +71,9 @@ Implemented:
 - Notification creation is idempotent by `eventId` and recipient.
 - Transfer request persistence model.
 - Transfer request creation endpoint: `POST /api/requests/transfers`.
+- Outgoing transfer request list endpoint: `GET /api/requests/me/outgoing`.
+- Incoming transfer request list endpoint: `GET /api/requests/me/incoming`.
+- Pending manager approval transfer request list endpoint: `GET /api/requests/manager/pending`.
 - Target employee approval endpoint: `POST /api/requests/{requestId}/employee-approve`.
 - Target employee rejection endpoint: `POST /api/requests/{requestId}/employee-reject`.
 - Requester cancellation endpoint: `POST /api/requests/{requestId}/cancel`.
@@ -786,6 +789,31 @@ Current transfer request rules:
 4. The target employee must be a different `EMPLOYEE` user.
 5. The target employee must be an active member of the source shift's team.
 6. Only one active request can exist for the same source assignment.
+
+List transfer requests created by the authenticated employee:
+
+```bash
+curl http://localhost:8080/api/requests/me/outgoing \
+  -H "Authorization: Bearer <TOKEN>"
+```
+
+List transfer requests targeting the authenticated employee:
+
+```bash
+curl http://localhost:8080/api/requests/me/incoming \
+  -H "Authorization: Bearer <TOKEN>"
+```
+
+List transfer requests waiting for manager approval in teams managed by the authenticated manager:
+
+```bash
+curl http://localhost:8080/api/requests/manager/pending \
+  -H "Authorization: Bearer <TOKEN>"
+```
+
+Transfer request list endpoints return the same response shape as transfer creation.
+Employee list endpoints are limited to the authenticated employee, and the manager
+list endpoint is limited to teams managed by the authenticated manager.
 
 Approve an incoming transfer request as the target employee:
 

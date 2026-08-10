@@ -1,6 +1,6 @@
 # Implementation Plan - Shift Management System
 
-Last updated: 2026-08-07
+Last updated: 2026-08-10
 
 This document is the working implementation plan for the project.  
 The goal is to build the system in small, understandable steps, while keeping each part easy to explain during the final presentation.
@@ -693,6 +693,7 @@ Goal: allow employees to transfer a shift or request a shift swap.
 - [x] Allow the target employee to approve.
 - [x] Allow the target employee to reject.
 - [x] Allow the requester to cancel an active transfer request.
+- [x] Allow employees and managers to list relevant transfer requests.
 - [x] Run assignment validations before employee-policy final approval.
 - [x] Run assignment validations before manager final approval.
 - [x] Move the assignment to the target employee after employee-policy transfer approval.
@@ -710,6 +711,7 @@ Goal: allow employees to transfer a shift or request a shift swap.
 - [x] A manager-policy transfer request becomes invalidated if assignment is no longer possible.
 - [x] The target employee can reject a pending transfer request.
 - [x] The requester can cancel an active transfer request.
+- [x] Employees and managers can list only transfer requests relevant to them.
 - [ ] A swap exchanges two assignments.
 
 ### Document
@@ -1436,3 +1438,11 @@ Still open:
 - Updated Spring Security authentication and authorization failures to return the same JSON error shape.
 - Removed the assignment-specific error handler and response type.
 - Added focused tests for the global exception handler.
+
+### 2026-08-10 - Transfer Request List Endpoints
+
+- Added employee outgoing transfer request listing: `GET /api/requests/me/outgoing`.
+- Added employee incoming transfer request listing: `GET /api/requests/me/incoming`.
+- Added manager pending approval listing: `GET /api/requests/manager/pending`.
+- Kept request visibility scoped to the authenticated employee or to teams managed by the authenticated manager.
+- Added focused service tests for the new request list workflows.

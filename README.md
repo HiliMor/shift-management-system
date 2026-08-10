@@ -50,6 +50,7 @@ Implemented:
 - JMS consumer that creates schedule-published notifications for active team members.
 - Transfer request persistence model.
 - Transfer request creation endpoint for published assignments.
+- Outgoing, incoming, and pending-manager transfer request list endpoints.
 - Target employee approval endpoint for transfer requests.
 - Target employee rejection endpoint for transfer requests.
 - Requester cancellation endpoint for active transfer requests.

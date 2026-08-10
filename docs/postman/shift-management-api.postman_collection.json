@@ -1110,6 +1110,69 @@
           "response": []
         },
         {
+          "name": "List My Outgoing Transfer Requests",
+          "description": "Run `Login as Employee One` before this request to see transfer requests created by Employee One.",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/requests/me/outgoing",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "requests",
+                "me",
+                "outgoing"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "List My Incoming Transfer Requests",
+          "description": "Run `Login as Employee Two` before this request when Employee Two is the transfer target.",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/requests/me/incoming",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "requests",
+                "me",
+                "incoming"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "List Pending Manager Transfer Requests",
+          "description": "Run `Login as Manager` before this request to see transfer requests waiting for manager approval.",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/requests/manager/pending",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "requests",
+                "manager",
+                "pending"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
           "name": "Approve Transfer As Target Employee",
           "description": "Run `Login as Employee Two` before this request when Employee Two is the transfer target.",
           "request": {
