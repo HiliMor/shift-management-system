@@ -804,7 +804,7 @@ Goal: make the project ready for submission and presentation.
 - [ ] Unit tests for overlap and rest calculations.
 - [ ] Repository integration tests.
 - [ ] Basic security tests.
-- [ ] Unified error handling with `ControllerAdvice`.
+- [x] Unified error handling with `ControllerAdvice`.
 - [x] Basic logging.
 - [ ] Seed data for the demo.
 
@@ -1427,3 +1427,12 @@ Still open:
 - Added focused logging for transfer request creation, approval, rejection, cancellation, invalidation, and assignment transfer execution.
 - Added logging for successful outbox dispatch and schedule-published notification creation.
 - Avoided logging passwords, JWT tokens, and full request payloads.
+
+### 2026-08-10 - Unified API Error Responses
+
+- Added `ApiErrorResponse` as the common JSON shape for API errors.
+- Added `GlobalExceptionHandler` with `@RestControllerAdvice`.
+- Unified handling for `ResponseStatusException`, request body validation errors, malformed JSON, assignment business validation, and unexpected server errors.
+- Updated Spring Security authentication and authorization failures to return the same JSON error shape.
+- Removed the assignment-specific error handler and response type.
+- Added focused tests for the global exception handler.

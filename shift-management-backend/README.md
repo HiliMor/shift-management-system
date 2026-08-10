@@ -78,6 +78,7 @@ Implemented:
 - Manager approval endpoint: `POST /api/requests/{requestId}/manager-approve`.
 - Transfer execution for teams with `MANAGER` approval policy.
 - Basic business logging for schedule, assignment, transfer request, outbox, and notification workflows.
+- Unified JSON error responses for API and security errors.
 
 Not implemented yet:
 
@@ -136,6 +137,30 @@ Expected response:
   "timestamp": "..."
 }
 ```
+
+## API Error Responses
+
+Most API and security errors use a unified JSON response shape:
+
+```json
+{
+  "status": 409,
+  "error": "Conflict",
+  "code": "SHIFT_OVERLAP",
+  "message": "Employee already has an overlapping assignment",
+  "path": "/api/assignments",
+  "timestamp": "2026-08-10T18:00:00Z"
+}
+```
+
+Common error codes:
+
+- `VALIDATION_ERROR` - request body validation failed.
+- `MALFORMED_REQUEST` - request body is missing or invalid JSON.
+- `UNAUTHORIZED` - authentication is missing or invalid.
+- `FORBIDDEN` - the authenticated user is not allowed to perform the action.
+- `NOT_FOUND` - the requested resource is not visible or does not exist.
+- Business validation codes such as `SHIFT_OVERLAP`, `SHIFT_CAPACITY`, `MINIMUM_REST`, `TEAM_MEMBERSHIP`, and `STAFFING_ROLE_REQUIRED`.
 
 ## Authentication Endpoints
 

@@ -13,6 +13,7 @@ flowchart LR
     security["Spring Security<br/>JWT Authentication Filter"]
     cors["CORS Configuration<br/>Local frontend access"]
     controllers["REST Controllers"]
+    errorHandling["Error Handling<br/>Unified JSON API errors"]
     services["Application Services<br/>Business Rules"]
     outbox["Event Outbox<br/>Pending async events"]
     dispatcher["Outbox Dispatcher<br/>Scheduled JMS sender"]
@@ -27,7 +28,9 @@ flowchart LR
     apiClient --> security
     cors --> security
     security --> controllers
+    security --> errorHandling
     controllers --> services
+    controllers --> errorHandling
     services --> outbox
     services --> repositories
     outbox --> database
@@ -74,6 +77,7 @@ flowchart TD
     config["config<br/>SecurityConfig<br/>DevelopmentDataSeeder"]
     health["health<br/>HealthController"]
     auth["auth<br/>Login, JWT, current user"]
+    error["error<br/>Unified API error responses and global exception handling"]
     user["user<br/>User and application role"]
     team["team<br/>Team, team members, managers, managed team listing, and team employee listing"]
     schedule["schedule<br/>Draft schedule creation, publication, reopening, readiness, and employee published views"]
@@ -88,6 +92,7 @@ flowchart TD
     app --> config
     app --> health
     app --> auth
+    app --> error
     app --> user
     app --> team
     app --> schedule
@@ -146,6 +151,25 @@ flowchart TD
 
 Not every package has every layer yet.
 For example, the basic schedule lifecycle, publication readiness report, explicit unfilled-publication confirmation, and employee published schedule views are already implemented.
+
+## Error Handling
+
+API errors use a unified JSON response through the `error` package. Controller-level
+exceptions are handled by `GlobalExceptionHandler`, while Spring Security
+authentication and authorization failures write the same response shape directly
+from `SecurityConfig`.
+
+The response includes:
+
+- HTTP status and reason.
+- A stable error code.
+- A human-readable message.
+- The request path.
+- A timestamp.
+
+Assignment business validation now uses the same response shape as the rest of
+the API, while preserving business codes such as `SHIFT_OVERLAP` and
+`MINIMUM_REST`.
 
 ## Operational Logging
 
@@ -684,6 +708,7 @@ flowchart LR
 | --- | --- |
 | `auth` | Login, JWT creation, JWT request authentication, current user endpoint. |
 | `config` | Security configuration and local development seed data. |
+| `error` | Unified API error response model and global exception handling. |
 | `health` | Public health check endpoint. |
 | `user` | User entity and broad application role such as `MANAGER` or `EMPLOYEE`. |
 | `team` | Teams, active team membership, team managers, and managed team listing for manager UI. |

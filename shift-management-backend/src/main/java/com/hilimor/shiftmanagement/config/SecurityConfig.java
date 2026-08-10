@@ -1,16 +1,22 @@
 package com.hilimor.shiftmanagement.config;
 
+import java.io.IOException;
 import java.util.List;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.hilimor.shiftmanagement.auth.JwtAuthenticationFilter;
 import com.hilimor.shiftmanagement.auth.JwtProperties;
+import com.hilimor.shiftmanagement.error.ApiErrorResponse;
 import com.hilimor.shiftmanagement.user.UserRepository;
 
+import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.MediaType;
 import org.springframework.security.config.Customizer;
 import org.springframework.security.config.annotation.web.configurers.AbstractHttpConfigurer;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
@@ -32,7 +38,11 @@ import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
 public class SecurityConfig {
 
     @Bean
-    SecurityFilterChain securityFilterChain(HttpSecurity http, JwtAuthenticationFilter jwtAuthenticationFilter) throws Exception {
+    SecurityFilterChain securityFilterChain(
+            HttpSecurity http,
+            JwtAuthenticationFilter jwtAuthenticationFilter,
+            ObjectMapper objectMapper
+    ) throws Exception {
         return http
                 .csrf(AbstractHttpConfigurer::disable)
                 .cors(Customizer.withDefaults())
@@ -45,11 +55,41 @@ public class SecurityConfig {
                 )
                 .exceptionHandling(exception -> exception
                         .authenticationEntryPoint((request, response, authException) ->
-                                response.sendError(HttpServletResponse.SC_UNAUTHORIZED)
+                                writeApiError(
+                                        response,
+                                        objectMapper,
+                                        HttpStatus.UNAUTHORIZED,
+                                        "UNAUTHORIZED",
+                                        "Authentication is required",
+                                        request
+                                )
                         )
+                        .accessDeniedHandler((request, response, accessDeniedException) ->
+                                writeApiError(
+                                        response,
+                                        objectMapper,
+                                        HttpStatus.FORBIDDEN,
+                                        "FORBIDDEN",
+                                        "Access is denied",
+                                        request
+                                ))
                 )
                 .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class)
                 .build();
+    }
+
+    private void writeApiError(
+            HttpServletResponse response,
+            ObjectMapper objectMapper,
+            HttpStatus status,
+            String code,
+            String message,
+            HttpServletRequest request
+    ) throws IOException {
+        response.setStatus(status.value());
+        response.setContentType(MediaType.APPLICATION_JSON_VALUE);
+        ApiErrorResponse body = ApiErrorResponse.of(status, code, message, request.getRequestURI());
+        objectMapper.writeValue(response.getOutputStream(), body);
     }
 
     @Bean
