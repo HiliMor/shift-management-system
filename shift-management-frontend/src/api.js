@@ -116,3 +116,43 @@ export function markNotificationRead(token, notificationId) {
     token,
   });
 }
+
+export function listMyOutgoingTransferRequests(token) {
+  return request("/api/requests/me/outgoing", { token });
+}
+
+export function listMyIncomingTransferRequests(token) {
+  return request("/api/requests/me/incoming", { token });
+}
+
+export function listPendingManagerTransferRequests(token) {
+  return request("/api/requests/manager/pending", { token });
+}
+
+export function approveTransferAsTargetEmployee(token, requestId) {
+  return request(`/api/requests/${requestId}/employee-approve`, {
+    method: "POST",
+    token,
+  });
+}
+
+export function rejectTransferAsTargetEmployee(token, requestId) {
+  return request(`/api/requests/${requestId}/employee-reject`, {
+    method: "POST",
+    token,
+  });
+}
+
+export function cancelTransferAsRequester(token, requestId) {
+  return request(`/api/requests/${requestId}/cancel`, {
+    method: "POST",
+    token,
+  });
+}
+
+export function approveTransferAsManager(token, requestId) {
+  return request(`/api/requests/${requestId}/manager-approve`, {
+    method: "POST",
+    token,
+  });
+}

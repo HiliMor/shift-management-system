@@ -1,10 +1,14 @@
 import { useEffect, useMemo, useState } from "react";
 import {
+  approveTransferAsManager,
+  approveTransferAsTargetEmployee,
+  cancelTransferAsRequester,
   countMyUnreadNotifications,
   createAssignment,
   createSchedule,
   createShift,
   getMyPublishedScheduleDetails,
+  listMyIncomingTransferRequests,
   listScheduleAssignments,
   listManagedDraftSchedules,
   listMyManagedTeams,
@@ -14,7 +18,10 @@ import {
   listTeamEmployees,
   login,
   listMyNotifications,
+  listMyOutgoingTransferRequests,
+  listPendingManagerTransferRequests,
   markNotificationRead,
+  rejectTransferAsTargetEmployee,
 } from "./api.js";
 
 const STORAGE_KEY = "shift-management-session";
@@ -33,6 +40,10 @@ const dateTimeFormatter = new Intl.DateTimeFormat("en-GB", {
   month: "short",
   year: "numeric",
 });
+
+function isActiveTransferRequest(request) {
+  return request.status === "PENDING_EMPLOYEE" || request.status === "PENDING_MANAGER";
+}
 
 function formatDate(value) {
   return value ? dateFormatter.format(new Date(value)) : "Not set";
@@ -124,8 +135,21 @@ function App() {
   const [isLoadingNotifications, setIsLoadingNotifications] = useState(false);
   const [markingNotificationId, setMarkingNotificationId] = useState(null);
   const [notificationRefreshKey, setNotificationRefreshKey] = useState(0);
+  const [incomingTransferRequests, setIncomingTransferRequests] = useState([]);
+  const [outgoingTransferRequests, setOutgoingTransferRequests] = useState([]);
+  const [pendingManagerTransferRequests, setPendingManagerTransferRequests] = useState([]);
+  const [transferRequestsError, setTransferRequestsError] = useState("");
+  const [transferRequestActionError, setTransferRequestActionError] = useState("");
+  const [transferRequestActionMessage, setTransferRequestActionMessage] = useState("");
+  const [isLoadingTransferRequests, setIsLoadingTransferRequests] = useState(false);
+  const [actingTransferRequest, setActingTransferRequest] = useState(null);
+  const [transferRequestRefreshKey, setTransferRequestRefreshKey] = useState(0);
 
   const isManager = session?.user?.applicationRole === "MANAGER";
+
+  const transferRequestCount = isManager
+    ? pendingManagerTransferRequests.length
+    : incomingTransferRequests.length + outgoingTransferRequests.length;
 
   const displayName = useMemo(() => {
     if (!session?.user) {
@@ -190,6 +214,14 @@ function App() {
     setNotificationsError("");
     setMarkingNotificationId(null);
     setNotificationRefreshKey(0);
+    setIncomingTransferRequests([]);
+    setOutgoingTransferRequests([]);
+    setPendingManagerTransferRequests([]);
+    setTransferRequestsError("");
+    setTransferRequestActionError("");
+    setTransferRequestActionMessage("");
+    setActingTransferRequest(null);
+    setTransferRequestRefreshKey(0);
   }
 
   function expireSession() {
@@ -246,6 +278,38 @@ function App() {
       .catch((error) => handleApiError(error, setNotificationsError))
       .finally(() => setIsLoadingNotifications(false));
   }, [notificationRefreshKey, session]);
+
+  useEffect(() => {
+    if (!session?.accessToken) {
+      setIncomingTransferRequests([]);
+      setOutgoingTransferRequests([]);
+      setPendingManagerTransferRequests([]);
+      setTransferRequestsError("");
+      return;
+    }
+
+    setIsLoadingTransferRequests(true);
+    setTransferRequestsError("");
+
+    const loadRequests = isManager
+      ? listPendingManagerTransferRequests(session.accessToken).then((requests) => {
+          setPendingManagerTransferRequests(requests);
+          setIncomingTransferRequests([]);
+          setOutgoingTransferRequests([]);
+        })
+      : Promise.all([
+          listMyIncomingTransferRequests(session.accessToken),
+          listMyOutgoingTransferRequests(session.accessToken),
+        ]).then(([incomingRequests, outgoingRequests]) => {
+          setIncomingTransferRequests(incomingRequests);
+          setOutgoingTransferRequests(outgoingRequests);
+          setPendingManagerTransferRequests([]);
+        });
+
+    loadRequests
+      .catch((error) => handleApiError(error, setTransferRequestsError))
+      .finally(() => setIsLoadingTransferRequests(false));
+  }, [isManager, session, transferRequestRefreshKey]);
 
   useEffect(() => {
     if (!session?.accessToken || !selectedScheduleId) {
@@ -583,6 +647,66 @@ function App() {
     }
   }
 
+  async function handleTransferRequestAction(requestId, actionName, action, successMessage) {
+    setActingTransferRequest({ id: requestId, action: actionName });
+    setTransferRequestActionError("");
+    setTransferRequestActionMessage("");
+
+    try {
+      await action(session.accessToken, requestId);
+      setTransferRequestActionMessage(successMessage);
+      setTransferRequestRefreshKey((current) => current + 1);
+    } catch (error) {
+      handleApiError(error, setTransferRequestActionError);
+    } finally {
+      setActingTransferRequest(null);
+    }
+  }
+
+  function isActingOnTransferRequest(requestId, actionName) {
+    return actingTransferRequest?.id === requestId && actingTransferRequest.action === actionName;
+  }
+
+  function renderTransferRequest(request, actions = null) {
+    return (
+      <article className="request-row" key={request.id}>
+        <div>
+          <div className="request-title-row">
+            <h3>Transfer request #{request.id}</h3>
+            <span className={`status-badge status-${request.status.toLowerCase().replaceAll("_", "-")}`}>
+              {request.status}
+            </span>
+          </div>
+
+          <div className="request-details">
+            <div>
+              <p className="eyebrow">From</p>
+              <strong>{request.requesterFullName || request.requesterUsername}</strong>
+              <span>{request.requesterUsername}</span>
+            </div>
+            <div>
+              <p className="eyebrow">To</p>
+              <strong>{request.targetEmployeeFullName || request.targetEmployeeUsername}</strong>
+              <span>{request.targetEmployeeUsername}</span>
+            </div>
+            <div>
+              <p className="eyebrow">Assignment</p>
+              <strong>#{request.sourceAssignmentId}</strong>
+              <span>Shift #{request.sourceShiftId}</span>
+            </div>
+            <div>
+              <p className="eyebrow">Created</p>
+              <strong>{formatDateTime(request.createdAt)}</strong>
+              <span>Updated {formatDateTime(request.updatedAt)}</span>
+            </div>
+          </div>
+        </div>
+
+        {actions ? <div className="request-actions">{actions}</div> : null}
+      </article>
+    );
+  }
+
   if (!session) {
     return (
       <main className="auth-layout">
@@ -637,6 +761,10 @@ function App() {
         <nav aria-label="Main navigation">
           <a className="active-link" href="#schedules">
             Published schedules
+          </a>
+          <a href="#transfer-requests">
+            Transfer requests
+            {transferRequestCount > 0 ? <span className="nav-count">{transferRequestCount}</span> : null}
           </a>
           <a href="#notifications">
             Notifications
@@ -715,6 +843,147 @@ function App() {
               ))}
             </div>
           ) : null}
+        </section>
+
+        <section className="section-block" id="transfer-requests">
+          <div className="section-heading">
+            <h2>Transfer requests</h2>
+            <div className="section-actions">
+              <span>{transferRequestCount}</span>
+              <button
+                className="secondary-button compact-button"
+                disabled={isLoadingTransferRequests}
+                onClick={() => setTransferRequestRefreshKey((current) => current + 1)}
+                type="button"
+              >
+                Refresh
+              </button>
+            </div>
+          </div>
+
+          {isLoadingTransferRequests ? <p className="muted">Loading transfer requests...</p> : null}
+          {transferRequestsError ? <p className="error-message">{transferRequestsError}</p> : null}
+          {transferRequestActionError ? <p className="error-message">{transferRequestActionError}</p> : null}
+          {transferRequestActionMessage ? (
+            <p className="success-message">{transferRequestActionMessage}</p>
+          ) : null}
+
+          {!isLoadingTransferRequests && !transferRequestsError && transferRequestCount === 0 ? (
+            <p className="muted">No transfer requests are available for this user.</p>
+          ) : null}
+
+          {isManager ? (
+            <div className="request-section-stack">
+              <section className="request-panel">
+                <h3>Pending manager approval</h3>
+                <div className="request-list">
+                  {pendingManagerTransferRequests.map((request) =>
+                    renderTransferRequest(
+                      request,
+                      request.status === "PENDING_MANAGER" ? (
+                        <button
+                          className="compact-button"
+                          disabled={actingTransferRequest !== null}
+                          onClick={() =>
+                            handleTransferRequestAction(
+                              request.id,
+                              "manager-approve",
+                              approveTransferAsManager,
+                              "Transfer request approved by manager.",
+                            )
+                          }
+                          type="button"
+                        >
+                          {isActingOnTransferRequest(request.id, "manager-approve") ? "Approving..." : "Approve"}
+                        </button>
+                      ) : null,
+                    ),
+                  )}
+                </div>
+              </section>
+            </div>
+          ) : (
+            <div className="request-section-stack">
+              <section className="request-panel">
+                <h3>Incoming requests</h3>
+                {incomingTransferRequests.length === 0 ? (
+                  <p className="muted">No incoming transfer requests.</p>
+                ) : null}
+                <div className="request-list">
+                  {incomingTransferRequests.map((request) =>
+                    renderTransferRequest(
+                      request,
+                      request.status === "PENDING_EMPLOYEE" ? (
+                        <>
+                          <button
+                            className="compact-button"
+                            disabled={actingTransferRequest !== null}
+                            onClick={() =>
+                              handleTransferRequestAction(
+                                request.id,
+                                "employee-approve",
+                                approveTransferAsTargetEmployee,
+                                "Transfer request approved.",
+                              )
+                            }
+                            type="button"
+                          >
+                            {isActingOnTransferRequest(request.id, "employee-approve") ? "Approving..." : "Approve"}
+                          </button>
+                          <button
+                            className="secondary-button compact-button"
+                            disabled={actingTransferRequest !== null}
+                            onClick={() =>
+                              handleTransferRequestAction(
+                                request.id,
+                                "employee-reject",
+                                rejectTransferAsTargetEmployee,
+                                "Transfer request rejected.",
+                              )
+                            }
+                            type="button"
+                          >
+                            {isActingOnTransferRequest(request.id, "employee-reject") ? "Rejecting..." : "Reject"}
+                          </button>
+                        </>
+                      ) : null,
+                    ),
+                  )}
+                </div>
+              </section>
+
+              <section className="request-panel">
+                <h3>Outgoing requests</h3>
+                {outgoingTransferRequests.length === 0 ? (
+                  <p className="muted">No outgoing transfer requests.</p>
+                ) : null}
+                <div className="request-list">
+                  {outgoingTransferRequests.map((request) =>
+                    renderTransferRequest(
+                      request,
+                      isActiveTransferRequest(request) ? (
+                        <button
+                          className="secondary-button compact-button"
+                          disabled={actingTransferRequest !== null}
+                          onClick={() =>
+                            handleTransferRequestAction(
+                              request.id,
+                              "cancel",
+                              cancelTransferAsRequester,
+                              "Transfer request cancelled.",
+                            )
+                          }
+                          type="button"
+                        >
+                          {isActingOnTransferRequest(request.id, "cancel") ? "Cancelling..." : "Cancel"}
+                        </button>
+                      ) : null,
+                    ),
+                  )}
+                </div>
+              </section>
+            </div>
+          )}
         </section>
 
         <section className="section-block" id="schedules">

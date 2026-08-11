@@ -18,6 +18,8 @@ For end-to-end local run instructions, see:
 - Create shift - manager-only form for adding shifts to a managed draft schedule.
 - Assign employee - manager-only form for manually assigning an active team employee to a draft shift.
 - Notifications - authenticated screen section that lists personal notifications, shows unread count, and marks notifications as read.
+- Transfer requests - authenticated screen section for outgoing, incoming, and pending manager approval requests.
+- Transfer request actions - employee approve/reject, requester cancel, and manager approve.
 
 ## Run Locally
 

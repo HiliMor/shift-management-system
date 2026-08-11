@@ -75,6 +75,8 @@ Frontend:
 - Manager manual assignment screen connected to `POST /api/assignments`.
 - Assignment screen loads draft schedule shifts, team employees, and existing schedule assignments.
 - Notification center connected to personal notification list, unread count, and mark-as-read APIs.
+- Transfer request screen connected to outgoing, incoming, and pending-manager request APIs.
+- Transfer request screen supports employee approve/reject, requester cancel, and manager approve actions.
 
 Planned next:
 

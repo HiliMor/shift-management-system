@@ -1,6 +1,6 @@
 # Implementation Plan - Shift Management System
 
-Last updated: 2026-08-10
+Last updated: 2026-08-11
 
 This document is the working implementation plan for the project.  
 The goal is to build the system in small, understandable steps, while keeping each part easy to explain during the final presentation.
@@ -656,6 +656,8 @@ Goal: build a minimal React interface connected to the backend.
 - [x] Manager schedule creation screen.
 - [x] Manager shift creation screen.
 - [x] Simple manual assignment screen.
+- [x] Transfer request list screen.
+- [x] Transfer request employee and manager action buttons.
 - [x] Display backend errors clearly for login and published schedule loading.
 - [x] Display backend errors clearly for published schedule details loading.
 - [x] Return expired JWT sessions to the login screen.
@@ -668,6 +670,8 @@ Goal: build a minimal React interface connected to the backend.
 - [x] Managers can create draft schedules from the frontend.
 - [x] Managers can create shifts.
 - [x] Assignment errors are displayed clearly.
+- [x] Transfer request lists load for employees and managers.
+- [x] Transfer request actions refresh the relevant list.
 - [x] Expired sessions are cleared and show a clear login message.
 
 ### Document
@@ -1446,3 +1450,13 @@ Still open:
 - Added manager pending approval listing: `GET /api/requests/manager/pending`.
 - Kept request visibility scoped to the authenticated employee or to teams managed by the authenticated manager.
 - Added focused service tests for the new request list workflows.
+
+### 2026-08-11 - Frontend Transfer Request Lists
+
+- Added frontend API calls for outgoing, incoming, and pending-manager transfer request lists.
+- Added frontend API calls for target employee approval, target employee rejection, requester cancellation, and manager approval.
+- Added an authenticated transfer request screen section.
+- Employees can view incoming and outgoing transfer requests.
+- Managers can view transfer requests waiting for manager approval.
+- Transfer request actions refresh the relevant list after completion.
+- Verified the frontend production build succeeds.
