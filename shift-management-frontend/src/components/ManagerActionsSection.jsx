@@ -1,3 +1,7 @@
+import AssignEmployeePanel from "./manager/AssignEmployeePanel.jsx";
+import CreateSchedulePanel from "./manager/CreateSchedulePanel.jsx";
+import CreateShiftPanel from "./manager/CreateShiftPanel.jsx";
+
 function ManagerActionsSection({
   assignmentCreationError,
   assignmentForm,
@@ -56,276 +60,50 @@ function ManagerActionsSection({
 
       {managedTeams.length > 0 ? (
         <div className="manager-stack">
-          <section className="manager-panel">
-            <h3>Create draft schedule</h3>
-            <form className="manager-form" onSubmit={onCreateSchedule}>
-              <label>
-                Team
-                <select name="teamId" onChange={onScheduleFormChange} required value={scheduleForm.teamId}>
-                  {managedTeams.map((team) => (
-                    <option key={team.id} value={team.id}>
-                      {team.name}
-                    </option>
-                  ))}
-                </select>
-              </label>
+          <CreateSchedulePanel
+            isCreatingSchedule={isCreatingSchedule}
+            managedTeams={managedTeams}
+            onCreateSchedule={onCreateSchedule}
+            onScheduleFormChange={onScheduleFormChange}
+            scheduleForm={scheduleForm}
+          />
 
-              <label>
-                Start date
-                <input
-                  name="startDate"
-                  onChange={onScheduleFormChange}
-                  required
-                  type="date"
-                  value={scheduleForm.startDate}
-                />
-              </label>
+          <CreateShiftPanel
+            draftSchedulesError={draftSchedulesError}
+            formatDate={formatDate}
+            isCreatingShift={isCreatingShift}
+            isLoadingDraftSchedules={isLoadingDraftSchedules}
+            isLoadingStaffingRoles={isLoadingStaffingRoles}
+            managedDraftSchedules={managedDraftSchedules}
+            onCreateShift={onCreateShift}
+            onShiftFormChange={onShiftFormChange}
+            shiftForm={shiftForm}
+            staffingRoles={staffingRoles}
+            staffingRolesError={staffingRolesError}
+          />
 
-              <label>
-                End date
-                <input
-                  name="endDate"
-                  onChange={onScheduleFormChange}
-                  required
-                  type="date"
-                  value={scheduleForm.endDate}
-                />
-              </label>
-
-              <button disabled={isCreatingSchedule} type="submit">
-                {isCreatingSchedule ? "Creating..." : "Create draft schedule"}
-              </button>
-            </form>
-          </section>
-
-          <section className="manager-panel">
-            <h3>Create shift</h3>
-
-            {isLoadingDraftSchedules ? <p className="muted">Loading draft schedules...</p> : null}
-            {draftSchedulesError ? <p className="error-message">{draftSchedulesError}</p> : null}
-            {staffingRolesError ? <p className="error-message">{staffingRolesError}</p> : null}
-
-            {!isLoadingDraftSchedules && !draftSchedulesError && managedDraftSchedules.length === 0 ? (
-              <p className="muted">Create a draft schedule before adding shifts.</p>
-            ) : null}
-
-            {managedDraftSchedules.length > 0 ? (
-              <form className="shift-form" onSubmit={onCreateShift}>
-                <label>
-                  Draft schedule
-                  <select name="scheduleId" onChange={onShiftFormChange} required value={shiftForm.scheduleId}>
-                    {managedDraftSchedules.map((schedule) => (
-                      <option key={schedule.id} value={schedule.id}>
-                        #{schedule.id} - {schedule.teamName}, {formatDate(schedule.startDate)} to{" "}
-                        {formatDate(schedule.endDate)}
-                      </option>
-                    ))}
-                  </select>
-                </label>
-
-                <label>
-                  Start time
-                  <input
-                    name="startTime"
-                    onChange={onShiftFormChange}
-                    required
-                    type="datetime-local"
-                    value={shiftForm.startTime}
-                  />
-                </label>
-
-                <label>
-                  End time
-                  <input
-                    name="endTime"
-                    onChange={onShiftFormChange}
-                    required
-                    type="datetime-local"
-                    value={shiftForm.endTime}
-                  />
-                </label>
-
-                <label>
-                  Description
-                  <input
-                    maxLength="500"
-                    name="description"
-                    onChange={onShiftFormChange}
-                    type="text"
-                    value={shiftForm.description}
-                  />
-                </label>
-
-                <label>
-                  Required workers
-                  <input
-                    min="1"
-                    name="requiredWorkers"
-                    onChange={onShiftFormChange}
-                    required
-                    type="number"
-                    value={shiftForm.requiredWorkers}
-                  />
-                </label>
-
-                <label>
-                  Minimum rest hours
-                  <input
-                    min="0"
-                    name="minRestHours"
-                    onChange={onShiftFormChange}
-                    required
-                    type="number"
-                    value={shiftForm.minRestHours}
-                  />
-                </label>
-
-                <label>
-                  Required role
-                  <select
-                    disabled={isLoadingStaffingRoles}
-                    name="requiredStaffingRoleId"
-                    onChange={onShiftFormChange}
-                    value={shiftForm.requiredStaffingRoleId}
-                  >
-                    <option value="">No specific role</option>
-                    {staffingRoles.map((role) => (
-                      <option key={role.id} value={role.id}>
-                        {role.name}
-                      </option>
-                    ))}
-                  </select>
-                </label>
-
-                <button disabled={isCreatingShift} type="submit">
-                  {isCreatingShift ? "Creating..." : "Create shift"}
-                </button>
-              </form>
-            ) : null}
-          </section>
-
-          <section className="manager-panel">
-            <h3>Assign employee</h3>
-
-            {assignmentShiftsError ? <p className="error-message">{assignmentShiftsError}</p> : null}
-            {teamEmployeesError ? <p className="error-message">{teamEmployeesError}</p> : null}
-            {scheduleAssignmentsError ? <p className="error-message">{scheduleAssignmentsError}</p> : null}
-
-            {!isLoadingDraftSchedules && !draftSchedulesError && managedDraftSchedules.length === 0 ? (
-              <p className="muted">Create a draft schedule before assigning employees.</p>
-            ) : null}
-
-            {managedDraftSchedules.length > 0 ? (
-              <form className="assignment-form" onSubmit={onCreateAssignment}>
-                <label>
-                  Draft schedule
-                  <select
-                    name="scheduleId"
-                    onChange={onAssignmentFormChange}
-                    required
-                    value={assignmentForm.scheduleId}
-                  >
-                    {managedDraftSchedules.map((schedule) => (
-                      <option key={schedule.id} value={schedule.id}>
-                        #{schedule.id} - {schedule.teamName}, {formatDate(schedule.startDate)} to{" "}
-                        {formatDate(schedule.endDate)}
-                      </option>
-                    ))}
-                  </select>
-                </label>
-
-                <label>
-                  Shift
-                  <select
-                    disabled={isLoadingAssignmentShifts || assignmentShifts.length === 0}
-                    name="shiftId"
-                    onChange={onAssignmentFormChange}
-                    required
-                    value={assignmentForm.shiftId}
-                  >
-                    {assignmentShifts.map((shift) => (
-                      <option key={shift.id} value={shift.id}>
-                        #{shift.id} - {shift.description || "Shift"}, {formatDateTime(shift.startTime)}
-                      </option>
-                    ))}
-                  </select>
-                </label>
-
-                <label>
-                  Employee
-                  <select
-                    disabled={isLoadingTeamEmployees || teamEmployees.length === 0}
-                    name="employeeId"
-                    onChange={onAssignmentFormChange}
-                    required
-                    value={assignmentForm.employeeId}
-                  >
-                    {teamEmployees.map((employee) => (
-                      <option key={employee.id} value={employee.id}>
-                        {employee.fullName || employee.username}
-                      </option>
-                    ))}
-                  </select>
-                </label>
-
-                <button
-                  disabled={
-                    isCreatingAssignment ||
-                    isLoadingAssignmentShifts ||
-                    isLoadingTeamEmployees ||
-                    assignmentShifts.length === 0 ||
-                    teamEmployees.length === 0
-                  }
-                  type="submit"
-                >
-                  {isCreatingAssignment ? "Assigning..." : "Assign employee"}
-                </button>
-              </form>
-            ) : null}
-
-            {isLoadingAssignmentShifts ? <p className="muted">Loading shifts...</p> : null}
-            {isLoadingTeamEmployees ? <p className="muted">Loading employees...</p> : null}
-
-            {!isLoadingAssignmentShifts &&
-            !assignmentShiftsError &&
-            managedDraftSchedules.length > 0 &&
-            assignmentShifts.length === 0 ? (
-              <p className="muted">Add a shift before assigning employees.</p>
-            ) : null}
-
-            {!isLoadingTeamEmployees && !teamEmployeesError && selectedAssignmentSchedule && teamEmployees.length === 0 ? (
-              <p className="muted">No active employees are available for this team.</p>
-            ) : null}
-
-            <div className="assignment-panel-list">
-              <h4>Current assignments</h4>
-              {isLoadingScheduleAssignments ? <p className="muted">Loading assignments...</p> : null}
-
-              {!isLoadingScheduleAssignments &&
-              !scheduleAssignmentsError &&
-              assignmentForm.scheduleId &&
-              scheduleAssignments.length === 0 ? (
-                <p className="muted">No employees assigned in this draft schedule yet.</p>
-              ) : null}
-
-              {scheduleAssignments.map((assignment) => {
-                const assignedShift = assignmentShiftMap.get(assignment.shiftId);
-
-                return (
-                  <div className="assignment-row" key={assignment.id}>
-                    <strong>{assignment.employeeFullName || assignment.employeeUsername}</strong>
-                    <span>
-                      {assignedShift
-                        ? `#${assignedShift.id} - ${assignedShift.description || "Shift"}, ${formatDateTime(
-                            assignedShift.startTime,
-                          )}`
-                        : `Shift #${assignment.shiftId}`}
-                    </span>
-                  </div>
-                );
-              })}
-            </div>
-          </section>
+          <AssignEmployeePanel
+            assignmentForm={assignmentForm}
+            assignmentShiftMap={assignmentShiftMap}
+            assignmentShifts={assignmentShifts}
+            assignmentShiftsError={assignmentShiftsError}
+            draftSchedulesError={draftSchedulesError}
+            formatDate={formatDate}
+            formatDateTime={formatDateTime}
+            isCreatingAssignment={isCreatingAssignment}
+            isLoadingAssignmentShifts={isLoadingAssignmentShifts}
+            isLoadingDraftSchedules={isLoadingDraftSchedules}
+            isLoadingScheduleAssignments={isLoadingScheduleAssignments}
+            isLoadingTeamEmployees={isLoadingTeamEmployees}
+            managedDraftSchedules={managedDraftSchedules}
+            onAssignmentFormChange={onAssignmentFormChange}
+            onCreateAssignment={onCreateAssignment}
+            scheduleAssignments={scheduleAssignments}
+            scheduleAssignmentsError={scheduleAssignmentsError}
+            selectedAssignmentSchedule={selectedAssignmentSchedule}
+            teamEmployees={teamEmployees}
+            teamEmployeesError={teamEmployeesError}
+          />
         </div>
       ) : null}
 
