@@ -23,6 +23,8 @@ import {
   markNotificationRead,
   rejectTransferAsTargetEmployee,
 } from "./api.js";
+import AppShell from "./components/AppShell.jsx";
+import LoginScreen from "./components/LoginScreen.jsx";
 import NotificationsSection from "./components/NotificationsSection.jsx";
 import ManagerActionsSection from "./components/ManagerActionsSection.jsx";
 import PublishedSchedulesSection from "./components/PublishedSchedulesSection.jsx";
@@ -666,205 +668,148 @@ function App() {
 
   if (!session) {
     return (
-      <main className="auth-layout">
-        <section className="auth-panel" aria-labelledby="login-title">
-          <p className="eyebrow">Shift Management</p>
-          <h1 id="login-title">Sign in</h1>
-
-          <form className="login-form" onSubmit={handleLogin}>
-            <label>
-              Username
-              <input
-                autoComplete="username"
-                name="username"
-                onChange={(event) => setUsername(event.target.value)}
-                required
-                type="text"
-                value={username}
-              />
-            </label>
-
-            <label>
-              Password
-              <input
-                autoComplete="current-password"
-                name="password"
-                onChange={(event) => setPassword(event.target.value)}
-                required
-                type="password"
-                value={password}
-              />
-            </label>
-
-            {loginError ? <p className="error-message">{loginError}</p> : null}
-
-            <button disabled={isLoggingIn} type="submit">
-              {isLoggingIn ? "Signing in..." : "Sign in"}
-            </button>
-          </form>
-        </section>
-      </main>
+      <LoginScreen
+        isLoggingIn={isLoggingIn}
+        loginError={loginError}
+        onLogin={handleLogin}
+        onPasswordChange={setPassword}
+        onUsernameChange={setUsername}
+        password={password}
+        username={username}
+      />
     );
   }
 
   return (
-    <main className="app-shell">
-      <aside className="sidebar">
-        <div>
-          <p className="eyebrow">Shift Management</p>
-          <h1>{isManager ? "Manager workspace" : "Employee workspace"}</h1>
-        </div>
+    <AppShell
+      displayName={displayName}
+      isManager={isManager}
+      onLogout={handleLogout}
+      role={session.user.applicationRole}
+      transferRequestCount={transferRequestCount}
+      unreadNotificationCount={unreadNotificationCount}
+    >
+      <NotificationsSection
+        formatDateTime={formatDateTime}
+        isLoadingNotifications={isLoadingNotifications}
+        markingNotificationId={markingNotificationId}
+        notifications={notifications}
+        notificationsError={notificationsError}
+        onMarkNotificationRead={handleMarkNotificationRead}
+        onRefreshNotifications={() => setNotificationRefreshKey((current) => current + 1)}
+        unreadNotificationCount={unreadNotificationCount}
+      />
 
-        <nav aria-label="Main navigation">
-          <a className="active-link" href="#schedules">
-            Published schedules
-          </a>
-          <a href="#transfer-requests">
-            Transfer requests
-            {transferRequestCount > 0 ? <span className="nav-count">{transferRequestCount}</span> : null}
-          </a>
-          <a href="#notifications">
-            Notifications
-            {unreadNotificationCount > 0 ? <span className="nav-count">{unreadNotificationCount}</span> : null}
-          </a>
-          {isManager ? <a href="#manager">Manager actions</a> : null}
-        </nav>
-      </aside>
+      <TransferRequestsSection
+        actingTransferRequest={actingTransferRequest}
+        formatDateTime={formatDateTime}
+        incomingTransferRequests={incomingTransferRequests}
+        isLoadingTransferRequests={isLoadingTransferRequests}
+        isManager={isManager}
+        onApproveIncomingTransferRequest={(requestId) =>
+          handleTransferRequestAction(
+            requestId,
+            "employee-approve",
+            approveTransferAsTargetEmployee,
+            "Transfer request approved.",
+          )
+        }
+        onApproveManagerTransferRequest={(requestId) =>
+          handleTransferRequestAction(
+            requestId,
+            "manager-approve",
+            approveTransferAsManager,
+            "Transfer request approved by manager.",
+          )
+        }
+        onCancelOutgoingTransferRequest={(requestId) =>
+          handleTransferRequestAction(
+            requestId,
+            "cancel",
+            cancelTransferAsRequester,
+            "Transfer request cancelled.",
+          )
+        }
+        onRefreshTransferRequests={() => setTransferRequestRefreshKey((current) => current + 1)}
+        onRejectIncomingTransferRequest={(requestId) =>
+          handleTransferRequestAction(
+            requestId,
+            "employee-reject",
+            rejectTransferAsTargetEmployee,
+            "Transfer request rejected.",
+          )
+        }
+        outgoingTransferRequests={outgoingTransferRequests}
+        pendingManagerTransferRequests={pendingManagerTransferRequests}
+        transferRequestActionError={transferRequestActionError}
+        transferRequestActionMessage={transferRequestActionMessage}
+        transferRequestCount={transferRequestCount}
+        transferRequestsError={transferRequestsError}
+      />
 
-      <section className="content-area">
-        <header className="topbar">
-          <div>
-            <p className="eyebrow">Signed in</p>
-            <h2>{displayName}</h2>
-          </div>
-          <span className="role-badge">{session.user.applicationRole}</span>
-          <button className="secondary-button" onClick={handleLogout} type="button">
-            Sign out
-          </button>
-        </header>
+      <PublishedSchedulesSection
+        formatDate={formatDate}
+        isLoadingSchedules={isLoadingSchedules}
+        onSelectSchedule={setSelectedScheduleId}
+        publishedSchedules={publishedSchedules}
+        scheduleError={scheduleError}
+        selectedScheduleId={selectedScheduleId}
+      />
 
-        <NotificationsSection
-          formatDateTime={formatDateTime}
-          isLoadingNotifications={isLoadingNotifications}
-          markingNotificationId={markingNotificationId}
-          notifications={notifications}
-          notificationsError={notificationsError}
-          onMarkNotificationRead={handleMarkNotificationRead}
-          onRefreshNotifications={() => setNotificationRefreshKey((current) => current + 1)}
-          unreadNotificationCount={unreadNotificationCount}
-        />
+      <ScheduleDetailsSection
+        detailsError={detailsError}
+        formatDate={formatDate}
+        formatDateTime={formatDateTime}
+        isLoadingDetails={isLoadingDetails}
+        selectedScheduleDetails={selectedScheduleDetails}
+        selectedScheduleId={selectedScheduleId}
+      />
 
-        <TransferRequestsSection
-          actingTransferRequest={actingTransferRequest}
-          formatDateTime={formatDateTime}
-          incomingTransferRequests={incomingTransferRequests}
-          isLoadingTransferRequests={isLoadingTransferRequests}
-          isManager={isManager}
-          onApproveIncomingTransferRequest={(requestId) =>
-            handleTransferRequestAction(
-              requestId,
-              "employee-approve",
-              approveTransferAsTargetEmployee,
-              "Transfer request approved.",
-            )
-          }
-          onApproveManagerTransferRequest={(requestId) =>
-            handleTransferRequestAction(
-              requestId,
-              "manager-approve",
-              approveTransferAsManager,
-              "Transfer request approved by manager.",
-            )
-          }
-          onCancelOutgoingTransferRequest={(requestId) =>
-            handleTransferRequestAction(
-              requestId,
-              "cancel",
-              cancelTransferAsRequester,
-              "Transfer request cancelled.",
-            )
-          }
-          onRefreshTransferRequests={() => setTransferRequestRefreshKey((current) => current + 1)}
-          onRejectIncomingTransferRequest={(requestId) =>
-            handleTransferRequestAction(
-              requestId,
-              "employee-reject",
-              rejectTransferAsTargetEmployee,
-              "Transfer request rejected.",
-            )
-          }
-          outgoingTransferRequests={outgoingTransferRequests}
-          pendingManagerTransferRequests={pendingManagerTransferRequests}
-          transferRequestActionError={transferRequestActionError}
-          transferRequestActionMessage={transferRequestActionMessage}
-          transferRequestCount={transferRequestCount}
-          transferRequestsError={transferRequestsError}
-        />
-
-        <PublishedSchedulesSection
-          formatDate={formatDate}
-          isLoadingSchedules={isLoadingSchedules}
-          onSelectSchedule={setSelectedScheduleId}
-          publishedSchedules={publishedSchedules}
-          scheduleError={scheduleError}
-          selectedScheduleId={selectedScheduleId}
-        />
-
-        <ScheduleDetailsSection
-          detailsError={detailsError}
+      {isManager ? (
+        <ManagerActionsSection
+          assignmentCreationError={assignmentCreationError}
+          assignmentForm={assignmentForm}
+          assignmentShiftMap={assignmentShiftMap}
+          assignmentShifts={assignmentShifts}
+          assignmentShiftsError={assignmentShiftsError}
+          createdAssignment={createdAssignment}
+          createdSchedule={createdSchedule}
+          createdShift={createdShift}
+          draftSchedulesError={draftSchedulesError}
           formatDate={formatDate}
           formatDateTime={formatDateTime}
-          isLoadingDetails={isLoadingDetails}
-          selectedScheduleDetails={selectedScheduleDetails}
-          selectedScheduleId={selectedScheduleId}
+          isCreatingAssignment={isCreatingAssignment}
+          isCreatingSchedule={isCreatingSchedule}
+          isCreatingShift={isCreatingShift}
+          isLoadingAssignmentShifts={isLoadingAssignmentShifts}
+          isLoadingDraftSchedules={isLoadingDraftSchedules}
+          isLoadingManagedTeams={isLoadingManagedTeams}
+          isLoadingScheduleAssignments={isLoadingScheduleAssignments}
+          isLoadingStaffingRoles={isLoadingStaffingRoles}
+          isLoadingTeamEmployees={isLoadingTeamEmployees}
+          managedDraftSchedules={managedDraftSchedules}
+          managedTeams={managedTeams}
+          managedTeamsError={managedTeamsError}
+          onAssignmentFormChange={handleAssignmentFormChange}
+          onCreateAssignment={handleCreateAssignment}
+          onCreateSchedule={handleCreateSchedule}
+          onCreateShift={handleCreateShift}
+          onScheduleFormChange={handleScheduleFormChange}
+          onShiftFormChange={handleShiftFormChange}
+          scheduleAssignments={scheduleAssignments}
+          scheduleAssignmentsError={scheduleAssignmentsError}
+          scheduleCreationError={scheduleCreationError}
+          scheduleForm={scheduleForm}
+          selectedAssignmentSchedule={selectedAssignmentSchedule}
+          shiftCreationError={shiftCreationError}
+          shiftForm={shiftForm}
+          staffingRoles={staffingRoles}
+          staffingRolesError={staffingRolesError}
+          teamEmployees={teamEmployees}
+          teamEmployeesError={teamEmployeesError}
         />
-
-        {isManager ? (
-          <ManagerActionsSection
-            assignmentCreationError={assignmentCreationError}
-            assignmentForm={assignmentForm}
-            assignmentShiftMap={assignmentShiftMap}
-            assignmentShifts={assignmentShifts}
-            assignmentShiftsError={assignmentShiftsError}
-            createdAssignment={createdAssignment}
-            createdSchedule={createdSchedule}
-            createdShift={createdShift}
-            draftSchedulesError={draftSchedulesError}
-            formatDate={formatDate}
-            formatDateTime={formatDateTime}
-            isCreatingAssignment={isCreatingAssignment}
-            isCreatingSchedule={isCreatingSchedule}
-            isCreatingShift={isCreatingShift}
-            isLoadingAssignmentShifts={isLoadingAssignmentShifts}
-            isLoadingDraftSchedules={isLoadingDraftSchedules}
-            isLoadingManagedTeams={isLoadingManagedTeams}
-            isLoadingScheduleAssignments={isLoadingScheduleAssignments}
-            isLoadingStaffingRoles={isLoadingStaffingRoles}
-            isLoadingTeamEmployees={isLoadingTeamEmployees}
-            managedDraftSchedules={managedDraftSchedules}
-            managedTeams={managedTeams}
-            managedTeamsError={managedTeamsError}
-            onAssignmentFormChange={handleAssignmentFormChange}
-            onCreateAssignment={handleCreateAssignment}
-            onCreateSchedule={handleCreateSchedule}
-            onCreateShift={handleCreateShift}
-            onScheduleFormChange={handleScheduleFormChange}
-            onShiftFormChange={handleShiftFormChange}
-            scheduleAssignments={scheduleAssignments}
-            scheduleAssignmentsError={scheduleAssignmentsError}
-            scheduleCreationError={scheduleCreationError}
-            scheduleForm={scheduleForm}
-            selectedAssignmentSchedule={selectedAssignmentSchedule}
-            shiftCreationError={shiftCreationError}
-            shiftForm={shiftForm}
-            staffingRoles={staffingRoles}
-            staffingRolesError={staffingRolesError}
-            teamEmployees={teamEmployees}
-            teamEmployeesError={teamEmployeesError}
-          />
-        ) : null}
-      </section>
-    </main>
+      ) : null}
+    </AppShell>
   );
 }
 
