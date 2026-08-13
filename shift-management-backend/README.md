@@ -1119,7 +1119,8 @@ Assignment creation validates these employee staffing roles when a shift has a `
 
 ## Development Seed Data
 
-When `app.seed.enabled=true`, the application inserts initial development data if the `users` table is empty.
+When `app.seed.enabled=true`, the application inserts development demo data.
+The seeder is idempotent: it reuses existing demo records when possible and creates only missing records.
 
 Seed users:
 
@@ -1130,6 +1131,23 @@ Seed users:
 | employee2 | EMPLOYEE | password |
 
 These users can be used with `POST /api/auth/login`.
+
+Seed team:
+
+| Team | Swap approval policy | Default rest hours | Time zone |
+| ---- | -------------------- | ------------------ | --------- |
+| Operations | MANAGER | 8 | Asia/Jerusalem |
+
+Additional demo data:
+
+- Staffing roles: `Cashier` and `Shift Lead`.
+- Active staffing-role assignments for the demo employees.
+- One published schedule for the current week with shifts and assignments.
+- One draft schedule for the next week so the manager screens have editable data.
+- Schedule-published notifications for active team members.
+- One active transfer request from `employee1` to `employee2`.
+
+This gives the React UI and Postman collection useful data immediately after local startup.
 
 ## Local Frontend Access
 
@@ -1142,9 +1160,3 @@ http://127.0.0.1:5173
 
 This is needed because browser-based requests are subject to CORS checks, unlike
 Postman or curl.
-
-Seed team:
-
-| Team | Swap approval policy | Default rest hours | Time zone |
-| ---- | -------------------- | ------------------ | --------- |
-| Operations | MANAGER | 8 | Asia/Jerusalem |

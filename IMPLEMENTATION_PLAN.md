@@ -812,7 +812,7 @@ Goal: make the project ready for submission and presentation.
 - [ ] Basic security tests.
 - [x] Unified error handling with `ControllerAdvice`.
 - [x] Basic logging.
-- [ ] Seed data for the demo.
+- [x] Seed data for the demo.
 
 ### Verify
 
@@ -1460,3 +1460,13 @@ Still open:
 - Managers can view transfer requests waiting for manager approval.
 - Transfer request actions refresh the relevant list after completion.
 - Verified the frontend production build succeeds.
+
+### 2026-08-13 - Phase 12 Demo Seed Scenario
+
+- Expanded the development data seeder into an idempotent presentation scenario.
+- The seeder now reuses existing demo users and creates missing demo data instead of stopping when users already exist.
+- Added demo staffing roles, team-member staffing role assignments, a published schedule, a draft schedule, shifts, assignments, schedule-published notifications, and an active transfer request.
+- Added small repository lookup methods needed for idempotent seed creation.
+- Updated documentation to describe the new demo data.
+- Verified the frontend production build succeeds.
+- Verified the full backend test suite succeeds outside the Codex sandbox.

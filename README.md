@@ -58,6 +58,7 @@ Implemented:
 - Manager approval and transfer execution for teams with `MANAGER` approval policy.
 - Basic business logging for schedule, assignment, transfer request, outbox, and notification workflows.
 - Unified JSON error responses for API and security errors.
+- Development seed data for a presentation scenario with users, a managed team, staffing roles, draft and published schedules, assignments, notifications, and an active transfer request.
 
 Frontend:
 

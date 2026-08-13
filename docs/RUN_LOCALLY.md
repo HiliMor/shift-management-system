@@ -96,6 +96,15 @@ http://127.0.0.1:5173
 | `employee1` | `password` | `EMPLOYEE` |
 | `employee2` | `password` | `EMPLOYEE` |
 
+When `app.seed.enabled=true`, the backend also creates a presentation scenario:
+
+- An `Operations` team managed by `manager1`.
+- Staffing roles for the team.
+- A published schedule with shifts and assignments for employees.
+- A draft schedule for manager editing screens.
+- Schedule-published notifications for active employees.
+- An active transfer request from `employee1` to `employee2`.
+
 ## If Port 8080 Is Busy
 
 Run the backend on another port:

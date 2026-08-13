@@ -10,6 +10,8 @@ public interface AssignmentRepository extends JpaRepository<Assignment, Long> {
 
     boolean existsByShift_IdAndEmployee_Id(Long shiftId, Long employeeId);
 
+    Optional<Assignment> findByShift_IdAndEmployee_Id(Long shiftId, Long employeeId);
+
     long countByShift_Id(Long shiftId);
 
     List<Assignment> findByShift_Schedule_IdOrderByShift_StartTimeAscEmployee_FullNameAsc(Long scheduleId);
