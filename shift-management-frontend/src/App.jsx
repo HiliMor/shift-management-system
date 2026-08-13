@@ -1,14 +1,9 @@
 import { useEffect, useMemo, useState } from "react";
 import {
-  approveTransferAsManager,
-  approveTransferAsTargetEmployee,
-  cancelTransferAsRequester,
-  countMyUnreadNotifications,
   createAssignment,
   createSchedule,
   createShift,
   getMyPublishedScheduleDetails,
-  listMyIncomingTransferRequests,
   listScheduleAssignments,
   listManagedDraftSchedules,
   listMyManagedTeams,
@@ -17,11 +12,6 @@ import {
   listShifts,
   listTeamEmployees,
   login,
-  listMyNotifications,
-  listMyOutgoingTransferRequests,
-  listPendingManagerTransferRequests,
-  markNotificationRead,
-  rejectTransferAsTargetEmployee,
 } from "./api.js";
 import AppShell from "./components/AppShell.jsx";
 import LoginScreen from "./components/LoginScreen.jsx";
@@ -30,6 +20,8 @@ import ManagerActionsSection from "./components/ManagerActionsSection.jsx";
 import PublishedSchedulesSection from "./components/PublishedSchedulesSection.jsx";
 import ScheduleDetailsSection from "./components/ScheduleDetailsSection.jsx";
 import TransferRequestsSection from "./components/TransferRequestsSection.jsx";
+import useNotifications from "./hooks/useNotifications.js";
+import useTransferRequests from "./hooks/useTransferRequests.js";
 
 const STORAGE_KEY = "shift-management-session";
 const SESSION_EXPIRED_MESSAGE = "Session expired. Please sign in again.";
@@ -132,27 +124,7 @@ function App() {
   const [createdAssignment, setCreatedAssignment] = useState(null);
   const [assignmentCreationError, setAssignmentCreationError] = useState("");
   const [isCreatingAssignment, setIsCreatingAssignment] = useState(false);
-  const [notifications, setNotifications] = useState([]);
-  const [unreadNotificationCount, setUnreadNotificationCount] = useState(0);
-  const [notificationsError, setNotificationsError] = useState("");
-  const [isLoadingNotifications, setIsLoadingNotifications] = useState(false);
-  const [markingNotificationId, setMarkingNotificationId] = useState(null);
-  const [notificationRefreshKey, setNotificationRefreshKey] = useState(0);
-  const [incomingTransferRequests, setIncomingTransferRequests] = useState([]);
-  const [outgoingTransferRequests, setOutgoingTransferRequests] = useState([]);
-  const [pendingManagerTransferRequests, setPendingManagerTransferRequests] = useState([]);
-  const [transferRequestsError, setTransferRequestsError] = useState("");
-  const [transferRequestActionError, setTransferRequestActionError] = useState("");
-  const [transferRequestActionMessage, setTransferRequestActionMessage] = useState("");
-  const [isLoadingTransferRequests, setIsLoadingTransferRequests] = useState(false);
-  const [actingTransferRequest, setActingTransferRequest] = useState(null);
-  const [transferRequestRefreshKey, setTransferRequestRefreshKey] = useState(0);
-
   const isManager = session?.user?.applicationRole === "MANAGER";
-
-  const transferRequestCount = isManager
-    ? pendingManagerTransferRequests.length
-    : incomingTransferRequests.length + outgoingTransferRequests.length;
 
   const displayName = useMemo(() => {
     if (!session?.user) {
@@ -212,19 +184,8 @@ function App() {
     setScheduleAssignmentsError("");
     setCreatedAssignment(null);
     setAssignmentCreationError("");
-    setNotifications([]);
-    setUnreadNotificationCount(0);
-    setNotificationsError("");
-    setMarkingNotificationId(null);
-    setNotificationRefreshKey(0);
-    setIncomingTransferRequests([]);
-    setOutgoingTransferRequests([]);
-    setPendingManagerTransferRequests([]);
-    setTransferRequestsError("");
-    setTransferRequestActionError("");
-    setTransferRequestActionMessage("");
-    setActingTransferRequest(null);
-    setTransferRequestRefreshKey(0);
+    resetNotifications();
+    resetTransferRequests();
   }
 
   function expireSession() {
@@ -243,6 +204,35 @@ function App() {
     setError(error.message);
   }
 
+  const {
+    isLoadingNotifications,
+    markingNotificationId,
+    markNotificationAsRead,
+    notifications,
+    notificationsError,
+    refreshNotifications,
+    resetNotifications,
+    unreadNotificationCount,
+  } = useNotifications(session, handleApiError);
+
+  const {
+    actingTransferRequest,
+    approveIncomingTransferRequest,
+    approveManagerTransferRequest,
+    cancelOutgoingTransferRequest,
+    incomingTransferRequests,
+    isLoadingTransferRequests,
+    outgoingTransferRequests,
+    pendingManagerTransferRequests,
+    refreshTransferRequests,
+    rejectIncomingTransferRequest,
+    resetTransferRequests,
+    transferRequestActionError,
+    transferRequestActionMessage,
+    transferRequestCount,
+    transferRequestsError,
+  } = useTransferRequests(session, isManager, handleApiError);
+
   useEffect(() => {
     if (!session?.accessToken) {
       setPublishedSchedules([]);
@@ -258,61 +248,6 @@ function App() {
       .catch((error) => handleApiError(error, setScheduleError))
       .finally(() => setIsLoadingSchedules(false));
   }, [session]);
-
-  useEffect(() => {
-    if (!session?.accessToken) {
-      setNotifications([]);
-      setUnreadNotificationCount(0);
-      setNotificationsError("");
-      return;
-    }
-
-    setIsLoadingNotifications(true);
-    setNotificationsError("");
-
-    Promise.all([
-      listMyNotifications(session.accessToken),
-      countMyUnreadNotifications(session.accessToken),
-    ])
-      .then(([notificationList, unreadCount]) => {
-        setNotifications(notificationList);
-        setUnreadNotificationCount(unreadCount.unreadCount);
-      })
-      .catch((error) => handleApiError(error, setNotificationsError))
-      .finally(() => setIsLoadingNotifications(false));
-  }, [notificationRefreshKey, session]);
-
-  useEffect(() => {
-    if (!session?.accessToken) {
-      setIncomingTransferRequests([]);
-      setOutgoingTransferRequests([]);
-      setPendingManagerTransferRequests([]);
-      setTransferRequestsError("");
-      return;
-    }
-
-    setIsLoadingTransferRequests(true);
-    setTransferRequestsError("");
-
-    const loadRequests = isManager
-      ? listPendingManagerTransferRequests(session.accessToken).then((requests) => {
-          setPendingManagerTransferRequests(requests);
-          setIncomingTransferRequests([]);
-          setOutgoingTransferRequests([]);
-        })
-      : Promise.all([
-          listMyIncomingTransferRequests(session.accessToken),
-          listMyOutgoingTransferRequests(session.accessToken),
-        ]).then(([incomingRequests, outgoingRequests]) => {
-          setIncomingTransferRequests(incomingRequests);
-          setOutgoingTransferRequests(outgoingRequests);
-          setPendingManagerTransferRequests([]);
-        });
-
-    loadRequests
-      .catch((error) => handleApiError(error, setTransferRequestsError))
-      .finally(() => setIsLoadingTransferRequests(false));
-  }, [isManager, session, transferRequestRefreshKey]);
 
   useEffect(() => {
     if (!session?.accessToken || !selectedScheduleId) {
@@ -625,47 +560,6 @@ function App() {
     }
   }
 
-  async function handleMarkNotificationRead(notificationId) {
-    setMarkingNotificationId(notificationId);
-    setNotificationsError("");
-
-    try {
-      const updatedNotification = await markNotificationRead(session.accessToken, notificationId);
-      const wasUnread = notifications.some(
-        (notification) => notification.id === updatedNotification.id && !notification.read,
-      );
-
-      setNotifications((current) =>
-        current.map((notification) =>
-          notification.id === updatedNotification.id ? updatedNotification : notification,
-        ),
-      );
-      if (wasUnread) {
-        setUnreadNotificationCount((current) => Math.max(0, current - 1));
-      }
-    } catch (error) {
-      handleApiError(error, setNotificationsError);
-    } finally {
-      setMarkingNotificationId(null);
-    }
-  }
-
-  async function handleTransferRequestAction(requestId, actionName, action, successMessage) {
-    setActingTransferRequest({ id: requestId, action: actionName });
-    setTransferRequestActionError("");
-    setTransferRequestActionMessage("");
-
-    try {
-      await action(session.accessToken, requestId);
-      setTransferRequestActionMessage(successMessage);
-      setTransferRequestRefreshKey((current) => current + 1);
-    } catch (error) {
-      handleApiError(error, setTransferRequestActionError);
-    } finally {
-      setActingTransferRequest(null);
-    }
-  }
-
   if (!session) {
     return (
       <LoginScreen
@@ -695,8 +589,8 @@ function App() {
         markingNotificationId={markingNotificationId}
         notifications={notifications}
         notificationsError={notificationsError}
-        onMarkNotificationRead={handleMarkNotificationRead}
-        onRefreshNotifications={() => setNotificationRefreshKey((current) => current + 1)}
+        onMarkNotificationRead={markNotificationAsRead}
+        onRefreshNotifications={refreshNotifications}
         unreadNotificationCount={unreadNotificationCount}
       />
 
@@ -706,39 +600,11 @@ function App() {
         incomingTransferRequests={incomingTransferRequests}
         isLoadingTransferRequests={isLoadingTransferRequests}
         isManager={isManager}
-        onApproveIncomingTransferRequest={(requestId) =>
-          handleTransferRequestAction(
-            requestId,
-            "employee-approve",
-            approveTransferAsTargetEmployee,
-            "Transfer request approved.",
-          )
-        }
-        onApproveManagerTransferRequest={(requestId) =>
-          handleTransferRequestAction(
-            requestId,
-            "manager-approve",
-            approveTransferAsManager,
-            "Transfer request approved by manager.",
-          )
-        }
-        onCancelOutgoingTransferRequest={(requestId) =>
-          handleTransferRequestAction(
-            requestId,
-            "cancel",
-            cancelTransferAsRequester,
-            "Transfer request cancelled.",
-          )
-        }
-        onRefreshTransferRequests={() => setTransferRequestRefreshKey((current) => current + 1)}
-        onRejectIncomingTransferRequest={(requestId) =>
-          handleTransferRequestAction(
-            requestId,
-            "employee-reject",
-            rejectTransferAsTargetEmployee,
-            "Transfer request rejected.",
-          )
-        }
+        onApproveIncomingTransferRequest={approveIncomingTransferRequest}
+        onApproveManagerTransferRequest={approveManagerTransferRequest}
+        onCancelOutgoingTransferRequest={cancelOutgoingTransferRequest}
+        onRefreshTransferRequests={refreshTransferRequests}
+        onRejectIncomingTransferRequest={rejectIncomingTransferRequest}
         outgoingTransferRequests={outgoingTransferRequests}
         pendingManagerTransferRequests={pendingManagerTransferRequests}
         transferRequestActionError={transferRequestActionError}
