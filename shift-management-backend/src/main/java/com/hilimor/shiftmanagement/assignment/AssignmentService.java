@@ -2,7 +2,14 @@ package com.hilimor.shiftmanagement.assignment;
 
 import java.time.Duration;
 import java.time.Instant;
+import java.util.ArrayList;
+import java.util.Comparator;
+import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
+import java.util.Set;
+import java.util.stream.Collectors;
 
 import com.hilimor.shiftmanagement.availability.AvailabilityConstraintRepository;
 import com.hilimor.shiftmanagement.schedule.Schedule;
@@ -12,7 +19,9 @@ import com.hilimor.shiftmanagement.shift.Shift;
 import com.hilimor.shiftmanagement.shift.ShiftRepository;
 import com.hilimor.shiftmanagement.staffing.TeamMemberStaffingRoleRepository;
 import com.hilimor.shiftmanagement.team.TeamManagerRepository;
+import com.hilimor.shiftmanagement.team.TeamMember;
 import com.hilimor.shiftmanagement.team.TeamMemberRepository;
+import com.hilimor.shiftmanagement.user.ApplicationRole;
 import com.hilimor.shiftmanagement.user.User;
 import com.hilimor.shiftmanagement.user.UserRepository;
 
@@ -72,25 +81,99 @@ public class AssignmentService {
         User employee = userRepository.findById(request.employeeId())
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Employee not found"));
 
-        validateTeamMembership(employee.getId(), teamId);
-        validateRequiredStaffingRole(shift, employee.getId(), teamId);
-        validateNotAlreadyAssigned(shift.getId(), employee.getId());
-        validateCapacity(shift);
-        validateAvailability(shift, employee.getId());
-        validateNoOverlap(shift, employee.getId());
-        validateMinimumRest(shift, employee.getId());
-
-        Assignment assignment = new Assignment(shift, employee, Instant.now());
-        Assignment savedAssignment = assignmentRepository.save(assignment);
-        log.info(
-                "Assignment {} created for shift {} and employee {} by manager {}",
-                savedAssignment.getId(),
-                shift.getId(),
-                employee.getId(),
-                managerUsername
-        );
+        Assignment savedAssignment = createValidatedAssignment(managerUsername, shift, employee, teamId, true);
 
         return AssignmentResponse.from(savedAssignment);
+    }
+
+    @Transactional
+    public AutoAssignmentReportResponse autoAssignSchedule(String managerUsername, Long scheduleId) {
+        Schedule schedule = scheduleRepository.findById(scheduleId)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Schedule not found"));
+
+        Long teamId = requireManagedSchedule(
+                managerUsername,
+                schedule,
+                "Only a team manager can auto-assign this schedule"
+        );
+
+        if (schedule.getStatus() != ScheduleStatus.DRAFT) {
+            throw conflict("SCHEDULE_NOT_DRAFT", "Automatic assignment can run only while the schedule is a draft");
+        }
+
+        List<Shift> shifts = shiftRepository.findBySchedule_IdOrderByStartTime(scheduleId);
+        List<Assignment> existingAssignments = assignmentRepository
+                .findByShift_Schedule_IdOrderByShift_StartTimeAscEmployee_FullNameAsc(scheduleId);
+        List<User> candidates = teamMemberRepository.findByTeam_IdAndActiveTrue(teamId)
+                .stream()
+                .map(TeamMember::getUser)
+                .filter(user -> user.getApplicationRole() == ApplicationRole.EMPLOYEE)
+                .toList();
+
+        Map<Long, List<Assignment>> assignmentsByShiftId = existingAssignments
+                .stream()
+                .collect(Collectors.groupingBy(assignment -> assignment.getShift().getId()));
+        Map<Long, Long> assignedMinutesByEmployeeId = assignedMinutesByEmployeeId(existingAssignments);
+        List<AutoAssignmentShiftResultResponse> shiftResults = new ArrayList<>();
+
+        for (Shift shift : shifts) {
+            List<Assignment> shiftAssignments = new ArrayList<>(
+                    assignmentsByShiftId.getOrDefault(shift.getId(), List.of())
+            );
+            Set<Long> assignedEmployeeIds = shiftAssignments.stream()
+                    .map(assignment -> assignment.getEmployee().getId())
+                    .collect(Collectors.toCollection(HashSet::new));
+            int assignedWorkersBefore = shiftAssignments.size();
+            int openSlotsBefore = Math.max(0, shift.getRequiredWorkers() - assignedWorkersBefore);
+            List<AssignmentResponse> createdAssignments = new ArrayList<>();
+
+            while (createdAssignments.size() < openSlotsBefore) {
+                Assignment nextAssignment = assignNextEligibleEmployee(
+                        managerUsername,
+                        teamId,
+                        shift,
+                        candidates,
+                        assignedEmployeeIds,
+                        assignedMinutesByEmployeeId
+                );
+
+                if (nextAssignment == null) {
+                    break;
+                }
+
+                shiftAssignments.add(nextAssignment);
+                assignedEmployeeIds.add(nextAssignment.getEmployee().getId());
+                assignedMinutesByEmployeeId.merge(
+                        nextAssignment.getEmployee().getId(),
+                        durationMinutes(shift),
+                        Long::sum
+                );
+                createdAssignments.add(AssignmentResponse.from(nextAssignment));
+            }
+
+            int openSlotsAfter = Math.max(
+                    0,
+                    shift.getRequiredWorkers() - assignedWorkersBefore - createdAssignments.size()
+            );
+            shiftResults.add(AutoAssignmentShiftResultResponse.from(
+                    shift,
+                    assignedWorkersBefore,
+                    openSlotsBefore,
+                    openSlotsAfter,
+                    createdAssignments
+            ));
+        }
+
+        AutoAssignmentReportResponse report = AutoAssignmentReportResponse.from(scheduleId, shiftResults);
+        log.info(
+                "Automatic assignment completed for schedule {} by manager {} with {} created assignments and {} remaining open slots",
+                scheduleId,
+                managerUsername,
+                report.assignmentsCreated(),
+                report.totalOpenSlotsAfter()
+        );
+
+        return report;
     }
 
     @Transactional(readOnly = true)
@@ -138,6 +221,70 @@ public class AssignmentService {
         validateAvailability(shift, employeeId);
         validateNoOverlap(shift, employeeId);
         validateMinimumRest(shift, employeeId);
+    }
+
+    private Assignment assignNextEligibleEmployee(
+            String managerUsername,
+            Long teamId,
+            Shift shift,
+            List<User> candidates,
+            Set<Long> assignedEmployeeIds,
+            Map<Long, Long> assignedMinutesByEmployeeId
+    ) {
+        List<User> rankedCandidates = candidates.stream()
+                .filter(candidate -> !assignedEmployeeIds.contains(candidate.getId()))
+                .sorted(Comparator
+                        .comparingLong((User candidate) ->
+                                assignedMinutesByEmployeeId.getOrDefault(candidate.getId(), 0L))
+                        .thenComparing(User::getFullName)
+                        .thenComparing(User::getUsername)
+                        .thenComparing(User::getId))
+                .toList();
+
+        for (User candidate : rankedCandidates) {
+            try {
+                return createValidatedAssignment(managerUsername, shift, candidate, teamId, false);
+            } catch (AssignmentValidationException exception) {
+                log.debug(
+                        "Automatic assignment skipped employee {} for shift {} because {}",
+                        candidate.getId(),
+                        shift.getId(),
+                        exception.getCode()
+                );
+            }
+        }
+
+        return null;
+    }
+
+    private Assignment createValidatedAssignment(
+            String managerUsername,
+            Shift shift,
+            User employee,
+            Long teamId,
+            boolean validateCapacity
+    ) {
+        validateTeamMembership(employee.getId(), teamId);
+        validateRequiredStaffingRole(shift, employee.getId(), teamId);
+        validateNotAlreadyAssigned(shift.getId(), employee.getId());
+        if (validateCapacity) {
+            validateCapacity(shift);
+        }
+        validateAvailability(shift, employee.getId());
+        validateNoOverlap(shift, employee.getId());
+        validateMinimumRest(shift, employee.getId());
+
+        Assignment assignment = new Assignment(shift, employee, Instant.now());
+        Assignment savedAssignment = assignmentRepository.save(assignment);
+        log.info(
+                "Assignment {} created for shift {} and employee {} by manager {}",
+                savedAssignment.getId(),
+                shift.getId(),
+                employee.getId(),
+                managerUsername
+        );
+
+        return savedAssignment;
     }
 
     private Long requireManagedSchedule(String managerUsername, Schedule schedule, String errorMessage) {
@@ -246,6 +393,24 @@ public class AssignmentService {
         if (earliestAllowedNextStart.isAfter(nextShift.getStartTime())) {
             throw conflict("MINIMUM_REST", "Employee does not have enough rest after this shift");
         }
+    }
+
+    private Map<Long, Long> assignedMinutesByEmployeeId(List<Assignment> assignments) {
+        Map<Long, Long> assignedMinutesByEmployeeId = new HashMap<>();
+
+        for (Assignment assignment : assignments) {
+            assignedMinutesByEmployeeId.merge(
+                    assignment.getEmployee().getId(),
+                    durationMinutes(assignment.getShift()),
+                    Long::sum
+            );
+        }
+
+        return assignedMinutesByEmployeeId;
+    }
+
+    private long durationMinutes(Shift shift) {
+        return Duration.between(shift.getStartTime(), shift.getEndTime()).toMinutes();
     }
 
     private AssignmentValidationException conflict(String code, String message) {

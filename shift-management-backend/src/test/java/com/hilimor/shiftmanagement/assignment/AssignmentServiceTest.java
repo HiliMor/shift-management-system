@@ -23,6 +23,7 @@ import com.hilimor.shiftmanagement.staffing.StaffingRole;
 import com.hilimor.shiftmanagement.staffing.TeamMemberStaffingRoleRepository;
 import com.hilimor.shiftmanagement.team.SwapApprovalPolicy;
 import com.hilimor.shiftmanagement.team.Team;
+import com.hilimor.shiftmanagement.team.TeamMember;
 import com.hilimor.shiftmanagement.team.TeamManagerRepository;
 import com.hilimor.shiftmanagement.team.TeamMemberRepository;
 import com.hilimor.shiftmanagement.user.ApplicationRole;
@@ -437,6 +438,133 @@ class AssignmentServiceTest {
     }
 
     @Test
+    void autoAssignScheduleAssignsLeastLoadedEligibleEmployee() {
+        Schedule schedule = schedule(ScheduleStatus.DRAFT);
+        Shift fullShift = shift(
+                schedule,
+                19L,
+                Instant.parse("2026-07-06T00:00:00Z"),
+                Instant.parse("2026-07-06T04:00:00Z"),
+                "Already covered",
+                1
+        );
+        Shift targetShift = shift(
+                schedule,
+                20L,
+                Instant.parse("2026-07-06T06:00:00Z"),
+                Instant.parse("2026-07-06T14:00:00Z"),
+                "Morning shift",
+                1
+        );
+        User busyEmployee = employee("employee1", 2L, "Busy Employee");
+        User freeEmployee = employee("employee2", 3L, "Free Employee");
+
+        when(scheduleRepository.findById(10L)).thenReturn(Optional.of(schedule));
+        when(teamManagerRepository.existsByManager_UsernameAndTeam_Id("manager1", 1L)).thenReturn(true);
+        when(shiftRepository.findBySchedule_IdOrderByStartTime(10L)).thenReturn(List.of(fullShift, targetShift));
+        when(assignmentRepository.findByShift_Schedule_IdOrderByShift_StartTimeAscEmployee_FullNameAsc(10L))
+                .thenReturn(List.of(assignment(fullShift, busyEmployee)));
+        when(teamMemberRepository.findByTeam_IdAndActiveTrue(1L))
+                .thenReturn(List.of(teamMember(busyEmployee), teamMember(freeEmployee)));
+        when(teamMemberRepository.existsByUser_IdAndTeam_IdAndActiveTrue(3L, 1L)).thenReturn(true);
+        when(assignmentRepository.existsByShift_IdAndEmployee_Id(20L, 3L)).thenReturn(false);
+        when(availabilityConstraintRepository.findByEmployee_IdAndStartTimeLessThanAndEndTimeGreaterThan(
+                3L,
+                targetShift.getEndTime(),
+                targetShift.getStartTime()
+        )).thenReturn(List.of());
+        when(assignmentRepository.findByEmployee_IdAndShift_StartTimeLessThanAndShift_EndTimeGreaterThan(
+                3L,
+                targetShift.getEndTime(),
+                targetShift.getStartTime()
+        )).thenReturn(List.of());
+        when(assignmentRepository.findTopByEmployee_IdAndShift_EndTimeLessThanEqualOrderByShift_EndTimeDesc(
+                3L,
+                targetShift.getStartTime()
+        )).thenReturn(Optional.empty());
+        when(assignmentRepository.findTopByEmployee_IdAndShift_StartTimeGreaterThanEqualOrderByShift_StartTimeAsc(
+                3L,
+                targetShift.getEndTime()
+        )).thenReturn(Optional.empty());
+        when(assignmentRepository.save(any(Assignment.class))).thenAnswer(invocation -> {
+            Assignment assignment = invocation.getArgument(0);
+            ReflectionTestUtils.setField(assignment, "id", 31L);
+            return assignment;
+        });
+
+        AutoAssignmentReportResponse report = assignmentService.autoAssignSchedule("manager1", 10L);
+
+        assertThat(report.totalShifts()).isEqualTo(2);
+        assertThat(report.assignmentsCreated()).isEqualTo(1);
+        assertThat(report.totalOpenSlotsBefore()).isEqualTo(1);
+        assertThat(report.totalOpenSlotsAfter()).isZero();
+        assertThat(report.shifts().get(0).message()).isEqualTo("Shift is already fully assigned");
+        assertThat(report.shifts().get(1).createdAssignments()).hasSize(1);
+        assertThat(report.shifts().get(1).createdAssignments().get(0).employeeId()).isEqualTo(3L);
+
+        ArgumentCaptor<Assignment> captor = ArgumentCaptor.forClass(Assignment.class);
+        verify(assignmentRepository).save(captor.capture());
+        assertThat(captor.getValue().getShift()).isSameAs(targetShift);
+        assertThat(captor.getValue().getEmployee()).isSameAs(freeEmployee);
+        verify(assignmentRepository, never()).countByShift_Id(any());
+    }
+
+    @Test
+    void autoAssignScheduleReportsUnfilledShiftWhenCandidatesAreNotEligible() {
+        Schedule schedule = schedule(ScheduleStatus.DRAFT);
+        Shift shift = shift(
+                schedule,
+                20L,
+                Instant.parse("2026-07-06T06:00:00Z"),
+                Instant.parse("2026-07-06T14:00:00Z"),
+                "Morning shift",
+                1
+        );
+        User unavailableEmployee = employee();
+
+        when(scheduleRepository.findById(10L)).thenReturn(Optional.of(schedule));
+        when(teamManagerRepository.existsByManager_UsernameAndTeam_Id("manager1", 1L)).thenReturn(true);
+        when(shiftRepository.findBySchedule_IdOrderByStartTime(10L)).thenReturn(List.of(shift));
+        when(assignmentRepository.findByShift_Schedule_IdOrderByShift_StartTimeAscEmployee_FullNameAsc(10L))
+                .thenReturn(List.of());
+        when(teamMemberRepository.findByTeam_IdAndActiveTrue(1L)).thenReturn(List.of(teamMember(unavailableEmployee)));
+        when(teamMemberRepository.existsByUser_IdAndTeam_IdAndActiveTrue(2L, 1L)).thenReturn(true);
+        when(assignmentRepository.existsByShift_IdAndEmployee_Id(20L, 2L)).thenReturn(false);
+        when(availabilityConstraintRepository.findByEmployee_IdAndStartTimeLessThanAndEndTimeGreaterThan(
+                2L,
+                shift.getEndTime(),
+                shift.getStartTime()
+        )).thenReturn(List.of(availabilityConstraint(unavailableEmployee)));
+
+        AutoAssignmentReportResponse report = assignmentService.autoAssignSchedule("manager1", 10L);
+
+        assertThat(report.assignmentsCreated()).isZero();
+        assertThat(report.totalOpenSlotsBefore()).isEqualTo(1);
+        assertThat(report.totalOpenSlotsAfter()).isEqualTo(1);
+        assertThat(report.shifts()).hasSize(1);
+        assertThat(report.shifts().get(0).message()).isEqualTo("No eligible employees were available for the open slots");
+        assertThat(report.shifts().get(0).createdAssignments()).isEmpty();
+        verify(assignmentRepository, never()).save(any());
+    }
+
+    @Test
+    void autoAssignScheduleRejectsPublishedSchedule() {
+        Schedule schedule = schedule(ScheduleStatus.PUBLISHED);
+
+        when(scheduleRepository.findById(10L)).thenReturn(Optional.of(schedule));
+        when(teamManagerRepository.existsByManager_UsernameAndTeam_Id("manager1", 1L)).thenReturn(true);
+
+        assertThatThrownBy(() -> assignmentService.autoAssignSchedule("manager1", 10L))
+                .isInstanceOfSatisfying(AssignmentValidationException.class, exception -> {
+                    assertThat(exception.getStatus()).isEqualTo(HttpStatus.CONFLICT);
+                    assertThat(exception.getCode()).isEqualTo("SCHEDULE_NOT_DRAFT");
+                });
+
+        verify(shiftRepository, never()).findBySchedule_IdOrderByStartTime(any());
+        verify(assignmentRepository, never()).save(any());
+    }
+
+    @Test
     void validateEmployeeCanReceiveTransferredAssignmentDoesNotRequireOpenCapacity() {
         Shift shift = shift(schedule(ScheduleStatus.PUBLISHED), 20L);
         User employee = employee();
@@ -543,15 +671,30 @@ class AssignmentServiceTest {
     }
 
     private User employee() {
+        return employee("employee1", 2L, "Demo Employee");
+    }
+
+    private User employee(String username, Long id, String fullName) {
         User employee = new User(
-                "employee1",
+                username,
                 "password-hash",
-                "Demo Employee",
-                "employee1@example.com",
+                fullName,
+                username + "@example.com",
                 ApplicationRole.EMPLOYEE
         );
-        ReflectionTestUtils.setField(employee, "id", 2L);
+        ReflectionTestUtils.setField(employee, "id", id);
         return employee;
+    }
+
+    private TeamMember teamMember(User user) {
+        TeamMember teamMember = new TeamMember(
+                user,
+                schedule(ScheduleStatus.DRAFT).getTeam(),
+                Instant.parse("2026-07-05T08:00:00Z"),
+                true
+        );
+        ReflectionTestUtils.setField(teamMember, "id", user.getId() + 100);
+        return teamMember;
     }
 
     private Shift shift(Schedule schedule, Long id) {
@@ -559,12 +702,43 @@ class AssignmentServiceTest {
     }
 
     private Shift shift(Schedule schedule, Long id, StaffingRole requiredStaffingRole) {
-        Shift shift = new Shift(
+        return shift(
                 schedule,
+                id,
                 Instant.parse("2026-07-06T06:00:00Z"),
                 Instant.parse("2026-07-06T14:00:00Z"),
                 "Morning shift",
                 2,
+                requiredStaffingRole
+        );
+    }
+
+    private Shift shift(
+            Schedule schedule,
+            Long id,
+            Instant startTime,
+            Instant endTime,
+            String description,
+            int requiredWorkers
+    ) {
+        return shift(schedule, id, startTime, endTime, description, requiredWorkers, null);
+    }
+
+    private Shift shift(
+            Schedule schedule,
+            Long id,
+            Instant startTime,
+            Instant endTime,
+            String description,
+            int requiredWorkers,
+            StaffingRole requiredStaffingRole
+    ) {
+        Shift shift = new Shift(
+                schedule,
+                startTime,
+                endTime,
+                description,
+                requiredWorkers,
                 8,
                 requiredStaffingRole
         );

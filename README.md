@@ -5,7 +5,8 @@ A course project for managing employee shifts across teams.
 The project is being implemented gradually. The current focus is a working
 Spring Boot backend with authentication, teams, schedules, shifts, manual
 assignment rules, availability constraint support, staffing role support,
-JMS-backed notifications, and the first React frontend workflows.
+basic automatic assignment, JMS-backed notifications, and the first React
+frontend workflows.
 
 ## Repository Structure
 
@@ -25,6 +26,9 @@ Implemented:
 - Shift create, list, update, and delete operations.
 - Manual assignment create, list, and delete operations.
 - Assignment validations for team membership, duplicate assignments, shift capacity, overlap, and minimum rest.
+- Basic automatic assignment for draft schedules.
+- Automatic assignment ranks eligible employees by fewer assigned minutes in the schedule.
+- Automatic assignment returns a report with created assignments and remaining open slots.
 - Availability constraint persistence model.
 - Availability constraint create, personal list, and delete operations.
 - Availability constraint creation is rejected when it overlaps an existing assignment.
@@ -85,7 +89,7 @@ Frontend:
 Planned next:
 
 - Full swap requests.
-- Templates and automatic assignment.
+- Templates and automatic assignment UI.
 
 ## Backend Documentation
 

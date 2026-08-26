@@ -777,6 +777,26 @@
           "response": []
         },
         {
+          "name": "Auto Assign Schedule",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/schedules/{{scheduleId}}/auto-assign",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "schedules",
+                "{{scheduleId}}",
+                "auto-assign"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
           "name": "Delete Assignment",
           "request": {
             "method": "DELETE",

@@ -40,6 +40,14 @@ public class AssignmentController {
         return assignmentService.listScheduleAssignments(authentication.getName(), scheduleId);
     }
 
+    @PostMapping("/api/schedules/{scheduleId}/auto-assign")
+    public AutoAssignmentReportResponse autoAssignSchedule(
+            Authentication authentication,
+            @PathVariable Long scheduleId
+    ) {
+        return assignmentService.autoAssignSchedule(authentication.getName(), scheduleId);
+    }
+
     @DeleteMapping("/api/assignments/{assignmentId}")
     @ResponseStatus(HttpStatus.NO_CONTENT)
     public void deleteAssignment(

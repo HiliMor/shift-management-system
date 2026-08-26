@@ -754,21 +754,21 @@ Goal: generate shifts from templates and offer automatic assignment.
 - [ ] Allow managers to create templates.
 - [ ] Allow managers to create slots.
 - [ ] Generate shifts from a template.
-- [ ] Implement basic automatic assignment.
-- [ ] Rank employees by fewer assigned hours.
-- [ ] Return a report of unassigned shifts.
+- [x] Implement basic automatic assignment.
+- [x] Rank employees by fewer assigned hours.
+- [x] Return a report of unassigned shifts.
 
 ### Verify
 
 - [ ] A template creates shifts on the expected dates.
-- [ ] Automatic assignment assigns only eligible employees.
-- [ ] A shift remains unfilled if no employee is eligible.
-- [ ] The report explains what was not assigned.
+- [x] Automatic assignment assigns only eligible employees.
+- [x] A shift remains unfilled if no employee is eligible.
+- [x] The report explains what was not assigned.
 
 ### Document
 
-- The automatic assignment algorithm.
-- The algorithm limitations.
+- [x] The automatic assignment algorithm.
+- [x] The algorithm limitations.
 
 ## Phase 11 - Notifications And JMS
 
@@ -1499,3 +1499,12 @@ Still open:
 - Added a dedicated `useSchedulePublication` hook for publication state and API actions.
 - Added a manager publication panel for readiness checks, explicit unfilled-shift confirmation, draft publication, and published schedule reopening.
 - Updated README and backend documentation to include the manager publication workflow.
+
+### 2026-08-26 - Reduced-Scope Compliance: Basic Automatic Assignment
+
+- Added `POST /api/schedules/{scheduleId}/auto-assign` for manager-triggered automatic assignment on draft schedules.
+- Reused the existing assignment validation rules so automatic assignment respects active team membership, required staffing role, duplicate assignment prevention, availability constraints, shift overlap, and minimum rest.
+- Ranked eligible employees by fewer assigned minutes in the selected schedule, then by employee name for deterministic tie-breaking.
+- Added a structured report with per-shift created assignments and remaining open slots.
+- Added focused service tests for successful least-loaded assignment, unfilled-shift reporting, and published-schedule rejection.
+- Updated README and backend documentation to describe the automatic assignment workflow and limitations.

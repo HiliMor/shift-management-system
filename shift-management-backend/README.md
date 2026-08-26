@@ -38,6 +38,9 @@ Implemented:
 - Assignment list endpoint: `GET /api/schedules/{scheduleId}/assignments`.
 - Assignment delete endpoint: `DELETE /api/assignments/{assignmentId}`.
 - Assignment validation for team membership, duplicate assignment, shift capacity, availability constraints, overlap, and minimum rest.
+- Basic automatic assignment endpoint: `POST /api/schedules/{scheduleId}/auto-assign`.
+- Automatic assignment ranks eligible employees by fewer assigned minutes in the schedule.
+- Automatic assignment returns a report with created assignments and remaining open slots.
 - Initial availability constraint domain model.
 - Availability constraint creation endpoint: `POST /api/availability-constraints`.
 - Personal availability constraint list endpoint: `GET /api/availability-constraints/me`.
@@ -329,6 +332,55 @@ Expected response:
 ```
 
 Users who do not manage teams receive an empty list.
+
+Run automatic assignment for a draft schedule:
+
+```bash
+curl -X POST http://localhost:8080/api/schedules/1/auto-assign \
+  -H "Authorization: Bearer <TOKEN>"
+```
+
+Expected response:
+
+```json
+{
+  "scheduleId": 1,
+  "totalShifts": 2,
+  "assignmentsCreated": 1,
+  "totalOpenSlotsBefore": 2,
+  "totalOpenSlotsAfter": 1,
+  "shifts": [
+    {
+      "shiftId": 1,
+      "startTime": "2026-07-05T06:00:00Z",
+      "endTime": "2026-07-05T14:00:00Z",
+      "description": "Morning shift",
+      "requiredWorkers": 2,
+      "assignedWorkersBefore": 1,
+      "assignmentsCreated": 1,
+      "openSlotsBefore": 1,
+      "openSlotsAfter": 0,
+      "message": "All open slots were assigned",
+      "createdAssignments": [
+        {
+          "id": 10,
+          "shiftId": 1,
+          "employeeId": 2,
+          "employeeUsername": "employee1",
+          "employeeFullName": "Demo Employee",
+          "assignedAt": "2026-07-05T09:00:00Z"
+        }
+      ]
+    }
+  ]
+}
+```
+
+Only managers assigned to the schedule's team can run automatic assignment.
+Automatic assignment can run only while the schedule is a draft.
+The algorithm uses the same eligibility rules as manual assignment: active team membership, required staffing role, no duplicate assignment, employee availability, no overlapping shift, and minimum rest.
+It fills open slots greedily and ranks candidates by fewer assigned minutes in the same schedule, then by employee name for deterministic tie-breaking.
+The response reports both successful assignments and shifts that remain open because no eligible employee was available.
 
 Publish a draft schedule:
 
