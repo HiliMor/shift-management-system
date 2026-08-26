@@ -166,6 +166,37 @@ class ScheduleServiceTest {
     }
 
     @Test
+    void listManagedPublishedSchedulesReturnsPublishedSchedulesForManagedTeams() {
+        User manager = manager();
+        Team team = team();
+        Schedule schedule = schedule(team, ScheduleStatus.PUBLISHED, 12L, LocalDate.of(2026, 8, 9));
+
+        when(teamManagerRepository.findByManager_Username("manager1"))
+                .thenReturn(List.of(new TeamManager(manager, team)));
+        when(scheduleRepository.findByTeam_IdInAndStatusOrderByStartDateDesc(List.of(1L), ScheduleStatus.PUBLISHED))
+                .thenReturn(List.of(schedule));
+
+        List<ScheduleResponse> responses = scheduleService.listManagedPublishedSchedules("manager1");
+
+        assertThat(responses).hasSize(1);
+        assertThat(responses.get(0).id()).isEqualTo(12L);
+        assertThat(responses.get(0).status()).isEqualTo(ScheduleStatus.PUBLISHED);
+        assertThat(responses.get(0).teamName()).isEqualTo("Operations");
+        assertThat(responses.get(0).publicationNumber()).isEqualTo(1);
+        assertThat(responses.get(0).publishedAt()).isNotNull();
+    }
+
+    @Test
+    void listManagedPublishedSchedulesReturnsEmptyListWhenUserManagesNoTeams() {
+        when(teamManagerRepository.findByManager_Username("employee1")).thenReturn(List.of());
+
+        List<ScheduleResponse> responses = scheduleService.listManagedPublishedSchedules("employee1");
+
+        assertThat(responses).isEmpty();
+        verify(scheduleRepository, never()).findByTeam_IdInAndStatusOrderByStartDateDesc(any(), any());
+    }
+
+    @Test
     void publishSchedulePublishesManagedDraftSchedule() {
         Schedule schedule = schedule(ScheduleStatus.DRAFT);
         Shift shift = shift(

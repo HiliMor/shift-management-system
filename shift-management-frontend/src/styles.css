@@ -596,6 +596,13 @@ nav a:hover,
   grid-template-columns: minmax(220px, 1.4fr) minmax(220px, 1.6fr) minmax(180px, 1fr) auto;
 }
 
+.publication-form {
+  align-items: end;
+  display: grid;
+  gap: 14px;
+  grid-template-columns: minmax(220px, 1.5fr) minmax(170px, 0.8fr) auto auto;
+}
+
 .shift-form label:first-child,
 .shift-form label:nth-child(4) {
   grid-column: 1 / -1;
@@ -606,6 +613,49 @@ nav a:hover,
   display: grid;
   gap: 10px;
   padding-top: 14px;
+}
+
+.compact-heading {
+  margin-bottom: 0;
+}
+
+.readiness-panel {
+  background: #f8fafc;
+  border: 1px solid #e1e6ef;
+  border-radius: 8px;
+  display: grid;
+  gap: 12px;
+  padding: 14px;
+}
+
+.readiness-summary {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.readiness-summary span {
+  background: #edf1f7;
+  border-radius: 999px;
+  color: #37445a;
+  font-size: 0.78rem;
+  font-weight: 800;
+  padding: 5px 10px;
+}
+
+.readiness-summary .ready-badge {
+  background: #ecfdf5;
+  color: #166534;
+}
+
+.readiness-summary .warning-badge {
+  background: #fff7ed;
+  color: #9a3412;
+}
+
+.unfilled-shift-list {
+  display: grid;
+  gap: 10px;
 }
 
 .action-grid {
@@ -638,7 +688,8 @@ nav a:hover,
   .availability-row,
   .manager-form,
   .shift-form,
-  .assignment-form {
+  .assignment-form,
+  .publication-form {
     grid-template-columns: 1fr;
   }
 

@@ -162,6 +162,15 @@ public class ScheduleService {
 
     @Transactional(readOnly = true)
     public List<ScheduleResponse> listManagedDraftSchedules(String username) {
+        return listManagedSchedulesByStatus(username, ScheduleStatus.DRAFT);
+    }
+
+    @Transactional(readOnly = true)
+    public List<ScheduleResponse> listManagedPublishedSchedules(String username) {
+        return listManagedSchedulesByStatus(username, ScheduleStatus.PUBLISHED);
+    }
+
+    private List<ScheduleResponse> listManagedSchedulesByStatus(String username, ScheduleStatus status) {
         List<Long> teamIds = teamManagerRepository.findByManager_Username(username)
                 .stream()
                 .map(teamManager -> teamManager.getTeam().getId())
@@ -171,7 +180,7 @@ public class ScheduleService {
             return List.of();
         }
 
-        return scheduleRepository.findByTeam_IdInAndStatusOrderByStartDateDesc(teamIds, ScheduleStatus.DRAFT)
+        return scheduleRepository.findByTeam_IdInAndStatusOrderByStartDateDesc(teamIds, status)
                 .stream()
                 .map(ScheduleResponse::from)
                 .toList();

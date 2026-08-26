@@ -663,6 +663,8 @@ Goal: build a minimal React interface connected to the backend.
 - [x] Manager schedule creation screen.
 - [x] Manager shift creation screen.
 - [x] Simple manual assignment screen.
+- [x] Manager publication readiness and publish screen.
+- [x] Manager published schedule reopen screen.
 - [x] Transfer request list screen.
 - [x] Transfer request employee and manager action buttons.
 - [x] Display backend errors clearly for login and published schedule loading.
@@ -678,6 +680,9 @@ Goal: build a minimal React interface connected to the backend.
 - [x] Managers can create draft schedules from the frontend.
 - [x] Managers can create shifts.
 - [x] Assignment errors are displayed clearly.
+- [x] Managers can check publication readiness before publishing.
+- [x] Managers can publish draft schedules from the frontend.
+- [x] Managers can reopen published schedules from the frontend.
 - [x] Transfer request lists load for employees and managers.
 - [x] Transfer request actions refresh the relevant list.
 - [x] Expired sessions are cleared and show a clear login message.
@@ -1486,3 +1491,11 @@ Still open:
 - Added a dedicated `useAvailabilityConstraints` hook to keep availability state and API actions outside `App.jsx`.
 - Added frontend API helpers for availability constraints.
 - Updated README and the implementation plan to include the implemented availability UI.
+
+### 2026-08-26 - Reduced-Scope Compliance: Manager Publication UI
+
+- Added `GET /api/schedules/me/managed/published` so managers can list schedules they already published.
+- Added frontend API helpers for publication readiness, publish, reopen, and managed published schedule listing.
+- Added a dedicated `useSchedulePublication` hook for publication state and API actions.
+- Added a manager publication panel for readiness checks, explicit unfilled-shift confirmation, draft publication, and published schedule reopening.
+- Updated README and backend documentation to include the manager publication workflow.

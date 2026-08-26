@@ -57,6 +57,7 @@ Implemented:
 - Employee published schedule list endpoint: `GET /api/schedules/me/published`.
 - Employee published schedule details endpoint: `GET /api/schedules/me/published/{scheduleId}`.
 - Manager draft schedule list endpoint: `GET /api/schedules/me/managed/drafts`.
+- Manager published schedule list endpoint: `GET /api/schedules/me/managed/published`.
 - Publication readiness report endpoint: `GET /api/schedules/{scheduleId}/publication-readiness`.
 - Explicit confirmation for publishing schedules with unfilled shifts.
 - Notification persistence model.
@@ -297,6 +298,32 @@ Expected response:
     "status": "DRAFT",
     "publicationNumber": 0,
     "publishedAt": null
+  }
+]
+```
+
+Users who do not manage teams receive an empty list.
+
+List published schedules managed by the authenticated manager:
+
+```bash
+curl http://localhost:8080/api/schedules/me/managed/published \
+  -H "Authorization: Bearer <TOKEN>"
+```
+
+Expected response:
+
+```json
+[
+  {
+    "id": 2,
+    "teamId": 1,
+    "teamName": "Operations",
+    "startDate": "2026-07-12",
+    "endDate": "2026-07-18",
+    "status": "PUBLISHED",
+    "publicationNumber": 1,
+    "publishedAt": "2026-07-20T08:59:10.000000Z"
   }
 ]
 ```

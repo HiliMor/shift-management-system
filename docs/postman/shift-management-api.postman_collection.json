@@ -425,6 +425,43 @@
           "response": []
         },
         {
+          "name": "List Managed Published Schedules",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "if (pm.response.code === 200) {",
+                  "  const data = pm.response.json();",
+                  "  if (Array.isArray(data) && data.length > 0) {",
+                  "    pm.environment.set('scheduleId', data[0].id);",
+                  "  }",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/schedules/me/managed/published",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "schedules",
+                "me",
+                "managed",
+                "published"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
           "name": "Publish Schedule",
           "request": {
             "method": "POST",

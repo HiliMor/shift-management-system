@@ -23,6 +23,7 @@ import ScheduleDetailsSection from "./components/ScheduleDetailsSection.jsx";
 import TransferRequestsSection from "./components/TransferRequestsSection.jsx";
 import useAvailabilityConstraints from "./hooks/useAvailabilityConstraints.js";
 import useNotifications from "./hooks/useNotifications.js";
+import useSchedulePublication from "./hooks/useSchedulePublication.js";
 import useTransferRequests from "./hooks/useTransferRequests.js";
 
 const STORAGE_KEY = "shift-management-session";
@@ -190,6 +191,7 @@ function App() {
     resetAvailabilityConstraints();
     resetNotifications();
     resetTransferRequests();
+    resetSchedulePublication();
   }
 
   function expireSession() {
@@ -252,6 +254,30 @@ function App() {
     transferRequestCount,
     transferRequestsError,
   } = useTransferRequests(session, isManager, handleApiError);
+
+  const {
+    handlePublicationFormChange,
+    isLoadingManagedPublishedSchedules,
+    isLoadingPublicationReadiness,
+    isPublishingSchedule,
+    managedPublishedSchedules,
+    managedPublishedSchedulesError,
+    publicationActionError,
+    publicationActionMessage,
+    publicationError,
+    publicationForm,
+    publicationReadiness,
+    refreshManagedPublishedSchedules,
+    refreshPublicationReadiness,
+    reopeningScheduleId,
+    resetSchedulePublication,
+    submitPublishSchedule,
+    submitReopenSchedule,
+  } = useSchedulePublication(session, isManager, managedDraftSchedules, refreshDraftSchedules, handleApiError);
+
+  function refreshDraftSchedules() {
+    setDraftScheduleRefreshKey((current) => current + 1);
+  }
 
   useEffect(() => {
     if (!session?.accessToken) {
@@ -497,7 +523,7 @@ function App() {
         scheduleId: response.id.toString(),
         shiftId: "",
       }));
-      setDraftScheduleRefreshKey((current) => current + 1);
+      refreshDraftSchedules();
     } catch (error) {
       handleApiError(error, setScheduleCreationError);
     } finally {
@@ -543,6 +569,7 @@ function App() {
         shiftId: response.id.toString(),
       }));
       setAssignmentRefreshKey((current) => current + 1);
+      refreshPublicationReadiness();
     } catch (error) {
       handleApiError(error, setShiftCreationError);
     } finally {
@@ -573,6 +600,7 @@ function App() {
       });
       setCreatedAssignment(response);
       setAssignmentRefreshKey((current) => current + 1);
+      refreshPublicationReadiness();
     } catch (error) {
       handleApiError(error, setAssignmentCreationError);
     } finally {
@@ -689,18 +717,34 @@ function App() {
           isLoadingAssignmentShifts={isLoadingAssignmentShifts}
           isLoadingDraftSchedules={isLoadingDraftSchedules}
           isLoadingManagedTeams={isLoadingManagedTeams}
+          isLoadingManagedPublishedSchedules={isLoadingManagedPublishedSchedules}
+          isLoadingPublicationReadiness={isLoadingPublicationReadiness}
           isLoadingScheduleAssignments={isLoadingScheduleAssignments}
           isLoadingStaffingRoles={isLoadingStaffingRoles}
           isLoadingTeamEmployees={isLoadingTeamEmployees}
+          isPublishingSchedule={isPublishingSchedule}
           managedDraftSchedules={managedDraftSchedules}
+          managedPublishedSchedules={managedPublishedSchedules}
+          managedPublishedSchedulesError={managedPublishedSchedulesError}
           managedTeams={managedTeams}
           managedTeamsError={managedTeamsError}
           onAssignmentFormChange={handleAssignmentFormChange}
           onCreateAssignment={handleCreateAssignment}
           onCreateSchedule={handleCreateSchedule}
           onCreateShift={handleCreateShift}
+          onPublicationFormChange={handlePublicationFormChange}
+          onPublishSchedule={submitPublishSchedule}
+          onRefreshPublishedSchedules={refreshManagedPublishedSchedules}
+          onRefreshPublicationReadiness={refreshPublicationReadiness}
+          onReopenSchedule={submitReopenSchedule}
           onScheduleFormChange={handleScheduleFormChange}
           onShiftFormChange={handleShiftFormChange}
+          publicationActionError={publicationActionError}
+          publicationActionMessage={publicationActionMessage}
+          publicationError={publicationError}
+          publicationForm={publicationForm}
+          publicationReadiness={publicationReadiness}
+          reopeningScheduleId={reopeningScheduleId}
           scheduleAssignments={scheduleAssignments}
           scheduleAssignmentsError={scheduleAssignmentsError}
           scheduleCreationError={scheduleCreationError}

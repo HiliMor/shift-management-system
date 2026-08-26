@@ -39,6 +39,7 @@ Implemented:
 - Schedule reopening from `PUBLISHED` to `DRAFT`.
 - Employee published schedule list endpoint.
 - Employee published schedule details endpoint with shifts and assignments.
+- Manager published schedule list endpoint.
 - Publication readiness report.
 - Explicit confirmation for publishing schedules with unfilled shifts.
 - Notification persistence model.
@@ -76,6 +77,7 @@ Frontend:
 - Manager shift creation connected to `POST /api/schedules/{scheduleId}/shifts`.
 - Manager manual assignment screen connected to `POST /api/assignments`.
 - Assignment screen loads draft schedule shifts, team employees, and existing schedule assignments.
+- Manager publication screen supports readiness checks, publishing draft schedules, and reopening published schedules.
 - Notification center connected to personal notification list, unread count, and mark-as-read APIs.
 - Transfer request screen connected to outgoing, incoming, and pending-manager request APIs.
 - Transfer request screen supports employee approve/reject, requester cancel, and manager approve actions.

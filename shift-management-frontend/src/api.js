@@ -70,6 +70,29 @@ export function listManagedDraftSchedules(token) {
   return request("/api/schedules/me/managed/drafts", { token });
 }
 
+export function listManagedPublishedSchedules(token) {
+  return request("/api/schedules/me/managed/published", { token });
+}
+
+export function getPublicationReadiness(token, scheduleId) {
+  return request(`/api/schedules/${scheduleId}/publication-readiness`, { token });
+}
+
+export function publishSchedule(token, scheduleId, confirmUnfilled) {
+  return request(`/api/schedules/${scheduleId}/publish`, {
+    method: "POST",
+    token,
+    body: JSON.stringify({ confirmUnfilled }),
+  });
+}
+
+export function reopenSchedule(token, scheduleId) {
+  return request(`/api/schedules/${scheduleId}/reopen`, {
+    method: "POST",
+    token,
+  });
+}
+
 export function listStaffingRoles(token, teamId) {
   return request(`/api/teams/${teamId}/staffing-roles`, { token });
 }

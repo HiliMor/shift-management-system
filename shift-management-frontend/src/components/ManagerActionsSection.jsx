@@ -1,6 +1,7 @@
 import AssignEmployeePanel from "./manager/AssignEmployeePanel.jsx";
 import CreateSchedulePanel from "./manager/CreateSchedulePanel.jsx";
 import CreateShiftPanel from "./manager/CreateShiftPanel.jsx";
+import SchedulePublicationPanel from "./manager/SchedulePublicationPanel.jsx";
 
 function ManagerActionsSection({
   assignmentCreationError,
@@ -20,18 +21,34 @@ function ManagerActionsSection({
   isLoadingAssignmentShifts,
   isLoadingDraftSchedules,
   isLoadingManagedTeams,
+  isLoadingManagedPublishedSchedules,
+  isLoadingPublicationReadiness,
   isLoadingScheduleAssignments,
   isLoadingStaffingRoles,
   isLoadingTeamEmployees,
+  isPublishingSchedule,
   managedDraftSchedules,
+  managedPublishedSchedules,
+  managedPublishedSchedulesError,
   managedTeams,
   managedTeamsError,
   onAssignmentFormChange,
   onCreateAssignment,
   onCreateSchedule,
   onCreateShift,
+  onPublicationFormChange,
+  onPublishSchedule,
+  onRefreshPublishedSchedules,
+  onRefreshPublicationReadiness,
+  onReopenSchedule,
   onScheduleFormChange,
   onShiftFormChange,
+  publicationActionError,
+  publicationActionMessage,
+  publicationError,
+  publicationForm,
+  publicationReadiness,
+  reopeningScheduleId,
   scheduleAssignments,
   scheduleAssignmentsError,
   scheduleCreationError,
@@ -104,12 +121,35 @@ function ManagerActionsSection({
             teamEmployees={teamEmployees}
             teamEmployeesError={teamEmployeesError}
           />
+
+          <SchedulePublicationPanel
+            draftSchedulesError={draftSchedulesError}
+            formatDate={formatDate}
+            formatDateTime={formatDateTime}
+            isLoadingDraftSchedules={isLoadingDraftSchedules}
+            isLoadingManagedPublishedSchedules={isLoadingManagedPublishedSchedules}
+            isLoadingPublicationReadiness={isLoadingPublicationReadiness}
+            isPublishingSchedule={isPublishingSchedule}
+            managedDraftSchedules={managedDraftSchedules}
+            managedPublishedSchedules={managedPublishedSchedules}
+            managedPublishedSchedulesError={managedPublishedSchedulesError}
+            onPublicationFormChange={onPublicationFormChange}
+            onPublishSchedule={onPublishSchedule}
+            onRefreshPublishedSchedules={onRefreshPublishedSchedules}
+            onRefreshPublicationReadiness={onRefreshPublicationReadiness}
+            onReopenSchedule={onReopenSchedule}
+            publicationError={publicationError}
+            publicationForm={publicationForm}
+            publicationReadiness={publicationReadiness}
+            reopeningScheduleId={reopeningScheduleId}
+          />
         </div>
       ) : null}
 
       {scheduleCreationError ? <p className="error-message">{scheduleCreationError}</p> : null}
       {shiftCreationError ? <p className="error-message">{shiftCreationError}</p> : null}
       {assignmentCreationError ? <p className="error-message">{assignmentCreationError}</p> : null}
+      {publicationActionError ? <p className="error-message">{publicationActionError}</p> : null}
 
       {createdSchedule ? (
         <div className="success-message">
@@ -137,6 +177,12 @@ function ManagerActionsSection({
             {createdAssignment.employeeFullName || createdAssignment.employeeUsername} assigned to shift #
             {createdAssignment.shiftId}
           </span>
+        </div>
+      ) : null}
+
+      {publicationActionMessage ? (
+        <div className="success-message">
+          <strong>{publicationActionMessage}</strong>
         </div>
       ) : null}
     </section>
