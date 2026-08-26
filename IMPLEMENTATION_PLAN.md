@@ -1,6 +1,6 @@
 # Implementation Plan - Shift Management System
 
-Last updated: 2026-08-11
+Last updated: 2026-08-26
 
 This document is the working implementation plan for the project.  
 The goal is to build the system in small, understandable steps, while keeping each part easy to explain during the final presentation.
@@ -29,15 +29,21 @@ Do not move to the next step until the current step can be explained clearly:
 
 ## Repository Language Policy
 
-All files committed to Git should be written in English:
+Source code and technical project material should be written in English:
 
 - File and directory names.
 - Code identifiers.
 - Code comments.
-- README files and project documentation.
+- README files and developer documentation.
 - Commit messages.
 
-Local Hebrew reference materials can stay on the computer, but they should not be committed unless they are converted into English project documentation.
+Submission documents for the course instructor may be written in Hebrew because
+they are part of the academic delivery rather than the source-code convention.
+The user guide should be bilingual in Hebrew and English.
+
+Local Hebrew reference materials can stay on the computer. They should be
+committed only when they are intentionally turned into official submission
+documents.
 
 ## First Version Goal
 
@@ -653,6 +659,7 @@ Goal: build a minimal React interface connected to the backend.
 - [x] Role-based navigation.
 - [x] Initial published schedule view.
 - [x] Employee published schedule details view.
+- [x] Employee availability constraint screen.
 - [x] Manager schedule creation screen.
 - [x] Manager shift creation screen.
 - [x] Simple manual assignment screen.
@@ -667,6 +674,7 @@ Goal: build a minimal React interface connected to the backend.
 - [x] Successful login navigates to the correct area.
 - [x] Frontend can call the published schedules backend endpoint.
 - [x] Employees can view published schedule details in the frontend.
+- [x] Employees can create, view, and delete availability constraints in the frontend.
 - [x] Managers can create draft schedules from the frontend.
 - [x] Managers can create shifts.
 - [x] Assignment errors are displayed clearly.
@@ -823,10 +831,10 @@ Goal: make the project ready for submission and presentation.
 
 ### Document
 
-- Updated design document.
-- User guide.
-- Installation guide.
-- Explanation of central classes and functions.
+- [ ] Updated design document.
+- [ ] User guide.
+- [ ] Installation guide.
+- [ ] Explanation of central classes and functions.
 
 ## Progress Log Template
 
@@ -1470,3 +1478,11 @@ Still open:
 - Updated documentation to describe the new demo data.
 - Verified the frontend production build succeeds.
 - Verified the full backend test suite succeeds outside the Codex sandbox.
+
+### 2026-08-26 - Reduced-Scope Compliance: Availability UI
+
+- Added an employee-facing availability constraint screen to the React frontend.
+- Connected the screen to the existing availability backend APIs for create, personal list, and delete.
+- Added a dedicated `useAvailabilityConstraints` hook to keep availability state and API actions outside `App.jsx`.
+- Added frontend API helpers for availability constraints.
+- Updated README and the implementation plan to include the implemented availability UI.

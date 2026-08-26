@@ -356,6 +356,46 @@ nav a:hover,
   font-size: 0.85rem;
 }
 
+.availability-form {
+  align-items: end;
+  display: grid;
+  gap: 14px;
+  grid-template-columns: minmax(110px, 0.6fr) repeat(3, minmax(160px, 1fr)) auto;
+  margin-bottom: 16px;
+}
+
+.checkbox-field {
+  align-items: center;
+  display: flex;
+  gap: 8px;
+  min-height: 44px;
+}
+
+.checkbox-field input {
+  min-height: 0;
+  width: auto;
+}
+
+.availability-list {
+  display: grid;
+  gap: 10px;
+}
+
+.availability-row {
+  align-items: start;
+  border: 1px solid #e1e6ef;
+  border-radius: 8px;
+  display: grid;
+  gap: 14px;
+  grid-template-columns: minmax(0, 1fr) auto;
+  padding: 14px;
+}
+
+.availability-row p {
+  color: #66758b;
+  margin-bottom: 6px;
+}
+
 .request-section-stack {
   display: grid;
   gap: 16px;
@@ -594,6 +634,8 @@ nav a:hover,
   .request-details,
   .details-summary,
   .shift-main,
+  .availability-form,
+  .availability-row,
   .manager-form,
   .shift-form,
   .assignment-form {

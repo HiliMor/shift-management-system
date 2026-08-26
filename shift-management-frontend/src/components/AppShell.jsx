@@ -1,4 +1,5 @@
 function AppShell({
+  availabilityConstraintCount,
   children,
   displayName,
   isManager,
@@ -19,6 +20,14 @@ function AppShell({
           <a className="active-link" href="#schedules">
             Published schedules
           </a>
+          {!isManager ? (
+            <a href="#availability">
+              My availability
+              {availabilityConstraintCount > 0 ? (
+                <span className="nav-count">{availabilityConstraintCount}</span>
+              ) : null}
+            </a>
+          ) : null}
           <a href="#transfer-requests">
             Transfer requests
             {transferRequestCount > 0 ? <span className="nav-count">{transferRequestCount}</span> : null}

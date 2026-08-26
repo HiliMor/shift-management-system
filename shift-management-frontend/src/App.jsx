@@ -14,12 +14,14 @@ import {
   login,
 } from "./api.js";
 import AppShell from "./components/AppShell.jsx";
+import AvailabilityConstraintsSection from "./components/AvailabilityConstraintsSection.jsx";
 import LoginScreen from "./components/LoginScreen.jsx";
 import NotificationsSection from "./components/NotificationsSection.jsx";
 import ManagerActionsSection from "./components/ManagerActionsSection.jsx";
 import PublishedSchedulesSection from "./components/PublishedSchedulesSection.jsx";
 import ScheduleDetailsSection from "./components/ScheduleDetailsSection.jsx";
 import TransferRequestsSection from "./components/TransferRequestsSection.jsx";
+import useAvailabilityConstraints from "./hooks/useAvailabilityConstraints.js";
 import useNotifications from "./hooks/useNotifications.js";
 import useTransferRequests from "./hooks/useTransferRequests.js";
 
@@ -125,6 +127,7 @@ function App() {
   const [assignmentCreationError, setAssignmentCreationError] = useState("");
   const [isCreatingAssignment, setIsCreatingAssignment] = useState(false);
   const isManager = session?.user?.applicationRole === "MANAGER";
+  const isEmployee = session?.user?.applicationRole === "EMPLOYEE";
 
   const displayName = useMemo(() => {
     if (!session?.user) {
@@ -184,6 +187,7 @@ function App() {
     setScheduleAssignmentsError("");
     setCreatedAssignment(null);
     setAssignmentCreationError("");
+    resetAvailabilityConstraints();
     resetNotifications();
     resetTransferRequests();
   }
@@ -203,6 +207,22 @@ function App() {
 
     setError(error.message);
   }
+
+  const {
+    availabilityActionError,
+    availabilityActionMessage,
+    availabilityConstraints,
+    availabilityError,
+    availabilityForm,
+    deletingAvailabilityId,
+    handleAvailabilityFormChange,
+    isCreatingAvailability,
+    isLoadingAvailability,
+    refreshAvailabilityConstraints,
+    removeAvailabilityConstraint,
+    resetAvailabilityConstraints,
+    submitAvailabilityConstraint,
+  } = useAvailabilityConstraints(session, isEmployee, handleApiError);
 
   const {
     isLoadingNotifications,
@@ -576,6 +596,7 @@ function App() {
 
   return (
     <AppShell
+      availabilityConstraintCount={isEmployee ? availabilityConstraints.length : 0}
       displayName={displayName}
       isManager={isManager}
       onLogout={handleLogout}
@@ -583,16 +604,41 @@ function App() {
       transferRequestCount={transferRequestCount}
       unreadNotificationCount={unreadNotificationCount}
     >
-      <NotificationsSection
-        formatDateTime={formatDateTime}
-        isLoadingNotifications={isLoadingNotifications}
-        markingNotificationId={markingNotificationId}
-        notifications={notifications}
-        notificationsError={notificationsError}
-        onMarkNotificationRead={markNotificationAsRead}
-        onRefreshNotifications={refreshNotifications}
-        unreadNotificationCount={unreadNotificationCount}
+      <PublishedSchedulesSection
+        formatDate={formatDate}
+        isLoadingSchedules={isLoadingSchedules}
+        onSelectSchedule={setSelectedScheduleId}
+        publishedSchedules={publishedSchedules}
+        scheduleError={scheduleError}
+        selectedScheduleId={selectedScheduleId}
       />
+
+      <ScheduleDetailsSection
+        detailsError={detailsError}
+        formatDate={formatDate}
+        formatDateTime={formatDateTime}
+        isLoadingDetails={isLoadingDetails}
+        selectedScheduleDetails={selectedScheduleDetails}
+        selectedScheduleId={selectedScheduleId}
+      />
+
+      {isEmployee ? (
+        <AvailabilityConstraintsSection
+          availabilityActionError={availabilityActionError}
+          availabilityActionMessage={availabilityActionMessage}
+          availabilityConstraints={availabilityConstraints}
+          availabilityError={availabilityError}
+          availabilityForm={availabilityForm}
+          deletingAvailabilityId={deletingAvailabilityId}
+          formatDateTime={formatDateTime}
+          isCreatingAvailability={isCreatingAvailability}
+          isLoadingAvailability={isLoadingAvailability}
+          onAvailabilityFormChange={handleAvailabilityFormChange}
+          onCreateAvailabilityConstraint={submitAvailabilityConstraint}
+          onDeleteAvailabilityConstraint={removeAvailabilityConstraint}
+          onRefreshAvailabilityConstraints={refreshAvailabilityConstraints}
+        />
+      ) : null}
 
       <TransferRequestsSection
         actingTransferRequest={actingTransferRequest}
@@ -613,22 +659,15 @@ function App() {
         transferRequestsError={transferRequestsError}
       />
 
-      <PublishedSchedulesSection
-        formatDate={formatDate}
-        isLoadingSchedules={isLoadingSchedules}
-        onSelectSchedule={setSelectedScheduleId}
-        publishedSchedules={publishedSchedules}
-        scheduleError={scheduleError}
-        selectedScheduleId={selectedScheduleId}
-      />
-
-      <ScheduleDetailsSection
-        detailsError={detailsError}
-        formatDate={formatDate}
+      <NotificationsSection
         formatDateTime={formatDateTime}
-        isLoadingDetails={isLoadingDetails}
-        selectedScheduleDetails={selectedScheduleDetails}
-        selectedScheduleId={selectedScheduleId}
+        isLoadingNotifications={isLoadingNotifications}
+        markingNotificationId={markingNotificationId}
+        notifications={notifications}
+        notificationsError={notificationsError}
+        onMarkNotificationRead={markNotificationAsRead}
+        onRefreshNotifications={refreshNotifications}
+        unreadNotificationCount={unreadNotificationCount}
       />
 
       {isManager ? (

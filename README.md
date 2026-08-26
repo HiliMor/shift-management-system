@@ -69,6 +69,7 @@ Frontend:
 - Published schedule list loaded from `GET /api/schedules/me/published`.
 - Published schedule details loaded from `GET /api/schedules/me/published/{scheduleId}`.
 - Shift and assignment display for selected published schedules.
+- Employee availability constraint screen connected to create, list, and delete APIs.
 - Managed team list loaded from `GET /api/teams/me/managed`.
 - Manager draft schedule creation connected to `POST /api/schedules`.
 - Managed draft schedule list loaded from `GET /api/schedules/me/managed/drafts`.

@@ -102,6 +102,25 @@ export function createAssignment(token, assignment) {
   });
 }
 
+export function createAvailabilityConstraint(token, constraint) {
+  return request("/api/availability-constraints", {
+    method: "POST",
+    token,
+    body: JSON.stringify(constraint),
+  });
+}
+
+export function listMyAvailabilityConstraints(token) {
+  return request("/api/availability-constraints/me", { token });
+}
+
+export function deleteAvailabilityConstraint(token, constraintId) {
+  return request(`/api/availability-constraints/${constraintId}`, {
+    method: "DELETE",
+    token,
+  });
+}
+
 export function listMyNotifications(token) {
   return request("/api/notifications", { token });
 }
