@@ -596,6 +596,13 @@ nav a:hover,
   grid-template-columns: minmax(220px, 1.4fr) minmax(220px, 1.6fr) minmax(180px, 1fr) auto;
 }
 
+.automatic-assignment-form {
+  align-items: end;
+  display: grid;
+  gap: 14px;
+  grid-template-columns: minmax(220px, 1fr) auto;
+}
+
 .publication-form {
   align-items: end;
   display: grid;
@@ -658,6 +665,35 @@ nav a:hover,
   gap: 10px;
 }
 
+.auto-assignment-report-list {
+  display: grid;
+  gap: 10px;
+}
+
+.auto-assignment-row {
+  align-items: flex-start;
+}
+
+.auto-assignment-main {
+  display: grid;
+  gap: 4px;
+  min-width: 0;
+}
+
+.auto-assignment-main span,
+.auto-assignment-created-list span {
+  color: #66758b;
+  font-size: 0.9rem;
+}
+
+.auto-assignment-created-list {
+  display: grid;
+  gap: 4px;
+  justify-items: end;
+  min-width: 180px;
+  text-align: right;
+}
+
 .action-grid {
   display: grid;
   gap: 10px;
@@ -689,8 +725,18 @@ nav a:hover,
   .manager-form,
   .shift-form,
   .assignment-form,
+  .automatic-assignment-form,
   .publication-form {
     grid-template-columns: 1fr;
+  }
+
+  .auto-assignment-row {
+    flex-direction: column;
+  }
+
+  .auto-assignment-created-list {
+    justify-items: start;
+    text-align: left;
   }
 
   .shift-form label:first-child,

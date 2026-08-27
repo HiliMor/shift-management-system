@@ -757,6 +757,7 @@ Goal: generate shifts from templates and offer automatic assignment.
 - [x] Implement basic automatic assignment.
 - [x] Rank employees by fewer assigned hours.
 - [x] Return a report of unassigned shifts.
+- [x] Add manager UI for running automatic assignment.
 
 ### Verify
 
@@ -764,11 +765,13 @@ Goal: generate shifts from templates and offer automatic assignment.
 - [x] Automatic assignment assigns only eligible employees.
 - [x] A shift remains unfilled if no employee is eligible.
 - [x] The report explains what was not assigned.
+- [x] A manager can run automatic assignment from the frontend and see the report.
 
 ### Document
 
 - [x] The automatic assignment algorithm.
 - [x] The algorithm limitations.
+- [x] The automatic assignment frontend workflow.
 
 ## Phase 11 - Notifications And JMS
 
@@ -1515,3 +1518,11 @@ Still open:
 - Kept manual assignment, automatic assignment, and transfer-request validation using the same validation rules.
 - Reduced `AssignmentService` so it focuses on workflow orchestration, persistence calls, and report creation.
 - Updated the architecture document and backend README to reflect the validator responsibility.
+
+### 2026-08-27 - Reduced-Scope Compliance: Automatic Assignment UI
+
+- Added a frontend API helper for `POST /api/schedules/{scheduleId}/auto-assign`.
+- Added a dedicated `useAutomaticAssignment` hook for automatic-assignment state, actions, success messages, errors, and report storage.
+- Added a manager automatic assignment panel for selecting a draft schedule and running the backend assignment algorithm.
+- Displayed the returned report with total shifts, created assignments, open slots before and after, and per-shift results.
+- Updated project documentation to include the automatic assignment UI.

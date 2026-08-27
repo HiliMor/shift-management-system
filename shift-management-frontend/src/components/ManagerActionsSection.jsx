@@ -1,9 +1,14 @@
 import AssignEmployeePanel from "./manager/AssignEmployeePanel.jsx";
+import AutomaticAssignmentPanel from "./manager/AutomaticAssignmentPanel.jsx";
 import CreateSchedulePanel from "./manager/CreateSchedulePanel.jsx";
 import CreateShiftPanel from "./manager/CreateShiftPanel.jsx";
 import SchedulePublicationPanel from "./manager/SchedulePublicationPanel.jsx";
 
 function ManagerActionsSection({
+  automaticAssignmentError,
+  automaticAssignmentForm,
+  automaticAssignmentMessage,
+  automaticAssignmentReport,
   assignmentCreationError,
   assignmentForm,
   assignmentShiftMap,
@@ -26,12 +31,14 @@ function ManagerActionsSection({
   isLoadingScheduleAssignments,
   isLoadingStaffingRoles,
   isLoadingTeamEmployees,
+  isRunningAutomaticAssignment,
   isPublishingSchedule,
   managedDraftSchedules,
   managedPublishedSchedules,
   managedPublishedSchedulesError,
   managedTeams,
   managedTeamsError,
+  onAutomaticAssignmentFormChange,
   onAssignmentFormChange,
   onCreateAssignment,
   onCreateSchedule,
@@ -41,6 +48,7 @@ function ManagerActionsSection({
   onRefreshPublishedSchedules,
   onRefreshPublicationReadiness,
   onReopenSchedule,
+  onRunAutomaticAssignment,
   onScheduleFormChange,
   onShiftFormChange,
   publicationActionError,
@@ -120,6 +128,21 @@ function ManagerActionsSection({
             selectedAssignmentSchedule={selectedAssignmentSchedule}
             teamEmployees={teamEmployees}
             teamEmployeesError={teamEmployeesError}
+          />
+
+          <AutomaticAssignmentPanel
+            automaticAssignmentError={automaticAssignmentError}
+            automaticAssignmentForm={automaticAssignmentForm}
+            automaticAssignmentMessage={automaticAssignmentMessage}
+            automaticAssignmentReport={automaticAssignmentReport}
+            draftSchedulesError={draftSchedulesError}
+            formatDate={formatDate}
+            formatDateTime={formatDateTime}
+            isLoadingDraftSchedules={isLoadingDraftSchedules}
+            isRunningAutomaticAssignment={isRunningAutomaticAssignment}
+            managedDraftSchedules={managedDraftSchedules}
+            onAutomaticAssignmentFormChange={onAutomaticAssignmentFormChange}
+            onRunAutomaticAssignment={onRunAutomaticAssignment}
           />
 
           <SchedulePublicationPanel

@@ -22,6 +22,7 @@ import PublishedSchedulesSection from "./components/PublishedSchedulesSection.js
 import ScheduleDetailsSection from "./components/ScheduleDetailsSection.jsx";
 import TransferRequestsSection from "./components/TransferRequestsSection.jsx";
 import useAvailabilityConstraints from "./hooks/useAvailabilityConstraints.js";
+import useAutomaticAssignment from "./hooks/useAutomaticAssignment.js";
 import useNotifications from "./hooks/useNotifications.js";
 import useSchedulePublication from "./hooks/useSchedulePublication.js";
 import useTransferRequests from "./hooks/useTransferRequests.js";
@@ -192,6 +193,7 @@ function App() {
     resetNotifications();
     resetTransferRequests();
     resetSchedulePublication();
+    resetAutomaticAssignment();
   }
 
   function expireSession() {
@@ -275,8 +277,47 @@ function App() {
     submitReopenSchedule,
   } = useSchedulePublication(session, isManager, managedDraftSchedules, refreshDraftSchedules, handleApiError);
 
+  const {
+    automaticAssignmentError,
+    automaticAssignmentForm,
+    automaticAssignmentMessage,
+    automaticAssignmentReport,
+    handleAutomaticAssignmentFormChange,
+    isRunningAutomaticAssignment,
+    resetAutomaticAssignment,
+    submitAutomaticAssignment,
+  } = useAutomaticAssignment(
+    session,
+    isManager,
+    managedDraftSchedules,
+    refreshAssignmentData,
+    refreshPublicationReadiness,
+    handleApiError,
+  );
+
   function refreshDraftSchedules() {
     setDraftScheduleRefreshKey((current) => current + 1);
+  }
+
+  function refreshAssignmentData(scheduleId) {
+    if (scheduleId) {
+      setAssignmentForm((current) => {
+        const nextScheduleId = scheduleId.toString();
+
+        if (current.scheduleId === nextScheduleId) {
+          return current;
+        }
+
+        return {
+          ...current,
+          scheduleId: nextScheduleId,
+          shiftId: "",
+          employeeId: "",
+        };
+      });
+    }
+
+    setAssignmentRefreshKey((current) => current + 1);
   }
 
   useEffect(() => {
@@ -568,7 +609,7 @@ function App() {
         scheduleId: response.scheduleId.toString(),
         shiftId: response.id.toString(),
       }));
-      setAssignmentRefreshKey((current) => current + 1);
+      refreshAssignmentData();
       refreshPublicationReadiness();
     } catch (error) {
       handleApiError(error, setShiftCreationError);
@@ -599,7 +640,7 @@ function App() {
         employeeId: Number(assignmentForm.employeeId),
       });
       setCreatedAssignment(response);
-      setAssignmentRefreshKey((current) => current + 1);
+      refreshAssignmentData();
       refreshPublicationReadiness();
     } catch (error) {
       handleApiError(error, setAssignmentCreationError);
@@ -700,6 +741,10 @@ function App() {
 
       {isManager ? (
         <ManagerActionsSection
+          automaticAssignmentError={automaticAssignmentError}
+          automaticAssignmentForm={automaticAssignmentForm}
+          automaticAssignmentMessage={automaticAssignmentMessage}
+          automaticAssignmentReport={automaticAssignmentReport}
           assignmentCreationError={assignmentCreationError}
           assignmentForm={assignmentForm}
           assignmentShiftMap={assignmentShiftMap}
@@ -722,12 +767,14 @@ function App() {
           isLoadingScheduleAssignments={isLoadingScheduleAssignments}
           isLoadingStaffingRoles={isLoadingStaffingRoles}
           isLoadingTeamEmployees={isLoadingTeamEmployees}
+          isRunningAutomaticAssignment={isRunningAutomaticAssignment}
           isPublishingSchedule={isPublishingSchedule}
           managedDraftSchedules={managedDraftSchedules}
           managedPublishedSchedules={managedPublishedSchedules}
           managedPublishedSchedulesError={managedPublishedSchedulesError}
           managedTeams={managedTeams}
           managedTeamsError={managedTeamsError}
+          onAutomaticAssignmentFormChange={handleAutomaticAssignmentFormChange}
           onAssignmentFormChange={handleAssignmentFormChange}
           onCreateAssignment={handleCreateAssignment}
           onCreateSchedule={handleCreateSchedule}
@@ -737,6 +784,7 @@ function App() {
           onRefreshPublishedSchedules={refreshManagedPublishedSchedules}
           onRefreshPublicationReadiness={refreshPublicationReadiness}
           onReopenSchedule={submitReopenSchedule}
+          onRunAutomaticAssignment={submitAutomaticAssignment}
           onScheduleFormChange={handleScheduleFormChange}
           onShiftFormChange={handleShiftFormChange}
           publicationActionError={publicationActionError}

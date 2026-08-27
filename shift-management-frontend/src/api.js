@@ -125,6 +125,13 @@ export function createAssignment(token, assignment) {
   });
 }
 
+export function autoAssignSchedule(token, scheduleId) {
+  return request(`/api/schedules/${scheduleId}/auto-assign`, {
+    method: "POST",
+    token,
+  });
+}
+
 export function createAvailabilityConstraint(token, constraint) {
   return request("/api/availability-constraints", {
     method: "POST",

@@ -81,6 +81,8 @@ Frontend:
 - Manager shift creation connected to `POST /api/schedules/{scheduleId}/shifts`.
 - Manager manual assignment screen connected to `POST /api/assignments`.
 - Assignment screen loads draft schedule shifts, team employees, and existing schedule assignments.
+- Manager automatic assignment screen connected to `POST /api/schedules/{scheduleId}/auto-assign`.
+- Automatic assignment screen displays the created-assignment report and remaining open slots.
 - Manager publication screen supports readiness checks, publishing draft schedules, and reopening published schedules.
 - Notification center connected to personal notification list, unread count, and mark-as-read APIs.
 - Transfer request screen connected to outgoing, incoming, and pending-manager request APIs.
@@ -89,7 +91,7 @@ Frontend:
 Planned next:
 
 - Full swap requests.
-- Templates and automatic assignment UI.
+- Templates.
 
 ## Backend Documentation
 
