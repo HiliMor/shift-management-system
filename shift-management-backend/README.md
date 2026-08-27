@@ -43,6 +43,10 @@ Implemented:
 - Automatic assignment returns a report with created assignments and remaining open slots.
 - Shift template and template slot persistence model.
 - Optional source template slot reference on generated shifts.
+- Template create endpoint: `POST /api/teams/{teamId}/templates`.
+- Template list endpoint: `GET /api/teams/{teamId}/templates`.
+- Template slot create endpoint: `POST /api/templates/{templateId}/slots`.
+- Template slot list endpoint: `GET /api/templates/{templateId}/slots`.
 - Initial availability constraint domain model.
 - Availability constraint creation endpoint: `POST /api/availability-constraints`.
 - Personal availability constraint list endpoint: `GET /api/availability-constraints/me`.
@@ -93,7 +97,6 @@ Not implemented yet:
 
 - Schedule list, update, and delete endpoints.
 - Full shift swap endpoints.
-- Template management endpoints.
 - Shift generation from templates.
 - Remaining team-scoped authorization for future manager workflows.
 
@@ -384,6 +387,87 @@ Automatic assignment can run only while the schedule is a draft.
 The algorithm uses the same eligibility rules as manual assignment: active team membership, required staffing role, no duplicate assignment, employee availability, no overlapping shift, and minimum rest.
 It fills open slots greedily and ranks candidates by fewer assigned minutes in the same schedule, then by employee name for deterministic tie-breaking.
 The response reports both successful assignments and shifts that remain open because no eligible employee was available.
+
+## Template Endpoints
+
+Create a shift template for a managed team:
+
+```bash
+curl -X POST http://localhost:8080/api/teams/1/templates \
+  -H 'Content-Type: application/json' \
+  -H "Authorization: Bearer <TOKEN>" \
+  -d '{
+    "name": "Routine Week",
+    "description": "Three standard shifts per day",
+    "cycleDays": 7,
+    "defaultMinRestHours": 8
+  }'
+```
+
+Expected response:
+
+```json
+{
+  "id": 1,
+  "teamId": 1,
+  "teamName": "Operations",
+  "name": "Routine Week",
+  "description": "Three standard shifts per day",
+  "cycleDays": 7,
+  "defaultMinRestHours": 8,
+  "active": false
+}
+```
+
+List templates for a managed team:
+
+```bash
+curl http://localhost:8080/api/teams/1/templates \
+  -H "Authorization: Bearer <TOKEN>"
+```
+
+Add a slot to a template:
+
+```bash
+curl -X POST http://localhost:8080/api/templates/1/slots \
+  -H 'Content-Type: application/json' \
+  -H "Authorization: Bearer <TOKEN>" \
+  -d '{
+    "dayOffset": 0,
+    "startTime": "08:00:00",
+    "durationMinutes": 480,
+    "description": "Morning shift",
+    "requiredWorkers": 2,
+    "requiredStaffingRoleId": null
+  }'
+```
+
+Expected response:
+
+```json
+{
+  "id": 1,
+  "shiftTemplateId": 1,
+  "dayOffset": 0,
+  "startTime": "08:00:00",
+  "durationMinutes": 480,
+  "description": "Morning shift",
+  "requiredWorkers": 2,
+  "requiredStaffingRoleId": null,
+  "requiredStaffingRoleName": null
+}
+```
+
+List slots for a template:
+
+```bash
+curl http://localhost:8080/api/templates/1/slots \
+  -H "Authorization: Bearer <TOKEN>"
+```
+
+Only managers assigned to the template's team can create or list templates and slots.
+Template names must be unique inside the same team.
+A slot's `dayOffset` must fit inside the template cycle, and a required staffing role must belong to the template's team.
 
 Publish a draft schedule:
 

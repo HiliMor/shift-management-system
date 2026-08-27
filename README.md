@@ -31,6 +31,8 @@ Implemented:
 - Automatic assignment ranks eligible employees by fewer assigned minutes in the schedule.
 - Automatic assignment returns a report with created assignments and remaining open slots.
 - Shift template and template slot persistence model.
+- Manager template create/list endpoints.
+- Manager template slot create/list endpoints.
 - Availability constraint persistence model.
 - Availability constraint create, personal list, and delete operations.
 - Availability constraint creation is rejected when it overlaps an existing assignment.
@@ -93,7 +95,7 @@ Frontend:
 Planned next:
 
 - Full swap requests.
-- Template management API and shift generation from templates.
+- Shift generation from templates.
 
 ## Backend Documentation
 

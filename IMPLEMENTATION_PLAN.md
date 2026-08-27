@@ -751,8 +751,8 @@ Goal: generate shifts from templates and offer automatic assignment.
 
 - [x] Create `ShiftTemplate`.
 - [x] Create `TemplateSlot`.
-- [ ] Allow managers to create templates.
-- [ ] Allow managers to create slots.
+- [x] Allow managers to create templates.
+- [x] Allow managers to create slots.
 - [ ] Generate shifts from a template.
 - [x] Implement basic automatic assignment.
 - [x] Rank employees by fewer assigned hours.
@@ -762,6 +762,8 @@ Goal: generate shifts from templates and offer automatic assignment.
 ### Verify
 
 - [ ] A template creates shifts on the expected dates.
+- [x] Only managers of the team can create and list templates.
+- [x] Template slots validate day offset and required staffing role team.
 - [x] Automatic assignment assigns only eligible employees.
 - [x] A shift remains unfilled if no employee is eligible.
 - [x] The report explains what was not assigned.
@@ -773,6 +775,7 @@ Goal: generate shifts from templates and offer automatic assignment.
 - [x] The algorithm limitations.
 - [x] The automatic assignment frontend workflow.
 - [x] The template persistence model.
+- [x] The template management API.
 
 ## Phase 11 - Notifications And JMS
 
@@ -1536,3 +1539,12 @@ Still open:
 - Added Flyway migration `V11__create_shift_templates.sql` for `shift_templates`, `template_slots`, and the optional `template_slot_id` reference on `shifts`.
 - Added focused domain tests for template validation, slot validation, and storing a source template slot on a generated shift.
 - Updated README and architecture documentation to include the template persistence foundation.
+
+### 2026-08-27 - Templates: Management API
+
+- Added request and response DTOs for creating shift templates and template slots.
+- Added `ShiftTemplateService` with manager-scoped template creation, template listing, slot creation, and slot listing.
+- Added `ShiftTemplateController` endpoints for `POST`/`GET /api/teams/{teamId}/templates` and `POST`/`GET /api/templates/{templateId}/slots`.
+- Added validation that template names are unique per team, slot day offsets fit inside the template cycle, and required staffing roles belong to the template team.
+- Added focused service tests for template authorization, duplicate names, slot creation, missing resources, invalid day offsets, and invalid staffing-role ownership.
+- Updated README, architecture documentation, and the Postman collection to include the template management API.

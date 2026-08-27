@@ -186,6 +186,7 @@ Current logging is intentionally limited to workflow checkpoints:
 
 - Schedule creation, publication, and reopening.
 - Assignment creation and deletion.
+- Template and template slot creation.
 - Transfer request creation, employee and manager scoped request lists, approval, rejection, cancellation, invalidation, and assignment transfer execution.
 - Outbox event dispatch and schedule-published notification creation.
 
@@ -203,8 +204,11 @@ erDiagram
     TEAMS ||--o{ TEAM_MANAGERS : has
     TEAMS ||--o{ SCHEDULES : owns
     TEAMS ||--o{ STAFFING_ROLES : defines
+    TEAMS ||--o{ SHIFT_TEMPLATES : owns
 
     SCHEDULES ||--o{ SHIFTS : contains
+    SHIFT_TEMPLATES ||--o{ TEMPLATE_SLOTS : contains
+    TEMPLATE_SLOTS |o--o{ SHIFTS : generates
     SHIFTS ||--o{ ASSIGNMENTS : receives
     USERS ||--o{ ASSIGNMENTS : assigned
     USERS ||--o{ AVAILABILITY_CONSTRAINTS : declares
@@ -218,6 +222,7 @@ erDiagram
     TEAM_MEMBERS ||--o{ TEAM_MEMBER_STAFFING_ROLES : receives
     STAFFING_ROLES ||--o{ TEAM_MEMBER_STAFFING_ROLES : assigned
     STAFFING_ROLES |o--o{ SHIFTS : may_be_required_by
+    STAFFING_ROLES |o--o{ TEMPLATE_SLOTS : may_be_required_by
 
     USERS {
         bigint id PK
@@ -269,6 +274,7 @@ erDiagram
         integer required_workers
         integer min_rest_hours
         bigint required_staffing_role_id FK
+        bigint template_slot_id FK
     }
 
     ASSIGNMENTS {
@@ -292,6 +298,27 @@ erDiagram
         bigint team_id FK
         varchar name
         varchar description
+    }
+
+    SHIFT_TEMPLATES {
+        bigint id PK
+        bigint team_id FK
+        varchar name
+        varchar description
+        integer cycle_days
+        integer default_min_rest_hours
+        boolean active
+    }
+
+    TEMPLATE_SLOTS {
+        bigint id PK
+        bigint shift_template_id FK
+        integer day_offset
+        time start_time
+        integer duration_minutes
+        varchar description
+        integer required_workers
+        bigint required_staffing_role_id FK
     }
 
     TEAM_MEMBER_STAFFING_ROLES {
@@ -351,9 +378,10 @@ flowchart TD
     teamsApi["Teams<br/>GET /api/teams/me/managed"]
     schedulesApi["Schedules<br/>POST /api/schedules<br/>GET /api/schedules/me/published<br/>GET /api/schedules/me/published/{scheduleId}<br/>GET /api/schedules/me/managed/drafts<br/>GET /api/schedules/{scheduleId}/publication-readiness<br/>POST /api/schedules/{scheduleId}/publish<br/>POST /api/schedules/{scheduleId}/reopen"]
     shiftsApi["Shifts<br/>POST /api/schedules/{scheduleId}/shifts<br/>GET /api/schedules/{scheduleId}/shifts<br/>PUT /api/schedules/{scheduleId}/shifts/{shiftId}<br/>DELETE /api/schedules/{scheduleId}/shifts/{shiftId}"]
-    assignmentsApi["Assignments<br/>POST /api/assignments<br/>GET /api/schedules/{scheduleId}/assignments<br/>DELETE /api/assignments/{assignmentId}"]
+    assignmentsApi["Assignments<br/>POST /api/assignments<br/>GET /api/schedules/{scheduleId}/assignments<br/>POST /api/schedules/{scheduleId}/auto-assign<br/>DELETE /api/assignments/{assignmentId}"]
     availabilityApi["Availability Constraints<br/>POST /api/availability-constraints<br/>GET /api/availability-constraints/me<br/>DELETE /api/availability-constraints/{constraintId}"]
     staffingApi["Staffing Roles<br/>POST /api/teams/{teamId}/staffing-roles<br/>GET /api/teams/{teamId}/staffing-roles<br/>POST /api/teams/{teamId}/employees/{employeeId}/staffing-roles<br/>GET /api/teams/{teamId}/employees/{employeeId}/staffing-roles"]
+    templatesApi["Templates<br/>POST /api/teams/{teamId}/templates<br/>GET /api/teams/{teamId}/templates<br/>POST /api/templates/{templateId}/slots<br/>GET /api/templates/{templateId}/slots"]
     notificationApi["Notifications<br/>GET /api/notifications<br/>GET /api/notifications/unread-count<br/>POST /api/notifications/{notificationId}/read"]
     requestsApi["Requests<br/>POST /api/requests/transfers<br/>GET /api/requests/me/outgoing<br/>GET /api/requests/me/incoming<br/>GET /api/requests/manager/pending<br/>POST /api/requests/{requestId}/employee-approve<br/>POST /api/requests/{requestId}/employee-reject<br/>POST /api/requests/{requestId}/manager-approve<br/>POST /api/requests/{requestId}/cancel"]
 
@@ -365,6 +393,7 @@ flowchart TD
     api --> assignmentsApi
     api --> availabilityApi
     api --> staffingApi
+    api --> templatesApi
     api --> notificationApi
     api --> requestsApi
 ```
@@ -728,7 +757,7 @@ flowchart LR
 | `request` | Transfer and swap request model, request statuses, transfer creation, employee and manager scoped request lists, target employee approval/rejection, manager approval, requester cancellation, and transfer execution. |
 | `availability` | Employee unavailable time ranges and conflict checks with assignments. |
 | `staffing` | Team-specific professional roles, role create/list API, employee role assignment/list API, and persistence for assigning roles to team members. |
-| `template` | Shift template and template slot persistence model, including cycle length, default rest hours, day offsets, slot duration, required workers, and optional required staffing role. |
+| `template` | Shift template and template slot persistence model and manager-scoped create/list APIs, including cycle length, default rest hours, day offsets, slot duration, required workers, and optional required staffing role. |
 | `messaging` | Event outbox persistence, event creation, scheduled outbox dispatch, and JMS message shape. |
 | `notification` | Personal notifications, unread count, mark-as-read behavior, JMS event consumption, schedule-published notification creation, and idempotent notification creation. |
 | Flyway migrations | Versioned PostgreSQL schema changes. |

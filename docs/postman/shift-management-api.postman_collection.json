@@ -1038,6 +1038,147 @@
       ]
     },
     {
+      "name": "Templates",
+      "item": [
+        {
+          "name": "Create Shift Template",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "if (pm.response.code === 201) {",
+                  "  const data = pm.response.json();",
+                  "  pm.environment.set('shiftTemplateId', data.id);",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Routine Week\",\n  \"description\": \"Three standard shifts per day\",\n  \"cycleDays\": 7,\n  \"defaultMinRestHours\": 8\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/teams/{{teamId}}/templates",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "teams",
+                "{{teamId}}",
+                "templates"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "List Shift Templates",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/teams/{{teamId}}/templates",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "teams",
+                "{{teamId}}",
+                "templates"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Create Template Slot",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "if (pm.response.code === 201) {",
+                  "  const data = pm.response.json();",
+                  "  pm.environment.set('templateSlotId', data.id);",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"dayOffset\": 0,\n  \"startTime\": \"08:00:00\",\n  \"durationMinutes\": 480,\n  \"description\": \"Morning shift\",\n  \"requiredWorkers\": 2,\n  \"requiredStaffingRoleId\": null\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/templates/{{shiftTemplateId}}/slots",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "templates",
+                "{{shiftTemplateId}}",
+                "slots"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "List Template Slots",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/templates/{{shiftTemplateId}}/slots",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "templates",
+                "{{shiftTemplateId}}",
+                "slots"
+              ]
+            }
+          },
+          "response": []
+        }
+      ]
+    },
+    {
       "name": "Notifications",
       "item": [
         {
