@@ -5,6 +5,8 @@ import java.util.Objects;
 
 import com.hilimor.shiftmanagement.schedule.Schedule;
 import com.hilimor.shiftmanagement.staffing.StaffingRole;
+import com.hilimor.shiftmanagement.template.TemplateSlot;
+import com.hilimor.shiftmanagement.team.Team;
 
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
@@ -48,6 +50,10 @@ public class Shift {
     @JoinColumn(name = "required_staffing_role_id")
     private StaffingRole requiredStaffingRole;
 
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "template_slot_id")
+    private TemplateSlot templateSlot;
+
     @Version
     @Column(nullable = false)
     private Long version;
@@ -75,10 +81,27 @@ public class Shift {
             int minRestHours,
             StaffingRole requiredStaffingRole
     ) {
+        this(schedule, startTime, endTime, description, requiredWorkers, minRestHours, requiredStaffingRole, null);
+    }
+
+    public Shift(
+            Schedule schedule,
+            Instant startTime,
+            Instant endTime,
+            String description,
+            int requiredWorkers,
+            int minRestHours,
+            StaffingRole requiredStaffingRole,
+            TemplateSlot templateSlot
+    ) {
         Objects.requireNonNull(schedule, "schedule must not be null");
+        if (templateSlot != null && !sameTeam(schedule.getTeam(), templateSlot.getShiftTemplate().getTeam())) {
+            throw new IllegalArgumentException("Shift template slot must belong to the schedule team");
+        }
 
         this.schedule = schedule;
         updateDetails(startTime, endTime, description, requiredWorkers, minRestHours, requiredStaffingRole);
+        this.templateSlot = templateSlot;
     }
 
     public void updateDetails(
@@ -152,7 +175,22 @@ public class Shift {
         return requiredStaffingRole;
     }
 
+    public TemplateSlot getTemplateSlot() {
+        return templateSlot;
+    }
+
     public Long getVersion() {
         return version;
+    }
+
+    private boolean sameTeam(Team scheduleTeam, Team templateTeam) {
+        if (scheduleTeam == templateTeam) {
+            return true;
+        }
+
+        Long scheduleTeamId = scheduleTeam.getId();
+        Long templateTeamId = templateTeam.getId();
+
+        return scheduleTeamId != null && scheduleTeamId.equals(templateTeamId);
     }
 }

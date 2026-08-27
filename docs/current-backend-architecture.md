@@ -89,6 +89,7 @@ flowchart TD
     request["request<br/>Transfer and swap request workflow"]
     availability["availability<br/>Employee unavailable time ranges"]
     staffing["staffing<br/>Team staffing roles, member-role links, and role assignment API"]
+    template["template<br/>Shift template and template slot persistence"]
     messaging["messaging<br/>Event outbox, dispatcher, and JMS event message"]
     notification["notification<br/>Personal notification model, API, and JMS consumer"]
 
@@ -104,6 +105,7 @@ flowchart TD
     app --> request
     app --> availability
     app --> staffing
+    app --> template
     app --> messaging
     app --> notification
 
@@ -125,6 +127,9 @@ flowchart TD
     availability --> user
     availability --> assignment
     staffing --> team
+    template --> team
+    template --> staffing
+    shift --> template
     notification --> user
 ```
 
@@ -702,8 +707,9 @@ flowchart LR
     v8["V8<br/>Required staffing role on shifts"]
     v9["V9<br/>Notifications and event outbox"]
     v10["V10<br/>Swap requests"]
+    v11["V11<br/>Shift templates"]
 
-    v1 --> v2 --> v3 --> v4 --> v5 --> v6 --> v7 --> v8 --> v9 --> v10
+    v1 --> v2 --> v3 --> v4 --> v5 --> v6 --> v7 --> v8 --> v9 --> v10 --> v11
 ```
 
 ## Component Responsibilities
@@ -717,11 +723,12 @@ flowchart LR
 | `user` | User entity and broad application role such as `MANAGER` or `EMPLOYEE`. |
 | `team` | Teams, active team membership, team managers, and managed team listing for manager UI. |
 | `schedule` | Draft schedule creation, managed draft schedule listing, schedule publication, explicit unfilled-publication confirmation, schedule reopening, publication readiness, employee published schedule list/details, and schedule lifecycle state fields. |
-| `shift` | Shift creation, listing, update, deletion, schedule-range validation, and optional required staffing role storage. |
+| `shift` | Shift creation, listing, update, deletion, schedule-range validation, optional required staffing role storage, and optional source template slot storage for generated shifts. |
 | `assignment` | Manual assignment creation/list/delete, basic automatic assignment, and shared assignment validation through `AssignmentValidator`, including capacity, availability, overlap, rest, and required staffing roles. |
 | `request` | Transfer and swap request model, request statuses, transfer creation, employee and manager scoped request lists, target employee approval/rejection, manager approval, requester cancellation, and transfer execution. |
 | `availability` | Employee unavailable time ranges and conflict checks with assignments. |
 | `staffing` | Team-specific professional roles, role create/list API, employee role assignment/list API, and persistence for assigning roles to team members. |
+| `template` | Shift template and template slot persistence model, including cycle length, default rest hours, day offsets, slot duration, required workers, and optional required staffing role. |
 | `messaging` | Event outbox persistence, event creation, scheduled outbox dispatch, and JMS message shape. |
 | `notification` | Personal notifications, unread count, mark-as-read behavior, JMS event consumption, schedule-published notification creation, and idempotent notification creation. |
 | Flyway migrations | Versioned PostgreSQL schema changes. |

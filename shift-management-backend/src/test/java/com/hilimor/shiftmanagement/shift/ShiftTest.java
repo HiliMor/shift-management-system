@@ -5,11 +5,14 @@ import static org.assertj.core.api.Assertions.assertThatIllegalArgumentException
 
 import java.time.Instant;
 import java.time.LocalDate;
+import java.time.LocalTime;
 
 import org.junit.jupiter.api.Test;
 
 import com.hilimor.shiftmanagement.schedule.Schedule;
 import com.hilimor.shiftmanagement.staffing.StaffingRole;
+import com.hilimor.shiftmanagement.template.ShiftTemplate;
+import com.hilimor.shiftmanagement.template.TemplateSlot;
 import com.hilimor.shiftmanagement.team.SwapApprovalPolicy;
 import com.hilimor.shiftmanagement.team.Team;
 
@@ -30,6 +33,7 @@ class ShiftTest {
         assertThat(shift.getRequiredWorkers()).isEqualTo(2);
         assertThat(shift.getMinRestHours()).isEqualTo(8);
         assertThat(shift.getRequiredStaffingRole()).isNull();
+        assertThat(shift.getTemplateSlot()).isNull();
     }
 
     @Test
@@ -48,6 +52,65 @@ class ShiftTest {
         );
 
         assertThat(shift.getRequiredStaffingRole()).isSameAs(staffingRole);
+    }
+
+    @Test
+    void newShiftCanStoreSourceTemplateSlot() {
+        Schedule schedule = schedule();
+        ShiftTemplate template = new ShiftTemplate(schedule.getTeam(), "Routine Week", null, 7, 8);
+        TemplateSlot templateSlot = new TemplateSlot(
+                template,
+                0,
+                LocalTime.of(6, 0),
+                480,
+                "Morning shift",
+                2
+        );
+
+        Shift shift = new Shift(
+                schedule,
+                Instant.parse("2026-07-06T06:00:00Z"),
+                Instant.parse("2026-07-06T14:00:00Z"),
+                "Morning shift",
+                2,
+                8,
+                null,
+                templateSlot
+        );
+
+        assertThat(shift.getTemplateSlot()).isSameAs(templateSlot);
+    }
+
+    @Test
+    void sourceTemplateSlotMustBelongToScheduleTeam() {
+        Schedule schedule = schedule();
+        ShiftTemplate otherTemplate = new ShiftTemplate(
+                new Team("Support", SwapApprovalPolicy.MANAGER, 8, "Asia/Jerusalem"),
+                "Support Week",
+                null,
+                7,
+                8
+        );
+        TemplateSlot otherTemplateSlot = new TemplateSlot(
+                otherTemplate,
+                0,
+                LocalTime.of(6, 0),
+                480,
+                "Morning shift",
+                2
+        );
+
+        assertThatIllegalArgumentException()
+                .isThrownBy(() -> new Shift(
+                        schedule,
+                        Instant.parse("2026-07-06T06:00:00Z"),
+                        Instant.parse("2026-07-06T14:00:00Z"),
+                        "Morning shift",
+                        2,
+                        8,
+                        null,
+                        otherTemplateSlot
+                ));
     }
 
     @Test

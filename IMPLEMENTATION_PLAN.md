@@ -749,8 +749,8 @@ Goal: generate shifts from templates and offer automatic assignment.
 
 ### Implement
 
-- [ ] Create `ShiftTemplate`.
-- [ ] Create `TemplateSlot`.
+- [x] Create `ShiftTemplate`.
+- [x] Create `TemplateSlot`.
 - [ ] Allow managers to create templates.
 - [ ] Allow managers to create slots.
 - [ ] Generate shifts from a template.
@@ -772,6 +772,7 @@ Goal: generate shifts from templates and offer automatic assignment.
 - [x] The automatic assignment algorithm.
 - [x] The algorithm limitations.
 - [x] The automatic assignment frontend workflow.
+- [x] The template persistence model.
 
 ## Phase 11 - Notifications And JMS
 
@@ -1526,3 +1527,12 @@ Still open:
 - Added a manager automatic assignment panel for selecting a draft schedule and running the backend assignment algorithm.
 - Displayed the returned report with total shifts, created assignments, open slots before and after, and per-shift results.
 - Updated project documentation to include the automatic assignment UI.
+
+### 2026-08-27 - Templates: Persistence Foundation
+
+- Added `ShiftTemplate` for team-owned reusable shift patterns with name, description, cycle length, default minimum rest hours, and active status.
+- Added `TemplateSlot` for individual template entries with day offset, start time, duration, required workers, and optional required staffing role.
+- Added repositories for listing templates by team and listing slots by template.
+- Added Flyway migration `V11__create_shift_templates.sql` for `shift_templates`, `template_slots`, and the optional `template_slot_id` reference on `shifts`.
+- Added focused domain tests for template validation, slot validation, and storing a source template slot on a generated shift.
+- Updated README and architecture documentation to include the template persistence foundation.

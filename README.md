@@ -6,7 +6,8 @@ The project is being implemented gradually. The current focus is a working
 Spring Boot backend with authentication, teams, schedules, shifts, manual
 assignment rules, availability constraint support, staffing role support,
 basic automatic assignment, JMS-backed notifications, and the first React
-frontend workflows.
+frontend workflows. Shift template persistence is now in place as the next
+backend foundation for template-based shift generation.
 
 ## Repository Structure
 
@@ -29,6 +30,7 @@ Implemented:
 - Basic automatic assignment for draft schedules.
 - Automatic assignment ranks eligible employees by fewer assigned minutes in the schedule.
 - Automatic assignment returns a report with created assignments and remaining open slots.
+- Shift template and template slot persistence model.
 - Availability constraint persistence model.
 - Availability constraint create, personal list, and delete operations.
 - Availability constraint creation is rejected when it overlaps an existing assignment.
@@ -91,7 +93,7 @@ Frontend:
 Planned next:
 
 - Full swap requests.
-- Templates.
+- Template management API and shift generation from templates.
 
 ## Backend Documentation
 

@@ -41,6 +41,8 @@ Implemented:
 - Basic automatic assignment endpoint: `POST /api/schedules/{scheduleId}/auto-assign`.
 - Automatic assignment ranks eligible employees by fewer assigned minutes in the schedule.
 - Automatic assignment returns a report with created assignments and remaining open slots.
+- Shift template and template slot persistence model.
+- Optional source template slot reference on generated shifts.
 - Initial availability constraint domain model.
 - Availability constraint creation endpoint: `POST /api/availability-constraints`.
 - Personal availability constraint list endpoint: `GET /api/availability-constraints/me`.
@@ -91,7 +93,8 @@ Not implemented yet:
 
 - Schedule list, update, and delete endpoints.
 - Full shift swap endpoints.
-- Automatic assignment.
+- Template management endpoints.
+- Shift generation from templates.
 - Remaining team-scoped authorization for future manager workflows.
 
 ## Requirements
