@@ -806,7 +806,7 @@ Expected response:
 Only managers assigned to the assignment's team can delete assignments.
 Assignments can be deleted only while the schedule is still `DRAFT`.
 
-The assignment service currently validates, in order:
+`AssignmentValidator` currently validates, in order:
 
 1. The employee is an active member of the shift's team.
 2. If the shift requires a staffing role, the employee has that role in the shift's team.

@@ -30,10 +30,10 @@ import com.hilimor.shiftmanagement.user.ApplicationRole;
 import com.hilimor.shiftmanagement.user.User;
 import com.hilimor.shiftmanagement.user.UserRepository;
 
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
-import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.http.HttpStatus;
@@ -67,8 +67,26 @@ class AssignmentServiceTest {
     @Mock
     private TeamMemberStaffingRoleRepository teamMemberStaffingRoleRepository;
 
-    @InjectMocks
     private AssignmentService assignmentService;
+
+    @BeforeEach
+    void setUp() {
+        AssignmentValidator assignmentValidator = new AssignmentValidator(
+                assignmentRepository,
+                availabilityConstraintRepository,
+                teamMemberRepository,
+                teamMemberStaffingRoleRepository
+        );
+        assignmentService = new AssignmentService(
+                assignmentRepository,
+                scheduleRepository,
+                shiftRepository,
+                userRepository,
+                teamMemberRepository,
+                teamManagerRepository,
+                assignmentValidator
+        );
+    }
 
     @Test
     void createAssignmentSavesValidAssignment() {
@@ -506,7 +524,7 @@ class AssignmentServiceTest {
         verify(assignmentRepository).save(captor.capture());
         assertThat(captor.getValue().getShift()).isSameAs(targetShift);
         assertThat(captor.getValue().getEmployee()).isSameAs(freeEmployee);
-        verify(assignmentRepository, never()).countByShift_Id(any());
+        verify(assignmentRepository).countByShift_Id(20L);
     }
 
     @Test

@@ -1508,3 +1508,10 @@ Still open:
 - Added a structured report with per-shift created assignments and remaining open slots.
 - Added focused service tests for successful least-loaded assignment, unfilled-shift reporting, and published-schedule rejection.
 - Updated README and backend documentation to describe the automatic assignment workflow and limitations.
+
+### 2026-08-26 - Refactor: Assignment Validation
+
+- Extracted assignment eligibility checks from `AssignmentService` into `AssignmentValidator`.
+- Kept manual assignment, automatic assignment, and transfer-request validation using the same validation rules.
+- Reduced `AssignmentService` so it focuses on workflow orchestration, persistence calls, and report creation.
+- Updated the architecture document and backend README to reflect the validator responsibility.

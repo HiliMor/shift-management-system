@@ -61,6 +61,7 @@ The current frontend is intentionally small. It is responsible for:
 - Loading active team employees from `GET /api/teams/{teamId}/employees`.
 - Loading draft schedule assignments from `GET /api/schedules/{scheduleId}/assignments`.
 - Creating manual assignments through `POST /api/assignments`.
+- Running basic automatic assignment through `POST /api/schedules/{scheduleId}/auto-assign`.
 - Loading personal notifications from `GET /api/notifications`.
 - Loading unread notification count from `GET /api/notifications/unread-count`.
 - Marking a personal notification as read through `POST /api/notifications/{notificationId}/read`.
@@ -84,7 +85,7 @@ flowchart TD
     team["team<br/>Team, team members, managers, managed team listing, and team employee listing"]
     schedule["schedule<br/>Draft schedule creation, publication, reopening, readiness, and employee published views"]
     shift["shift<br/>Shift CRUD inside schedules"]
-    assignment["assignment<br/>Manual assignment workflow and validations"]
+    assignment["assignment<br/>Manual and automatic assignment workflow<br/>AssignmentValidator"]
     request["request<br/>Transfer and swap request workflow"]
     availability["availability<br/>Employee unavailable time ranges"]
     staffing["staffing<br/>Team staffing roles, member-role links, and role assignment API"]
@@ -564,16 +565,17 @@ sequenceDiagram
     participant Security as JwtAuthenticationFilter
     participant AssignmentController
     participant AssignmentService
+    participant AssignmentValidator
     participant Repositories
     participant Database
 
     Client->>Security: POST /api/assignments with Bearer token
     Security->>AssignmentController: authenticated request
     AssignmentController->>AssignmentService: createAssignment(username, request)
-    AssignmentService->>Repositories: load manager, shift, employee, team membership
+    AssignmentService->>Repositories: load shift, employee, and managed schedule context
     Repositories->>Database: queries
-    AssignmentService->>AssignmentService: validate manager, draft schedule, team membership
-    AssignmentService->>AssignmentService: validate staffing role, capacity, availability, overlap, rest
+    AssignmentService->>AssignmentValidator: validate team membership, role, capacity, availability, overlap, rest
+    AssignmentValidator->>Repositories: run assignment validation queries
     AssignmentService->>Repositories: save Assignment
     Repositories->>Database: insert assignment
     AssignmentService-->>AssignmentController: AssignmentResponse
@@ -716,7 +718,7 @@ flowchart LR
 | `team` | Teams, active team membership, team managers, and managed team listing for manager UI. |
 | `schedule` | Draft schedule creation, managed draft schedule listing, schedule publication, explicit unfilled-publication confirmation, schedule reopening, publication readiness, employee published schedule list/details, and schedule lifecycle state fields. |
 | `shift` | Shift creation, listing, update, deletion, schedule-range validation, and optional required staffing role storage. |
-| `assignment` | Manual assignment creation/list/delete and business rule validation, including capacity, availability, overlap, rest, and required staffing roles. |
+| `assignment` | Manual assignment creation/list/delete, basic automatic assignment, and shared assignment validation through `AssignmentValidator`, including capacity, availability, overlap, rest, and required staffing roles. |
 | `request` | Transfer and swap request model, request statuses, transfer creation, employee and manager scoped request lists, target employee approval/rejection, manager approval, requester cancellation, and transfer execution. |
 | `availability` | Employee unavailable time ranges and conflict checks with assignments. |
 | `staffing` | Team-specific professional roles, role create/list API, employee role assignment/list API, and persistence for assigning roles to team members. |
