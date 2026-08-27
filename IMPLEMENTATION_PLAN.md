@@ -753,7 +753,7 @@ Goal: generate shifts from templates and offer automatic assignment.
 - [x] Create `TemplateSlot`.
 - [x] Allow managers to create templates.
 - [x] Allow managers to create slots.
-- [ ] Generate shifts from a template.
+- [x] Generate shifts from a template.
 - [x] Implement basic automatic assignment.
 - [x] Rank employees by fewer assigned hours.
 - [x] Return a report of unassigned shifts.
@@ -761,7 +761,7 @@ Goal: generate shifts from templates and offer automatic assignment.
 
 ### Verify
 
-- [ ] A template creates shifts on the expected dates.
+- [x] A template creates shifts on the expected dates.
 - [x] Only managers of the team can create and list templates.
 - [x] Template slots validate day offset and required staffing role team.
 - [x] Automatic assignment assigns only eligible employees.
@@ -776,6 +776,7 @@ Goal: generate shifts from templates and offer automatic assignment.
 - [x] The automatic assignment frontend workflow.
 - [x] The template persistence model.
 - [x] The template management API.
+- [x] The template shift generation workflow.
 
 ## Phase 11 - Notifications And JMS
 
@@ -1548,3 +1549,13 @@ Still open:
 - Added validation that template names are unique per team, slot day offsets fit inside the template cycle, and required staffing roles belong to the template team.
 - Added focused service tests for template authorization, duplicate names, slot creation, missing resources, invalid day offsets, and invalid staffing-role ownership.
 - Updated README, architecture documentation, and the Postman collection to include the template management API.
+
+### 2026-08-27 - Templates: Shift Generation API
+
+- Added `POST /api/templates/{templateId}/generate` for managers to generate draft schedule shifts from template slots.
+- Added request and response DTOs for the generation workflow, including created-shift counts and skipped-shift counts.
+- Generated shifts now expose `templateSlotId` in `ShiftResponse` so their source template slot is visible.
+- Added duplicate-generation protection by checking existing generated shifts and by adding a PostgreSQL unique index for generated template-slot/start-time combinations.
+- Added validation that generation is allowed only for draft schedules belonging to the same team as the template.
+- Added focused service tests for expected generated dates, duplicate skipping, out-of-range slot skipping, published schedule rejection, team mismatch rejection, and empty-template rejection.
+- Updated README, backend architecture documentation, and the Postman collection for template shift generation.

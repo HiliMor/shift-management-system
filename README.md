@@ -91,11 +91,12 @@ Frontend:
 - Notification center connected to personal notification list, unread count, and mark-as-read APIs.
 - Transfer request screen connected to outgoing, incoming, and pending-manager request APIs.
 - Transfer request screen supports employee approve/reject, requester cancel, and manager approve actions.
+- Backend template generation endpoint creates draft schedule shifts from template slots.
 
 Planned next:
 
 - Full swap requests.
-- Shift generation from templates.
+- Template management UI.
 
 ## Backend Documentation
 

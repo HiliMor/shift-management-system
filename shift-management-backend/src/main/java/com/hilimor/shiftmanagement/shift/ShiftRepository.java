@@ -14,4 +14,10 @@ public interface ShiftRepository extends JpaRepository<Shift, Long> {
             Instant endTime,
             Instant startTime
     );
+
+    boolean existsBySchedule_IdAndTemplateSlot_IdAndStartTime(
+            Long scheduleId,
+            Long templateSlotId,
+            Instant startTime
+    );
 }

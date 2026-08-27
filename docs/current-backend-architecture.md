@@ -89,7 +89,7 @@ flowchart TD
     request["request<br/>Transfer and swap request workflow"]
     availability["availability<br/>Employee unavailable time ranges"]
     staffing["staffing<br/>Team staffing roles, member-role links, and role assignment API"]
-    template["template<br/>Shift template and template slot persistence"]
+    template["template<br/>Shift template, template slot, and shift generation workflow"]
     messaging["messaging<br/>Event outbox, dispatcher, and JMS event message"]
     notification["notification<br/>Personal notification model, API, and JMS consumer"]
 
@@ -186,7 +186,7 @@ Current logging is intentionally limited to workflow checkpoints:
 
 - Schedule creation, publication, and reopening.
 - Assignment creation and deletion.
-- Template and template slot creation.
+- Template, template slot creation, and template-based shift generation.
 - Transfer request creation, employee and manager scoped request lists, approval, rejection, cancellation, invalidation, and assignment transfer execution.
 - Outbox event dispatch and schedule-published notification creation.
 
@@ -381,7 +381,7 @@ flowchart TD
     assignmentsApi["Assignments<br/>POST /api/assignments<br/>GET /api/schedules/{scheduleId}/assignments<br/>POST /api/schedules/{scheduleId}/auto-assign<br/>DELETE /api/assignments/{assignmentId}"]
     availabilityApi["Availability Constraints<br/>POST /api/availability-constraints<br/>GET /api/availability-constraints/me<br/>DELETE /api/availability-constraints/{constraintId}"]
     staffingApi["Staffing Roles<br/>POST /api/teams/{teamId}/staffing-roles<br/>GET /api/teams/{teamId}/staffing-roles<br/>POST /api/teams/{teamId}/employees/{employeeId}/staffing-roles<br/>GET /api/teams/{teamId}/employees/{employeeId}/staffing-roles"]
-    templatesApi["Templates<br/>POST /api/teams/{teamId}/templates<br/>GET /api/teams/{teamId}/templates<br/>POST /api/templates/{templateId}/slots<br/>GET /api/templates/{templateId}/slots"]
+    templatesApi["Templates<br/>POST /api/teams/{teamId}/templates<br/>GET /api/teams/{teamId}/templates<br/>POST /api/templates/{templateId}/slots<br/>GET /api/templates/{templateId}/slots<br/>POST /api/templates/{templateId}/generate"]
     notificationApi["Notifications<br/>GET /api/notifications<br/>GET /api/notifications/unread-count<br/>POST /api/notifications/{notificationId}/read"]
     requestsApi["Requests<br/>POST /api/requests/transfers<br/>GET /api/requests/me/outgoing<br/>GET /api/requests/me/incoming<br/>GET /api/requests/manager/pending<br/>POST /api/requests/{requestId}/employee-approve<br/>POST /api/requests/{requestId}/employee-reject<br/>POST /api/requests/{requestId}/manager-approve<br/>POST /api/requests/{requestId}/cancel"]
 
@@ -737,8 +737,9 @@ flowchart LR
     v9["V9<br/>Notifications and event outbox"]
     v10["V10<br/>Swap requests"]
     v11["V11<br/>Shift templates"]
+    v12["V12<br/>Generated shift uniqueness"]
 
-    v1 --> v2 --> v3 --> v4 --> v5 --> v6 --> v7 --> v8 --> v9 --> v10 --> v11
+    v1 --> v2 --> v3 --> v4 --> v5 --> v6 --> v7 --> v8 --> v9 --> v10 --> v11 --> v12
 ```
 
 ## Component Responsibilities
@@ -757,7 +758,7 @@ flowchart LR
 | `request` | Transfer and swap request model, request statuses, transfer creation, employee and manager scoped request lists, target employee approval/rejection, manager approval, requester cancellation, and transfer execution. |
 | `availability` | Employee unavailable time ranges and conflict checks with assignments. |
 | `staffing` | Team-specific professional roles, role create/list API, employee role assignment/list API, and persistence for assigning roles to team members. |
-| `template` | Shift template and template slot persistence model and manager-scoped create/list APIs, including cycle length, default rest hours, day offsets, slot duration, required workers, and optional required staffing role. |
+| `template` | Shift template and template slot persistence model, manager-scoped create/list APIs, and template-based shift generation into draft schedules. |
 | `messaging` | Event outbox persistence, event creation, scheduled outbox dispatch, and JMS message shape. |
 | `notification` | Personal notifications, unread count, mark-as-read behavior, JMS event consumption, schedule-published notification creation, and idempotent notification creation. |
 | Flyway migrations | Versioned PostgreSQL schema changes. |

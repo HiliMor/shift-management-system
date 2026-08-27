@@ -1,8 +1,20 @@
 package com.hilimor.shiftmanagement.template;
 
+import java.time.Instant;
+import java.time.LocalDate;
+import java.time.LocalDateTime;
+import java.time.ZoneId;
+import java.time.temporal.ChronoUnit;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
 
+import com.hilimor.shiftmanagement.schedule.Schedule;
+import com.hilimor.shiftmanagement.schedule.ScheduleRepository;
+import com.hilimor.shiftmanagement.schedule.ScheduleStatus;
+import com.hilimor.shiftmanagement.shift.Shift;
+import com.hilimor.shiftmanagement.shift.ShiftRepository;
+import com.hilimor.shiftmanagement.shift.ShiftResponse;
 import com.hilimor.shiftmanagement.staffing.StaffingRole;
 import com.hilimor.shiftmanagement.staffing.StaffingRoleRepository;
 import com.hilimor.shiftmanagement.team.Team;
@@ -26,19 +38,25 @@ public class ShiftTemplateService {
     private final TeamRepository teamRepository;
     private final TeamManagerRepository teamManagerRepository;
     private final StaffingRoleRepository staffingRoleRepository;
+    private final ScheduleRepository scheduleRepository;
+    private final ShiftRepository shiftRepository;
 
     public ShiftTemplateService(
             ShiftTemplateRepository shiftTemplateRepository,
             TemplateSlotRepository templateSlotRepository,
             TeamRepository teamRepository,
             TeamManagerRepository teamManagerRepository,
-            StaffingRoleRepository staffingRoleRepository
+            StaffingRoleRepository staffingRoleRepository,
+            ScheduleRepository scheduleRepository,
+            ShiftRepository shiftRepository
     ) {
         this.shiftTemplateRepository = shiftTemplateRepository;
         this.templateSlotRepository = templateSlotRepository;
         this.teamRepository = teamRepository;
         this.teamManagerRepository = teamManagerRepository;
         this.staffingRoleRepository = staffingRoleRepository;
+        this.scheduleRepository = scheduleRepository;
+        this.shiftRepository = shiftRepository;
     }
 
     @Transactional
@@ -111,6 +129,96 @@ public class ShiftTemplateService {
                 .toList();
     }
 
+    @Transactional
+    public GenerateTemplateShiftsResponse generateShifts(
+            String username,
+            Long templateId,
+            GenerateTemplateShiftsRequest request
+    ) {
+        ShiftTemplate shiftTemplate = managedTemplate(username, templateId);
+        Schedule schedule = scheduleRepository.findById(request.scheduleId())
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Schedule not found"));
+
+        if (!Objects.equals(schedule.getTeam().getId(), shiftTemplate.getTeam().getId())) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Template must belong to the schedule team");
+        }
+        if (schedule.getStatus() != ScheduleStatus.DRAFT) {
+            throw new ResponseStatusException(HttpStatus.CONFLICT, "Template shifts can be generated only for draft schedules");
+        }
+
+        List<TemplateSlot> templateSlots = templateSlotRepository
+                .findByShiftTemplate_IdOrderByDayOffsetAscStartTimeAsc(templateId);
+        if (templateSlots.isEmpty()) {
+            throw new ResponseStatusException(HttpStatus.CONFLICT, "Template has no slots to generate");
+        }
+
+        ZoneId zoneId = ZoneId.of(schedule.getTeam().getTimeZone());
+        List<ShiftResponse> createdShifts = new ArrayList<>();
+        int skippedExistingShifts = 0;
+        int skippedOutsideSchedule = 0;
+
+        for (LocalDate date = schedule.getStartDate(); !date.isAfter(schedule.getEndDate()); date = date.plusDays(1)) {
+            int cycleDay = (int) (ChronoUnit.DAYS.between(schedule.getStartDate(), date) % shiftTemplate.getCycleDays());
+
+            for (TemplateSlot templateSlot : templateSlots) {
+                if (templateSlot.getDayOffset() != cycleDay) {
+                    continue;
+                }
+
+                LocalDateTime startDateTime = LocalDateTime.of(date, templateSlot.getStartTime());
+                LocalDateTime endDateTime = startDateTime.plusMinutes(templateSlot.getDurationMinutes());
+                Instant startTime = startDateTime.atZone(zoneId).toInstant();
+                Instant endTime = endDateTime.atZone(zoneId).toInstant();
+
+                if (endsAfterSchedule(schedule, endTime, zoneId)) {
+                    skippedOutsideSchedule++;
+                    continue;
+                }
+
+                if (shiftRepository.existsBySchedule_IdAndTemplateSlot_IdAndStartTime(
+                        schedule.getId(),
+                        templateSlot.getId(),
+                        startTime
+                )) {
+                    skippedExistingShifts++;
+                    continue;
+                }
+
+                Shift shift = new Shift(
+                        schedule,
+                        startTime,
+                        endTime,
+                        templateSlot.getDescription(),
+                        templateSlot.getRequiredWorkers(),
+                        shiftTemplate.getDefaultMinRestHours(),
+                        templateSlot.getRequiredStaffingRole(),
+                        templateSlot
+                );
+                Shift savedShift = shiftRepository.save(shift);
+                createdShifts.add(ShiftResponse.from(savedShift));
+            }
+        }
+
+        log.info(
+                "Generated {} shifts for schedule {} from template {} by manager {}; skippedExisting={}, skippedOutside={}",
+                createdShifts.size(),
+                schedule.getId(),
+                templateId,
+                username,
+                skippedExistingShifts,
+                skippedOutsideSchedule
+        );
+
+        return new GenerateTemplateShiftsResponse(
+                templateId,
+                schedule.getId(),
+                createdShifts.size(),
+                skippedExistingShifts,
+                skippedOutsideSchedule,
+                createdShifts
+        );
+    }
+
     private Team managedTeam(String username, Long teamId) {
         Team team = teamRepository.findById(teamId)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Team not found"));
@@ -153,5 +261,11 @@ public class ShiftTemplateService {
         }
 
         return staffingRole;
+    }
+
+    private boolean endsAfterSchedule(Schedule schedule, Instant endTime, ZoneId zoneId) {
+        LocalDate shiftEndDate = endTime.minusNanos(1).atZone(zoneId).toLocalDate();
+
+        return shiftEndDate.isAfter(schedule.getEndDate());
     }
 }

@@ -11,16 +11,20 @@ public record ShiftResponse(
         int requiredWorkers,
         int minRestHours,
         Long requiredStaffingRoleId,
-        String requiredStaffingRoleName
+        String requiredStaffingRoleName,
+        Long templateSlotId
 ) {
 
-    static ShiftResponse from(Shift shift) {
+    public static ShiftResponse from(Shift shift) {
         Long requiredStaffingRoleId = shift.getRequiredStaffingRole() == null
                 ? null
                 : shift.getRequiredStaffingRole().getId();
         String requiredStaffingRoleName = shift.getRequiredStaffingRole() == null
                 ? null
                 : shift.getRequiredStaffingRole().getName();
+        Long templateSlotId = shift.getTemplateSlot() == null
+                ? null
+                : shift.getTemplateSlot().getId();
 
         return new ShiftResponse(
                 shift.getId(),
@@ -31,7 +35,8 @@ public record ShiftResponse(
                 shift.getRequiredWorkers(),
                 shift.getMinRestHours(),
                 requiredStaffingRoleId,
-                requiredStaffingRoleName
+                requiredStaffingRoleName,
+                templateSlotId
         );
     }
 }

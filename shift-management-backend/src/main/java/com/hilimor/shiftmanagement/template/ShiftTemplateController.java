@@ -57,4 +57,13 @@ public class ShiftTemplateController {
     ) {
         return shiftTemplateService.listTemplateSlots(authentication.getName(), templateId);
     }
+
+    @PostMapping("/api/templates/{templateId}/generate")
+    public GenerateTemplateShiftsResponse generateShifts(
+            Authentication authentication,
+            @PathVariable Long templateId,
+            @Valid @RequestBody GenerateTemplateShiftsRequest request
+    ) {
+        return shiftTemplateService.generateShifts(authentication.getName(), templateId, request);
+    }
 }

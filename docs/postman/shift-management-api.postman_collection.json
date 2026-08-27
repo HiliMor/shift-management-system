@@ -1175,6 +1175,56 @@
             }
           },
           "response": []
+        },
+        {
+          "name": "Generate Shifts From Template",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "if (pm.response.code === 200) {",
+                  "  const data = pm.response.json();",
+                  "  if (data.shifts && data.shifts.length > 0) {",
+                  "    pm.environment.set('shiftId', data.shifts[0].id);",
+                  "  }",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"scheduleId\": {{scheduleId}}\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/templates/{{shiftTemplateId}}/generate",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "templates",
+                "{{shiftTemplateId}}",
+                "generate"
+              ]
+            }
+          },
+          "response": []
         }
       ]
     },

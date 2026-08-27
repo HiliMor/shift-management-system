@@ -47,6 +47,7 @@ Implemented:
 - Template list endpoint: `GET /api/teams/{teamId}/templates`.
 - Template slot create endpoint: `POST /api/templates/{templateId}/slots`.
 - Template slot list endpoint: `GET /api/templates/{templateId}/slots`.
+- Template shift generation endpoint: `POST /api/templates/{templateId}/generate`.
 - Initial availability constraint domain model.
 - Availability constraint creation endpoint: `POST /api/availability-constraints`.
 - Personal availability constraint list endpoint: `GET /api/availability-constraints/me`.
@@ -97,7 +98,6 @@ Not implemented yet:
 
 - Schedule list, update, and delete endpoints.
 - Full shift swap endpoints.
-- Shift generation from templates.
 - Remaining team-scoped authorization for future manager workflows.
 
 ## Requirements
@@ -465,9 +465,48 @@ curl http://localhost:8080/api/templates/1/slots \
   -H "Authorization: Bearer <TOKEN>"
 ```
 
-Only managers assigned to the template's team can create or list templates and slots.
+Generate shifts from a template into a draft schedule:
+
+```bash
+curl -X POST http://localhost:8080/api/templates/1/generate \
+  -H 'Content-Type: application/json' \
+  -H "Authorization: Bearer <TOKEN>" \
+  -d '{
+    "scheduleId": 1
+  }'
+```
+
+Expected response:
+
+```json
+{
+  "templateId": 1,
+  "scheduleId": 1,
+  "shiftsCreated": 3,
+  "skippedExistingShifts": 0,
+  "skippedOutsideSchedule": 0,
+  "shifts": [
+    {
+      "id": 1,
+      "scheduleId": 1,
+      "startTime": "2026-07-06T05:00:00Z",
+      "endTime": "2026-07-06T13:00:00Z",
+      "description": "Morning shift",
+      "requiredWorkers": 2,
+      "minRestHours": 8,
+      "requiredStaffingRoleId": null,
+      "requiredStaffingRoleName": null,
+      "templateSlotId": 1
+    }
+  ]
+}
+```
+
+Only managers assigned to the template's team can create or list templates, slots, and generated shifts.
 Template names must be unique inside the same team.
 A slot's `dayOffset` must fit inside the template cycle, and a required staffing role must belong to the template's team.
+Generation is allowed only into draft schedules that belong to the same team as the template.
+Running generation again skips shifts that were already created from the same template slot at the same start time.
 
 Publish a draft schedule:
 

@@ -4,12 +4,16 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
+import java.time.Instant;
+import java.time.LocalDate;
 import java.time.LocalTime;
 import java.util.List;
 import java.util.Optional;
+import java.util.concurrent.atomic.AtomicLong;
 
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -21,6 +25,11 @@ import org.springframework.http.HttpStatus;
 import org.springframework.test.util.ReflectionTestUtils;
 import org.springframework.web.server.ResponseStatusException;
 
+import com.hilimor.shiftmanagement.schedule.Schedule;
+import com.hilimor.shiftmanagement.schedule.ScheduleRepository;
+import com.hilimor.shiftmanagement.schedule.ScheduleStatus;
+import com.hilimor.shiftmanagement.shift.Shift;
+import com.hilimor.shiftmanagement.shift.ShiftRepository;
 import com.hilimor.shiftmanagement.staffing.StaffingRole;
 import com.hilimor.shiftmanagement.staffing.StaffingRoleRepository;
 import com.hilimor.shiftmanagement.team.SwapApprovalPolicy;
@@ -45,6 +54,12 @@ class ShiftTemplateServiceTest {
 
     @Mock
     private StaffingRoleRepository staffingRoleRepository;
+
+    @Mock
+    private ScheduleRepository scheduleRepository;
+
+    @Mock
+    private ShiftRepository shiftRepository;
 
     @InjectMocks
     private ShiftTemplateService shiftTemplateService;
@@ -325,12 +340,263 @@ class ShiftTemplateServiceTest {
         verify(templateSlotRepository, never()).findByShiftTemplate_IdOrderByDayOffsetAscStartTimeAsc(50L);
     }
 
+    @Test
+    void generateShiftsCreatesShiftsFromTemplateSlotsAcrossScheduleDates() {
+        Team team = team(1L, "Operations");
+        Schedule schedule = schedule(
+                team,
+                10L,
+                LocalDate.of(2026, 7, 6),
+                LocalDate.of(2026, 7, 8),
+                ScheduleStatus.DRAFT
+        );
+        ShiftTemplate template = shiftTemplate(team, 50L, "Two Day Cycle", 2);
+        StaffingRole role = staffingRole(team, 20L, "Shift Supervisor");
+        TemplateSlot dayZeroSlot = templateSlot(
+                template,
+                70L,
+                0,
+                LocalTime.of(8, 0),
+                480,
+                "Morning shift",
+                2,
+                role
+        );
+        TemplateSlot dayOneSlot = templateSlot(
+                template,
+                71L,
+                1,
+                LocalTime.of(16, 0),
+                360,
+                "Evening shift",
+                1,
+                null
+        );
+        AtomicLong nextShiftId = new AtomicLong(100L);
+
+        when(shiftTemplateRepository.findById(50L)).thenReturn(Optional.of(template));
+        when(teamManagerRepository.existsByManager_UsernameAndTeam_Id("manager1", 1L)).thenReturn(true);
+        when(scheduleRepository.findById(10L)).thenReturn(Optional.of(schedule));
+        when(templateSlotRepository.findByShiftTemplate_IdOrderByDayOffsetAscStartTimeAsc(50L))
+                .thenReturn(List.of(dayZeroSlot, dayOneSlot));
+        when(shiftRepository.existsBySchedule_IdAndTemplateSlot_IdAndStartTime(any(), any(), any()))
+                .thenReturn(false);
+        when(shiftRepository.save(any(Shift.class))).thenAnswer(invocation -> {
+            Shift shift = invocation.getArgument(0);
+            ReflectionTestUtils.setField(shift, "id", nextShiftId.getAndIncrement());
+            return shift;
+        });
+
+        GenerateTemplateShiftsResponse response = shiftTemplateService.generateShifts(
+                "manager1",
+                50L,
+                new GenerateTemplateShiftsRequest(10L)
+        );
+
+        assertThat(response.templateId()).isEqualTo(50L);
+        assertThat(response.scheduleId()).isEqualTo(10L);
+        assertThat(response.shiftsCreated()).isEqualTo(3);
+        assertThat(response.skippedExistingShifts()).isZero();
+        assertThat(response.skippedOutsideSchedule()).isZero();
+        assertThat(response.shifts()).extracting(shift -> shift.templateSlotId())
+                .containsExactly(70L, 71L, 70L);
+
+        ArgumentCaptor<Shift> captor = ArgumentCaptor.forClass(Shift.class);
+        verify(shiftRepository, times(3)).save(captor.capture());
+        List<Shift> savedShifts = captor.getAllValues();
+
+        assertThat(savedShifts).extracting(Shift::getStartTime)
+                .containsExactly(
+                        Instant.parse("2026-07-06T05:00:00Z"),
+                        Instant.parse("2026-07-07T13:00:00Z"),
+                        Instant.parse("2026-07-08T05:00:00Z")
+                );
+        assertThat(savedShifts).extracting(Shift::getEndTime)
+                .containsExactly(
+                        Instant.parse("2026-07-06T13:00:00Z"),
+                        Instant.parse("2026-07-07T19:00:00Z"),
+                        Instant.parse("2026-07-08T13:00:00Z")
+                );
+        assertThat(savedShifts).extracting(Shift::getTemplateSlot)
+                .containsExactly(dayZeroSlot, dayOneSlot, dayZeroSlot);
+        assertThat(savedShifts).extracting(Shift::getMinRestHours)
+                .containsExactly(8, 8, 8);
+        assertThat(savedShifts.get(0).getRequiredStaffingRole()).isSameAs(role);
+    }
+
+    @Test
+    void generateShiftsSkipsExistingGeneratedShift() {
+        Team team = team(1L, "Operations");
+        Schedule schedule = schedule(
+                team,
+                10L,
+                LocalDate.of(2026, 7, 6),
+                LocalDate.of(2026, 7, 6),
+                ScheduleStatus.DRAFT
+        );
+        ShiftTemplate template = shiftTemplate(team, 50L, "Routine Week");
+        TemplateSlot slot = templateSlot(template, 70L, 0, LocalTime.of(8, 0), "Morning shift");
+
+        when(shiftTemplateRepository.findById(50L)).thenReturn(Optional.of(template));
+        when(teamManagerRepository.existsByManager_UsernameAndTeam_Id("manager1", 1L)).thenReturn(true);
+        when(scheduleRepository.findById(10L)).thenReturn(Optional.of(schedule));
+        when(templateSlotRepository.findByShiftTemplate_IdOrderByDayOffsetAscStartTimeAsc(50L))
+                .thenReturn(List.of(slot));
+        when(shiftRepository.existsBySchedule_IdAndTemplateSlot_IdAndStartTime(
+                10L,
+                70L,
+                Instant.parse("2026-07-06T05:00:00Z")
+        )).thenReturn(true);
+
+        GenerateTemplateShiftsResponse response = shiftTemplateService.generateShifts(
+                "manager1",
+                50L,
+                new GenerateTemplateShiftsRequest(10L)
+        );
+
+        assertThat(response.shiftsCreated()).isZero();
+        assertThat(response.skippedExistingShifts()).isEqualTo(1);
+        assertThat(response.skippedOutsideSchedule()).isZero();
+        assertThat(response.shifts()).isEmpty();
+
+        verify(shiftRepository, never()).save(any());
+    }
+
+    @Test
+    void generateShiftsSkipsSlotThatEndsOutsideScheduleRange() {
+        Team team = team(1L, "Operations");
+        Schedule schedule = schedule(
+                team,
+                10L,
+                LocalDate.of(2026, 7, 6),
+                LocalDate.of(2026, 7, 6),
+                ScheduleStatus.DRAFT
+        );
+        ShiftTemplate template = shiftTemplate(team, 50L, "Routine Week");
+        TemplateSlot slot = templateSlot(
+                template,
+                70L,
+                0,
+                LocalTime.of(22, 0),
+                480,
+                "Night shift",
+                1,
+                null
+        );
+
+        when(shiftTemplateRepository.findById(50L)).thenReturn(Optional.of(template));
+        when(teamManagerRepository.existsByManager_UsernameAndTeam_Id("manager1", 1L)).thenReturn(true);
+        when(scheduleRepository.findById(10L)).thenReturn(Optional.of(schedule));
+        when(templateSlotRepository.findByShiftTemplate_IdOrderByDayOffsetAscStartTimeAsc(50L))
+                .thenReturn(List.of(slot));
+
+        GenerateTemplateShiftsResponse response = shiftTemplateService.generateShifts(
+                "manager1",
+                50L,
+                new GenerateTemplateShiftsRequest(10L)
+        );
+
+        assertThat(response.shiftsCreated()).isZero();
+        assertThat(response.skippedExistingShifts()).isZero();
+        assertThat(response.skippedOutsideSchedule()).isEqualTo(1);
+        assertThat(response.shifts()).isEmpty();
+
+        verify(shiftRepository, never()).save(any());
+    }
+
+    @Test
+    void generateShiftsRejectsPublishedSchedule() {
+        Team team = team(1L, "Operations");
+        ShiftTemplate template = shiftTemplate(team, 50L, "Routine Week");
+        Schedule schedule = schedule(
+                team,
+                10L,
+                LocalDate.of(2026, 7, 6),
+                LocalDate.of(2026, 7, 12),
+                ScheduleStatus.PUBLISHED
+        );
+
+        when(shiftTemplateRepository.findById(50L)).thenReturn(Optional.of(template));
+        when(teamManagerRepository.existsByManager_UsernameAndTeam_Id("manager1", 1L)).thenReturn(true);
+        when(scheduleRepository.findById(10L)).thenReturn(Optional.of(schedule));
+
+        assertThatThrownBy(() -> shiftTemplateService.generateShifts(
+                "manager1",
+                50L,
+                new GenerateTemplateShiftsRequest(10L)
+        )).isInstanceOfSatisfying(ResponseStatusException.class, exception ->
+                assertThat(exception.getStatusCode()).isEqualTo(HttpStatus.CONFLICT));
+
+        verify(templateSlotRepository, never()).findByShiftTemplate_IdOrderByDayOffsetAscStartTimeAsc(50L);
+        verify(shiftRepository, never()).save(any());
+    }
+
+    @Test
+    void generateShiftsRejectsScheduleFromAnotherTeam() {
+        Team templateTeam = team(1L, "Operations");
+        Team scheduleTeam = team(2L, "Support");
+        ShiftTemplate template = shiftTemplate(templateTeam, 50L, "Routine Week");
+        Schedule schedule = schedule(
+                scheduleTeam,
+                10L,
+                LocalDate.of(2026, 7, 6),
+                LocalDate.of(2026, 7, 12),
+                ScheduleStatus.DRAFT
+        );
+
+        when(shiftTemplateRepository.findById(50L)).thenReturn(Optional.of(template));
+        when(teamManagerRepository.existsByManager_UsernameAndTeam_Id("manager1", 1L)).thenReturn(true);
+        when(scheduleRepository.findById(10L)).thenReturn(Optional.of(schedule));
+
+        assertThatThrownBy(() -> shiftTemplateService.generateShifts(
+                "manager1",
+                50L,
+                new GenerateTemplateShiftsRequest(10L)
+        )).isInstanceOfSatisfying(ResponseStatusException.class, exception ->
+                assertThat(exception.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST));
+
+        verify(templateSlotRepository, never()).findByShiftTemplate_IdOrderByDayOffsetAscStartTimeAsc(50L);
+        verify(shiftRepository, never()).save(any());
+    }
+
+    @Test
+    void generateShiftsRejectsTemplateWithoutSlots() {
+        Team team = team(1L, "Operations");
+        ShiftTemplate template = shiftTemplate(team, 50L, "Routine Week");
+        Schedule schedule = schedule(
+                team,
+                10L,
+                LocalDate.of(2026, 7, 6),
+                LocalDate.of(2026, 7, 12),
+                ScheduleStatus.DRAFT
+        );
+
+        when(shiftTemplateRepository.findById(50L)).thenReturn(Optional.of(template));
+        when(teamManagerRepository.existsByManager_UsernameAndTeam_Id("manager1", 1L)).thenReturn(true);
+        when(scheduleRepository.findById(10L)).thenReturn(Optional.of(schedule));
+        when(templateSlotRepository.findByShiftTemplate_IdOrderByDayOffsetAscStartTimeAsc(50L))
+                .thenReturn(List.of());
+
+        assertThatThrownBy(() -> shiftTemplateService.generateShifts(
+                "manager1",
+                50L,
+                new GenerateTemplateShiftsRequest(10L)
+        )).isInstanceOfSatisfying(ResponseStatusException.class, exception ->
+                assertThat(exception.getStatusCode()).isEqualTo(HttpStatus.CONFLICT));
+
+        verify(shiftRepository, never()).save(any());
+    }
+
     private CreateTemplateSlotRequest validSlotRequest() {
         return new CreateTemplateSlotRequest(0, LocalTime.of(8, 0), 480, "Morning shift", 2, null);
     }
 
     private ShiftTemplate shiftTemplate(Team team, Long id, String name) {
-        ShiftTemplate shiftTemplate = new ShiftTemplate(team, name, null, 7, 8);
+        return shiftTemplate(team, id, name, 7);
+    }
+
+    private ShiftTemplate shiftTemplate(Team team, Long id, String name, int cycleDays) {
+        ShiftTemplate shiftTemplate = new ShiftTemplate(team, name, null, cycleDays, 8);
         ReflectionTestUtils.setField(shiftTemplate, "id", id);
         return shiftTemplate;
     }
@@ -342,7 +608,28 @@ class ShiftTemplateServiceTest {
             LocalTime startTime,
             String description
     ) {
-        TemplateSlot templateSlot = new TemplateSlot(shiftTemplate, dayOffset, startTime, 480, description, 2);
+        return templateSlot(shiftTemplate, id, dayOffset, startTime, 480, description, 2, null);
+    }
+
+    private TemplateSlot templateSlot(
+            ShiftTemplate shiftTemplate,
+            Long id,
+            int dayOffset,
+            LocalTime startTime,
+            int durationMinutes,
+            String description,
+            int requiredWorkers,
+            StaffingRole requiredStaffingRole
+    ) {
+        TemplateSlot templateSlot = new TemplateSlot(
+                shiftTemplate,
+                dayOffset,
+                startTime,
+                durationMinutes,
+                description,
+                requiredWorkers,
+                requiredStaffingRole
+        );
         ReflectionTestUtils.setField(templateSlot, "id", id);
         return templateSlot;
     }
@@ -351,6 +638,23 @@ class ShiftTemplateServiceTest {
         StaffingRole staffingRole = new StaffingRole(team, name, null);
         ReflectionTestUtils.setField(staffingRole, "id", id);
         return staffingRole;
+    }
+
+    private Schedule schedule(
+            Team team,
+            Long id,
+            LocalDate startDate,
+            LocalDate endDate,
+            ScheduleStatus status
+    ) {
+        Schedule schedule = new Schedule(team, startDate, endDate);
+        ReflectionTestUtils.setField(schedule, "id", id);
+
+        if (status == ScheduleStatus.PUBLISHED) {
+            schedule.publish(Instant.parse("2026-07-01T09:00:00Z"));
+        }
+
+        return schedule;
     }
 
     private Team team(Long id, String name) {
