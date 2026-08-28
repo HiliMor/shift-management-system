@@ -1,3 +1,9 @@
+import { useLanguage } from "../i18n/LanguageContext.jsx";
+
+const notificationTypeTranslationKeys = {
+  SCHEDULE_PUBLISHED: "schedulePublished",
+};
+
 function NotificationsSection({
   formatDateTime,
   isLoadingNotifications,
@@ -8,28 +14,42 @@ function NotificationsSection({
   onRefreshNotifications,
   unreadNotificationCount,
 }) {
+  const { t } = useLanguage();
+
+  function notificationTypeLabel(notification) {
+    return t(notificationTypeTranslationKeys[notification.type] ?? notification.type);
+  }
+
+  function notificationTitle(notification) {
+    return notification.type === "SCHEDULE_PUBLISHED"
+      ? t("schedulePublished")
+      : notification.title;
+  }
+
   return (
     <section className="section-block" id="notifications">
       <div className="section-heading">
-        <h2>Notifications</h2>
+        <h2>{t("notifications")}</h2>
         <div className="section-actions">
-          <span>{unreadNotificationCount} unread</span>
+          <span>
+            {unreadNotificationCount} {t("unread")}
+          </span>
           <button
             className="secondary-button compact-button"
             disabled={isLoadingNotifications}
             onClick={onRefreshNotifications}
             type="button"
           >
-            Refresh
+            {t("refresh")}
           </button>
         </div>
       </div>
 
-      {isLoadingNotifications ? <p className="muted">Loading notifications...</p> : null}
+      {isLoadingNotifications ? <p className="muted">{t("loadingNotifications")}</p> : null}
       {notificationsError ? <p className="error-message">{notificationsError}</p> : null}
 
       {!isLoadingNotifications && !notificationsError && notifications.length === 0 ? (
-        <p className="muted">No notifications are available for this user.</p>
+        <p className="muted">{t("noNotifications")}</p>
       ) : null}
 
       {notifications.length > 0 ? (
@@ -41,12 +61,12 @@ function NotificationsSection({
             >
               <div>
                 <div className="notification-title-row">
-                  <h3>{notification.title}</h3>
-                  {!notification.read ? <span>Unread</span> : null}
+                  <h3>{notificationTitle(notification)}</h3>
+                  {!notification.read ? <span>{t("unread")}</span> : null}
                 </div>
                 <p>{notification.message}</p>
                 <p className="notification-meta">
-                  {notification.type} - {formatDateTime(notification.createdAt)}
+                  {notificationTypeLabel(notification)} - {formatDateTime(notification.createdAt)}
                 </p>
               </div>
 
@@ -57,10 +77,10 @@ function NotificationsSection({
                   onClick={() => onMarkNotificationRead(notification.id)}
                   type="button"
                 >
-                  {markingNotificationId === notification.id ? "Updating..." : "Mark as read"}
+                  {markingNotificationId === notification.id ? t("updating") : t("markAsRead")}
                 </button>
               ) : (
-                <span className="read-state">Read</span>
+                <span className="read-state">{t("read")}</span>
               )}
             </article>
           ))}
