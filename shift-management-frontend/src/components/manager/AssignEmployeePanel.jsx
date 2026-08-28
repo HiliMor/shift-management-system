@@ -21,8 +21,11 @@ function AssignEmployeePanel({
   teamEmployeesError,
 }) {
   return (
-    <section className="manager-panel">
-      <h3>Assign employee</h3>
+    <section className="manager-panel" id="manager-assignments">
+      <div className="manager-panel-heading">
+        <span>3</span>
+        <h3>Manual assignment</h3>
+      </div>
 
       {assignmentShiftsError ? <p className="error-message">{assignmentShiftsError}</p> : null}
       {teamEmployeesError ? <p className="error-message">{teamEmployeesError}</p> : null}

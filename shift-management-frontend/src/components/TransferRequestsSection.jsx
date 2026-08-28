@@ -10,6 +10,14 @@ function requestTypeLabel(type) {
   return type === "SWAP" ? "Swap" : "Transfer";
 }
 
+function requestStatusLabel(status) {
+  return status
+    .toLowerCase()
+    .split("_")
+    .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
+    .join(" ");
+}
+
 function employeeOptionLabel(employee) {
   return `${employee.fullName || employee.username} (${employee.username})`;
 }
@@ -31,7 +39,7 @@ function renderRequest(request, formatDateTime, actions = null) {
             {requestTypeLabel(request.type)} request #{request.id}
           </h3>
           <span className={`status-badge status-${request.status.toLowerCase().replaceAll("_", "-")}`}>
-            {request.status}
+            {requestStatusLabel(request.status)}
           </span>
         </div>
 
@@ -171,17 +179,45 @@ function TransferRequestsSection({
 
             {selectedScheduleDetails && hasSourceAssignments ? (
               <form className="transfer-request-form" onSubmit={onCreateTransferRequest}>
-                <label>
-                  Type
-                  <select
-                    name="type"
-                    onChange={onTransferRequestCreationFormChange}
-                    value={transferRequestCreationForm.type}
-                  >
-                    <option value="TRANSFER">Transfer</option>
-                    <option value="SWAP">Swap</option>
-                  </select>
-                </label>
+                <fieldset className="segmented-field">
+                  <legend>Request type</legend>
+                  <div className="segmented-control">
+                    <label
+                      className={
+                        transferRequestCreationForm.type === "TRANSFER"
+                          ? "segmented-option selected-segment"
+                          : "segmented-option"
+                      }
+                    >
+                      <input
+                        checked={transferRequestCreationForm.type === "TRANSFER"}
+                        name="type"
+                        onChange={onTransferRequestCreationFormChange}
+                        type="radio"
+                        value="TRANSFER"
+                      />
+                      <strong>Transfer</strong>
+                      <span>Give away my assignment</span>
+                    </label>
+                    <label
+                      className={
+                        transferRequestCreationForm.type === "SWAP"
+                          ? "segmented-option selected-segment"
+                          : "segmented-option"
+                      }
+                    >
+                      <input
+                        checked={transferRequestCreationForm.type === "SWAP"}
+                        name="type"
+                        onChange={onTransferRequestCreationFormChange}
+                        type="radio"
+                        value="SWAP"
+                      />
+                      <strong>Swap</strong>
+                      <span>Exchange two assignments</span>
+                    </label>
+                  </div>
+                </fieldset>
 
                 <label>
                   My assignment
@@ -201,7 +237,7 @@ function TransferRequestsSection({
 
                 {isCreatingSwap ? (
                   <label>
-                    Target assignment
+                    Assignment to receive
                     <select
                       name="targetAssignmentId"
                       onChange={onTransferRequestCreationFormChange}
@@ -217,7 +253,7 @@ function TransferRequestsSection({
                   </label>
                 ) : (
                   <label>
-                    Target employee
+                    Employee receiving it
                     <select
                       name="targetEmployeeId"
                       onChange={onTransferRequestCreationFormChange}

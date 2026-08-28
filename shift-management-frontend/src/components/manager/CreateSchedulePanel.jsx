@@ -6,8 +6,11 @@ function CreateSchedulePanel({
   scheduleForm,
 }) {
   return (
-    <section className="manager-panel">
-      <h3>Create draft schedule</h3>
+    <section className="manager-panel" id="manager-drafts">
+      <div className="manager-panel-heading">
+        <span>1</span>
+        <h3>Draft schedule</h3>
+      </div>
       <form className="manager-form" onSubmit={onCreateSchedule}>
         <label>
           Team

@@ -12,8 +12,11 @@ function CreateShiftPanel({
   staffingRolesError,
 }) {
   return (
-    <section className="manager-panel">
-      <h3>Create shift</h3>
+    <section className="manager-panel" id="manager-shifts">
+      <div className="manager-panel-heading">
+        <span>2</span>
+        <h3>Manual shifts</h3>
+      </div>
 
       {isLoadingDraftSchedules ? <p className="muted">Loading draft schedules...</p> : null}
       {draftSchedulesError ? <p className="error-message">{draftSchedulesError}</p> : null}

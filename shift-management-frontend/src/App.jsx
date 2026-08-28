@@ -16,9 +16,9 @@ import usePublishedSchedules from "./hooks/usePublishedSchedules.js";
 import useSchedulePublication from "./hooks/useSchedulePublication.js";
 import useShiftTemplates from "./hooks/useShiftTemplates.js";
 import useTransferRequests from "./hooks/useTransferRequests.js";
+import { useLanguage } from "./i18n/LanguageContext.jsx";
 
 const STORAGE_KEY = "shift-management-session";
-const SESSION_EXPIRED_MESSAGE = "Session expired. Please sign in again.";
 
 const dateFormatter = new Intl.DateTimeFormat("en-GB", {
   day: "2-digit",
@@ -63,6 +63,7 @@ function App() {
   const [password, setPassword] = useState("");
   const [loginError, setLoginError] = useState("");
   const [isLoggingIn, setIsLoggingIn] = useState(false);
+  const { t } = useLanguage();
   const isManager = session?.user?.applicationRole === "MANAGER";
   const isEmployee = session?.user?.applicationRole === "EMPLOYEE";
 
@@ -89,7 +90,7 @@ function App() {
     localStorage.removeItem(STORAGE_KEY);
     setSession(null);
     clearAuthenticatedState();
-    setLoginError(SESSION_EXPIRED_MESSAGE);
+    setLoginError(t("sessionExpired"));
   }
 
   function handleApiError(error, setError) {

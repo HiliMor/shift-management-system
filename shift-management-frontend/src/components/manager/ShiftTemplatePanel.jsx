@@ -48,10 +48,18 @@ function ShiftTemplatePanel({
   const canGenerate = selectedGenerationTemplate && templateGenerationForm.scheduleId;
 
   return (
-    <section className="manager-panel">
+    <section className="manager-panel" id="manager-templates">
       <div className="section-heading compact-heading">
-        <h3>Shift templates</h3>
-        <button className="secondary-button compact-button" disabled={isLoadingTemplates} onClick={onRefreshTemplates} type="button">
+        <div className="manager-panel-heading">
+          <span>2</span>
+          <h3>Templates</h3>
+        </div>
+        <button
+          className="secondary-button compact-button"
+          disabled={isLoadingTemplates}
+          onClick={onRefreshTemplates}
+          type="button"
+        >
           Refresh
         </button>
       </div>
@@ -185,7 +193,13 @@ function ShiftTemplatePanel({
 
               <label>
                 Start time
-                <input name="startTime" onChange={onTemplateSlotFormChange} required type="time" value={templateSlotForm.startTime} />
+                <input
+                  name="startTime"
+                  onChange={onTemplateSlotFormChange}
+                  required
+                  type="time"
+                  value={templateSlotForm.startTime}
+                />
               </label>
 
               <label>

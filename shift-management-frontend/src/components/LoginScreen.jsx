@@ -1,3 +1,6 @@
+import LanguageSelector from "./LanguageSelector.jsx";
+import { useLanguage } from "../i18n/LanguageContext.jsx";
+
 function LoginScreen({
   isLoggingIn,
   loginError,
@@ -7,15 +10,20 @@ function LoginScreen({
   password,
   username,
 }) {
+  const { t } = useLanguage();
+
   return (
     <main className="auth-layout">
       <section className="auth-panel" aria-labelledby="login-title">
-        <p className="eyebrow">Shift Management</p>
-        <h1 id="login-title">Sign in</h1>
+        <div className="auth-header">
+          <p className="eyebrow">{t("appName")}</p>
+          <LanguageSelector />
+        </div>
+        <h1 id="login-title">{t("signIn")}</h1>
 
         <form className="login-form" onSubmit={onLogin}>
           <label>
-            Username
+            {t("username")}
             <input
               autoComplete="username"
               name="username"
@@ -27,7 +35,7 @@ function LoginScreen({
           </label>
 
           <label>
-            Password
+            {t("password")}
             <input
               autoComplete="current-password"
               name="password"
@@ -41,7 +49,7 @@ function LoginScreen({
           {loginError ? <p className="error-message">{loginError}</p> : null}
 
           <button disabled={isLoggingIn} type="submit">
-            {isLoggingIn ? "Signing in..." : "Sign in"}
+            {isLoggingIn ? t("signingIn") : t("signIn")}
           </button>
         </form>
       </section>

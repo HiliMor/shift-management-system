@@ -1,3 +1,4 @@
+import { useState } from "react";
 import AssignEmployeePanel from "./manager/AssignEmployeePanel.jsx";
 import AutomaticAssignmentPanel from "./manager/AutomaticAssignmentPanel.jsx";
 import CreateSchedulePanel from "./manager/CreateSchedulePanel.jsx";
@@ -99,11 +100,49 @@ function ManagerActionsSection({
   teamEmployees,
   teamEmployeesError,
 }) {
+  const [activeWorkflowStep, setActiveWorkflowStep] = useState("draft");
+  const readinessLabel = publicationReadiness
+    ? publicationReadiness.readyToPublish
+      ? "Ready"
+      : `${publicationReadiness.totalOpenSlots} open slots`
+    : "Not checked";
+
+  const workflowSteps = [
+    {
+      id: "draft",
+      number: "1",
+      label: "Draft",
+      summary: `${managedDraftSchedules.length} drafts`,
+      panelId: "manager-workflow-draft",
+    },
+    {
+      id: "build",
+      number: "2",
+      label: "Build shifts",
+      summary: `${templates.length} templates`,
+      panelId: "manager-workflow-build",
+    },
+    {
+      id: "assign",
+      number: "3",
+      label: "Assign",
+      summary: `${scheduleAssignments.length} visible`,
+      panelId: "manager-workflow-assign",
+    },
+    {
+      id: "publish",
+      number: "4",
+      label: "Publish",
+      summary: readinessLabel,
+      panelId: "manager-workflow-publish",
+    },
+  ];
+
   return (
     <section className="section-block" id="manager">
       <div className="section-heading">
-        <h2>Manager actions</h2>
-        <span>{managedTeams.length}</span>
+        <h2>Schedule workflow</h2>
+        <span>{managedTeams.length} teams</span>
       </div>
 
       {isLoadingManagedTeams ? <p className="muted">Loading managed teams...</p> : null}
@@ -115,123 +154,161 @@ function ManagerActionsSection({
 
       {managedTeams.length > 0 ? (
         <div className="manager-stack">
-          <CreateSchedulePanel
-            isCreatingSchedule={isCreatingSchedule}
-            managedTeams={managedTeams}
-            onCreateSchedule={onCreateSchedule}
-            onScheduleFormChange={onScheduleFormChange}
-            scheduleForm={scheduleForm}
-          />
+          <div className="workflow-steps" aria-label="Manager schedule workflow" role="tablist">
+            {workflowSteps.map((step) => (
+              <button
+                aria-controls={step.panelId}
+                aria-selected={activeWorkflowStep === step.id}
+                className={`workflow-step ${activeWorkflowStep === step.id ? "active-workflow-step" : ""}`}
+                id={`${step.id}-workflow-tab`}
+                key={step.id}
+                onClick={() => setActiveWorkflowStep(step.id)}
+                role="tab"
+                type="button"
+              >
+                <span>{step.number}</span>
+                <strong>{step.label}</strong>
+                <small>{step.summary}</small>
+              </button>
+            ))}
+          </div>
 
-          <ShiftTemplatePanel
-            draftSchedulesError={draftSchedulesError}
-            formatDate={formatDate}
-            formatDateTime={formatDateTime}
-            generationDraftSchedules={generationDraftSchedules}
-            isCreatingTemplate={isCreatingTemplate}
-            isCreatingTemplateSlot={isCreatingTemplateSlot}
-            isGeneratingTemplateShifts={isGeneratingTemplateShifts}
-            isLoadingTemplateSlots={isLoadingTemplateSlots}
-            isLoadingTemplateStaffingRoles={isLoadingTemplateStaffingRoles}
-            isLoadingTemplates={isLoadingTemplates}
-            managedTeams={managedTeams}
-            onCreateTemplate={onCreateTemplate}
-            onCreateTemplateSlot={onCreateTemplateSlot}
-            onGenerateTemplateShifts={onGenerateTemplateShifts}
-            onRefreshTemplateSlots={onRefreshTemplateSlots}
-            onRefreshTemplates={onRefreshTemplates}
-            onTemplateFormChange={onTemplateFormChange}
-            onTemplateGenerationFormChange={onTemplateGenerationFormChange}
-            onTemplateSlotFormChange={onTemplateSlotFormChange}
-            selectedGenerationTemplate={selectedGenerationTemplate}
-            selectedTemplate={selectedTemplate}
-            templateActionError={templateActionError}
-            templateActionMessage={templateActionMessage}
-            templateForm={templateForm}
-            templateGenerationForm={templateGenerationForm}
-            templateGenerationReport={templateGenerationReport}
-            templateListError={templateListError}
-            templates={templates}
-            templateSlotError={templateSlotError}
-            templateSlotForm={templateSlotForm}
-            templateSlots={templateSlots}
-            templateStaffingRoles={templateStaffingRoles}
-            templateStaffingRolesError={templateStaffingRolesError}
-          />
+          <div
+            aria-labelledby={`${activeWorkflowStep}-workflow-tab`}
+            className="workflow-panel-content"
+            id={`manager-workflow-${activeWorkflowStep}`}
+            role="tabpanel"
+          >
+            {activeWorkflowStep === "draft" ? (
+              <CreateSchedulePanel
+                isCreatingSchedule={isCreatingSchedule}
+                managedTeams={managedTeams}
+                onCreateSchedule={onCreateSchedule}
+                onScheduleFormChange={onScheduleFormChange}
+                scheduleForm={scheduleForm}
+              />
+            ) : null}
 
-          <CreateShiftPanel
-            draftSchedulesError={draftSchedulesError}
-            formatDate={formatDate}
-            isCreatingShift={isCreatingShift}
-            isLoadingDraftSchedules={isLoadingDraftSchedules}
-            isLoadingStaffingRoles={isLoadingStaffingRoles}
-            managedDraftSchedules={managedDraftSchedules}
-            onCreateShift={onCreateShift}
-            onShiftFormChange={onShiftFormChange}
-            shiftForm={shiftForm}
-            staffingRoles={staffingRoles}
-            staffingRolesError={staffingRolesError}
-          />
+            {activeWorkflowStep === "build" ? (
+              <>
+                <ShiftTemplatePanel
+                  draftSchedulesError={draftSchedulesError}
+                  formatDate={formatDate}
+                  formatDateTime={formatDateTime}
+                  generationDraftSchedules={generationDraftSchedules}
+                  isCreatingTemplate={isCreatingTemplate}
+                  isCreatingTemplateSlot={isCreatingTemplateSlot}
+                  isGeneratingTemplateShifts={isGeneratingTemplateShifts}
+                  isLoadingTemplateSlots={isLoadingTemplateSlots}
+                  isLoadingTemplateStaffingRoles={isLoadingTemplateStaffingRoles}
+                  isLoadingTemplates={isLoadingTemplates}
+                  managedTeams={managedTeams}
+                  onCreateTemplate={onCreateTemplate}
+                  onCreateTemplateSlot={onCreateTemplateSlot}
+                  onGenerateTemplateShifts={onGenerateTemplateShifts}
+                  onRefreshTemplateSlots={onRefreshTemplateSlots}
+                  onRefreshTemplates={onRefreshTemplates}
+                  onTemplateFormChange={onTemplateFormChange}
+                  onTemplateGenerationFormChange={onTemplateGenerationFormChange}
+                  onTemplateSlotFormChange={onTemplateSlotFormChange}
+                  selectedGenerationTemplate={selectedGenerationTemplate}
+                  selectedTemplate={selectedTemplate}
+                  templateActionError={templateActionError}
+                  templateActionMessage={templateActionMessage}
+                  templateForm={templateForm}
+                  templateGenerationForm={templateGenerationForm}
+                  templateGenerationReport={templateGenerationReport}
+                  templateListError={templateListError}
+                  templates={templates}
+                  templateSlotError={templateSlotError}
+                  templateSlotForm={templateSlotForm}
+                  templateSlots={templateSlots}
+                  templateStaffingRoles={templateStaffingRoles}
+                  templateStaffingRolesError={templateStaffingRolesError}
+                />
 
-          <AssignEmployeePanel
-            assignmentForm={assignmentForm}
-            assignmentShiftMap={assignmentShiftMap}
-            assignmentShifts={assignmentShifts}
-            assignmentShiftsError={assignmentShiftsError}
-            draftSchedulesError={draftSchedulesError}
-            formatDate={formatDate}
-            formatDateTime={formatDateTime}
-            isCreatingAssignment={isCreatingAssignment}
-            isLoadingAssignmentShifts={isLoadingAssignmentShifts}
-            isLoadingDraftSchedules={isLoadingDraftSchedules}
-            isLoadingScheduleAssignments={isLoadingScheduleAssignments}
-            isLoadingTeamEmployees={isLoadingTeamEmployees}
-            managedDraftSchedules={managedDraftSchedules}
-            onAssignmentFormChange={onAssignmentFormChange}
-            onCreateAssignment={onCreateAssignment}
-            scheduleAssignments={scheduleAssignments}
-            scheduleAssignmentsError={scheduleAssignmentsError}
-            selectedAssignmentSchedule={selectedAssignmentSchedule}
-            teamEmployees={teamEmployees}
-            teamEmployeesError={teamEmployeesError}
-          />
+                <CreateShiftPanel
+                  draftSchedulesError={draftSchedulesError}
+                  formatDate={formatDate}
+                  isCreatingShift={isCreatingShift}
+                  isLoadingDraftSchedules={isLoadingDraftSchedules}
+                  isLoadingStaffingRoles={isLoadingStaffingRoles}
+                  managedDraftSchedules={managedDraftSchedules}
+                  onCreateShift={onCreateShift}
+                  onShiftFormChange={onShiftFormChange}
+                  shiftForm={shiftForm}
+                  staffingRoles={staffingRoles}
+                  staffingRolesError={staffingRolesError}
+                />
+              </>
+            ) : null}
 
-          <AutomaticAssignmentPanel
-            automaticAssignmentError={automaticAssignmentError}
-            automaticAssignmentForm={automaticAssignmentForm}
-            automaticAssignmentMessage={automaticAssignmentMessage}
-            automaticAssignmentReport={automaticAssignmentReport}
-            draftSchedulesError={draftSchedulesError}
-            formatDate={formatDate}
-            formatDateTime={formatDateTime}
-            isLoadingDraftSchedules={isLoadingDraftSchedules}
-            isRunningAutomaticAssignment={isRunningAutomaticAssignment}
-            managedDraftSchedules={managedDraftSchedules}
-            onAutomaticAssignmentFormChange={onAutomaticAssignmentFormChange}
-            onRunAutomaticAssignment={onRunAutomaticAssignment}
-          />
+            {activeWorkflowStep === "assign" ? (
+              <>
+                <AssignEmployeePanel
+                  assignmentForm={assignmentForm}
+                  assignmentShiftMap={assignmentShiftMap}
+                  assignmentShifts={assignmentShifts}
+                  assignmentShiftsError={assignmentShiftsError}
+                  draftSchedulesError={draftSchedulesError}
+                  formatDate={formatDate}
+                  formatDateTime={formatDateTime}
+                  isCreatingAssignment={isCreatingAssignment}
+                  isLoadingAssignmentShifts={isLoadingAssignmentShifts}
+                  isLoadingDraftSchedules={isLoadingDraftSchedules}
+                  isLoadingScheduleAssignments={isLoadingScheduleAssignments}
+                  isLoadingTeamEmployees={isLoadingTeamEmployees}
+                  managedDraftSchedules={managedDraftSchedules}
+                  onAssignmentFormChange={onAssignmentFormChange}
+                  onCreateAssignment={onCreateAssignment}
+                  scheduleAssignments={scheduleAssignments}
+                  scheduleAssignmentsError={scheduleAssignmentsError}
+                  selectedAssignmentSchedule={selectedAssignmentSchedule}
+                  teamEmployees={teamEmployees}
+                  teamEmployeesError={teamEmployeesError}
+                />
 
-          <SchedulePublicationPanel
-            draftSchedulesError={draftSchedulesError}
-            formatDate={formatDate}
-            formatDateTime={formatDateTime}
-            isLoadingDraftSchedules={isLoadingDraftSchedules}
-            isLoadingManagedPublishedSchedules={isLoadingManagedPublishedSchedules}
-            isLoadingPublicationReadiness={isLoadingPublicationReadiness}
-            isPublishingSchedule={isPublishingSchedule}
-            managedDraftSchedules={managedDraftSchedules}
-            managedPublishedSchedules={managedPublishedSchedules}
-            managedPublishedSchedulesError={managedPublishedSchedulesError}
-            onPublicationFormChange={onPublicationFormChange}
-            onPublishSchedule={onPublishSchedule}
-            onRefreshPublishedSchedules={onRefreshPublishedSchedules}
-            onRefreshPublicationReadiness={onRefreshPublicationReadiness}
-            onReopenSchedule={onReopenSchedule}
-            publicationError={publicationError}
-            publicationForm={publicationForm}
-            publicationReadiness={publicationReadiness}
-            reopeningScheduleId={reopeningScheduleId}
-          />
+                <AutomaticAssignmentPanel
+                  automaticAssignmentError={automaticAssignmentError}
+                  automaticAssignmentForm={automaticAssignmentForm}
+                  automaticAssignmentMessage={automaticAssignmentMessage}
+                  automaticAssignmentReport={automaticAssignmentReport}
+                  draftSchedulesError={draftSchedulesError}
+                  formatDate={formatDate}
+                  formatDateTime={formatDateTime}
+                  isLoadingDraftSchedules={isLoadingDraftSchedules}
+                  isRunningAutomaticAssignment={isRunningAutomaticAssignment}
+                  managedDraftSchedules={managedDraftSchedules}
+                  onAutomaticAssignmentFormChange={onAutomaticAssignmentFormChange}
+                  onRunAutomaticAssignment={onRunAutomaticAssignment}
+                />
+              </>
+            ) : null}
+
+            {activeWorkflowStep === "publish" ? (
+              <SchedulePublicationPanel
+                draftSchedulesError={draftSchedulesError}
+                formatDate={formatDate}
+                formatDateTime={formatDateTime}
+                isLoadingDraftSchedules={isLoadingDraftSchedules}
+                isLoadingManagedPublishedSchedules={isLoadingManagedPublishedSchedules}
+                isLoadingPublicationReadiness={isLoadingPublicationReadiness}
+                isPublishingSchedule={isPublishingSchedule}
+                managedDraftSchedules={managedDraftSchedules}
+                managedPublishedSchedules={managedPublishedSchedules}
+                managedPublishedSchedulesError={managedPublishedSchedulesError}
+                onPublicationFormChange={onPublicationFormChange}
+                onPublishSchedule={onPublishSchedule}
+                onRefreshPublishedSchedules={onRefreshPublishedSchedules}
+                onRefreshPublicationReadiness={onRefreshPublicationReadiness}
+                onReopenSchedule={onReopenSchedule}
+                publicationError={publicationError}
+                publicationForm={publicationForm}
+                publicationReadiness={publicationReadiness}
+                reopeningScheduleId={reopeningScheduleId}
+              />
+            ) : null}
+          </div>
         </div>
       ) : null}
 

@@ -29,8 +29,11 @@ function AutomaticAssignmentPanel({
   onRunAutomaticAssignment,
 }) {
   return (
-    <section className="manager-panel">
-      <h3>Automatic assignment</h3>
+    <section className="manager-panel" id="manager-auto-assign">
+      <div className="manager-panel-heading">
+        <span>3</span>
+        <h3>Automatic assignment</h3>
+      </div>
 
       {draftSchedulesError ? <p className="error-message">{draftSchedulesError}</p> : null}
       {automaticAssignmentError ? <p className="error-message">{automaticAssignmentError}</p> : null}

@@ -26,8 +26,11 @@ function SchedulePublicationPanel({
   reopeningScheduleId,
 }) {
   return (
-    <section className="manager-panel">
-      <h3>Publish schedules</h3>
+    <section className="manager-panel" id="manager-publication">
+      <div className="manager-panel-heading">
+        <span>4</span>
+        <h3>Publish or reopen</h3>
+      </div>
 
       {draftSchedulesError ? <p className="error-message">{draftSchedulesError}</p> : null}
       {publicationError ? <p className="error-message">{publicationError}</p> : null}

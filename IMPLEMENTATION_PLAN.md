@@ -1605,3 +1605,11 @@ Still open:
 - Extracted approved transfer and swap execution from `SwapRequestService` into `SwapRequestExecutor`.
 - Kept `SwapRequestService` focused on request creation, listing, approval, rejection, cancellation, and authorization checks.
 - Added focused executor tests for transfer execution, swap execution, stale ownership invalidation, unpublished schedule invalidation, and assignment validation failures.
+
+### 2026-08-28 - Frontend Polish: Clearer Workflow
+
+- Added focused manager workflow navigation for draft, build, assign, and publish steps; only the selected step's panels are shown.
+- Renamed the manager sidebar entry from manager actions to schedule workflow.
+- Replaced the transfer/swap request type dropdown with a clearer segmented control.
+- Improved transfer/swap labels and request status display text.
+- Verified the frontend production build succeeds.
