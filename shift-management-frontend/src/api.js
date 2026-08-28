@@ -198,6 +198,22 @@ export function markNotificationRead(token, notificationId) {
   });
 }
 
+export function createTransferRequest(token, transferRequest) {
+  return request("/api/requests/transfers", {
+    method: "POST",
+    token,
+    body: JSON.stringify(transferRequest),
+  });
+}
+
+export function createSwapRequest(token, swapRequest) {
+  return request("/api/requests/swaps", {
+    method: "POST",
+    token,
+    body: JSON.stringify(swapRequest),
+  });
+}
+
 export function listMyOutgoingTransferRequests(token) {
   return request("/api/requests/me/outgoing", { token });
 }

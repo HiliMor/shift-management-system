@@ -409,6 +409,13 @@ nav a:hover,
   padding: 16px;
 }
 
+.transfer-request-form {
+  align-items: end;
+  display: grid;
+  gap: 14px;
+  grid-template-columns: minmax(140px, 0.6fr) minmax(220px, 1.4fr) minmax(220px, 1.4fr) auto;
+}
+
 .request-list {
   display: grid;
   gap: 10px;
@@ -798,6 +805,7 @@ nav a:hover,
   .notification-row,
   .request-row,
   .request-details,
+  .transfer-request-form,
   .details-summary,
   .shift-main,
   .availability-form,

@@ -666,6 +666,7 @@ Goal: build a minimal React interface connected to the backend.
 - [x] Manager publication readiness and publish screen.
 - [x] Manager published schedule reopen screen.
 - [x] Transfer request list screen.
+- [x] Transfer and swap request creation screen.
 - [x] Transfer request employee and manager action buttons.
 - [x] Display backend errors clearly for login and published schedule loading.
 - [x] Display backend errors clearly for published schedule details loading.
@@ -684,6 +685,7 @@ Goal: build a minimal React interface connected to the backend.
 - [x] Managers can publish draft schedules from the frontend.
 - [x] Managers can reopen published schedules from the frontend.
 - [x] Transfer request lists load for employees and managers.
+- [x] Employees can create transfer and swap requests from the frontend.
 - [x] Transfer request actions refresh the relevant list.
 - [x] Expired sessions are cleared and show a clear login message.
 
@@ -1579,3 +1581,11 @@ Still open:
 - Added database uniqueness protection so a target assignment cannot be part of more than one active request.
 - Updated the frontend request list labels so transfer and swap requests are displayed clearly.
 - Added focused service and domain tests for swap creation, swap execution, and invalidation cases.
+
+### 2026-08-28 - Transfer And Swap Requests: Employee Creation UI
+
+- Added frontend API helpers for creating transfer and swap requests.
+- Extended `useTransferRequests` with employee request-creation form state, source assignment options, transfer target employee options, and swap target assignment options.
+- Added an employee-only request creation form to the transfer and swap request screen.
+- The form uses the selected published schedule so employees can create requests from assignments they already see in the UI.
+- Verified the frontend production build succeeds.

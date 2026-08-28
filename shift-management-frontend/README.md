@@ -21,6 +21,7 @@ For end-to-end local run instructions, see:
 - Shift templates - manager-only workflow for creating templates, adding slots, and generating draft shifts.
 - Notifications - authenticated screen section that lists personal notifications, shows unread count, and marks notifications as read.
 - Transfer and swap requests - authenticated screen section for outgoing, incoming, and pending manager approval requests.
+- Transfer and swap request creation - employee-only form based on the selected published schedule.
 - Transfer and swap request actions - employee approve/reject, requester cancel, and manager approve.
 
 ## Run Locally

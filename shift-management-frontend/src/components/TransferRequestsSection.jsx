@@ -10,6 +10,18 @@ function requestTypeLabel(type) {
   return type === "SWAP" ? "Swap" : "Transfer";
 }
 
+function employeeOptionLabel(employee) {
+  return `${employee.fullName || employee.username} (${employee.username})`;
+}
+
+function assignmentOptionLabel(option, formatDateTime, includeEmployee = false) {
+  const shiftLabel = option.shift.description || `Shift #${option.shift.id}`;
+  const employeeLabel = option.assignment.employeeFullName || option.assignment.employeeUsername;
+  const owner = includeEmployee ? `${employeeLabel} - ` : "";
+
+  return `#${option.assignment.id} - ${owner}${shiftLabel} (${formatDateTime(option.shift.startTime)})`;
+}
+
 function renderRequest(request, formatDateTime, actions = null) {
   return (
     <article className="request-row" key={request.id}>
@@ -63,20 +75,36 @@ function TransferRequestsSection({
   actingTransferRequest,
   formatDateTime,
   incomingTransferRequests,
+  isCreatingTransferRequest,
   isLoadingTransferRequests,
   isManager,
   onApproveIncomingTransferRequest,
   onApproveManagerTransferRequest,
   onCancelOutgoingTransferRequest,
+  onCreateTransferRequest,
+  onTransferRequestCreationFormChange,
   onRefreshTransferRequests,
   onRejectIncomingTransferRequest,
   outgoingTransferRequests,
   pendingManagerTransferRequests,
+  selectedScheduleDetails,
+  sourceAssignmentOptions,
+  swapTargetAssignmentOptions,
+  transferRequestCreationError,
+  transferRequestCreationForm,
+  transferRequestCreationMessage,
   transferRequestActionError,
   transferRequestActionMessage,
   transferRequestCount,
   transferRequestsError,
+  transferTargetEmployeeOptions,
 }) {
+  const isCreatingSwap = transferRequestCreationForm.type === "SWAP";
+  const hasSourceAssignments = sourceAssignmentOptions.length > 0;
+  const hasTransferTargets = transferTargetEmployeeOptions.length > 0;
+  const hasSwapTargets = swapTargetAssignmentOptions.length > 0;
+  const canCreateRequest = hasSourceAssignments && (isCreatingSwap ? hasSwapTargets : hasTransferTargets);
+
   return (
     <section className="section-block" id="transfer-requests">
       <div className="section-heading">
@@ -131,6 +159,96 @@ function TransferRequestsSection({
         </div>
       ) : (
         <div className="request-section-stack">
+          <section className="request-panel">
+            <h3>Create request</h3>
+
+            {!selectedScheduleDetails ? (
+              <p className="muted">Select a published schedule to create a request.</p>
+            ) : null}
+            {selectedScheduleDetails && !hasSourceAssignments ? (
+              <p className="muted">The selected schedule does not include your assignments.</p>
+            ) : null}
+
+            {selectedScheduleDetails && hasSourceAssignments ? (
+              <form className="transfer-request-form" onSubmit={onCreateTransferRequest}>
+                <label>
+                  Type
+                  <select
+                    name="type"
+                    onChange={onTransferRequestCreationFormChange}
+                    value={transferRequestCreationForm.type}
+                  >
+                    <option value="TRANSFER">Transfer</option>
+                    <option value="SWAP">Swap</option>
+                  </select>
+                </label>
+
+                <label>
+                  My assignment
+                  <select
+                    name="sourceAssignmentId"
+                    onChange={onTransferRequestCreationFormChange}
+                    required
+                    value={transferRequestCreationForm.sourceAssignmentId}
+                  >
+                    {sourceAssignmentOptions.map((option) => (
+                      <option key={option.assignment.id} value={option.assignment.id}>
+                        {assignmentOptionLabel(option, formatDateTime)}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+
+                {isCreatingSwap ? (
+                  <label>
+                    Target assignment
+                    <select
+                      name="targetAssignmentId"
+                      onChange={onTransferRequestCreationFormChange}
+                      required
+                      value={transferRequestCreationForm.targetAssignmentId}
+                    >
+                      {swapTargetAssignmentOptions.map((option) => (
+                        <option key={option.assignment.id} value={option.assignment.id}>
+                          {assignmentOptionLabel(option, formatDateTime, true)}
+                        </option>
+                      ))}
+                    </select>
+                  </label>
+                ) : (
+                  <label>
+                    Target employee
+                    <select
+                      name="targetEmployeeId"
+                      onChange={onTransferRequestCreationFormChange}
+                      required
+                      value={transferRequestCreationForm.targetEmployeeId}
+                    >
+                      {transferTargetEmployeeOptions.map((employee) => (
+                        <option key={employee.id} value={employee.id}>
+                          {employeeOptionLabel(employee)}
+                        </option>
+                      ))}
+                    </select>
+                  </label>
+                )}
+
+                <button disabled={!canCreateRequest || isCreatingTransferRequest} type="submit">
+                  {isCreatingTransferRequest ? "Creating..." : "Create request"}
+                </button>
+              </form>
+            ) : null}
+
+            {selectedScheduleDetails && hasSourceAssignments && !hasTransferTargets && !isCreatingSwap ? (
+              <p className="muted">No target employees are available in the selected schedule.</p>
+            ) : null}
+            {selectedScheduleDetails && hasSourceAssignments && !hasSwapTargets && isCreatingSwap ? (
+              <p className="muted">No target assignments are available in the selected schedule.</p>
+            ) : null}
+            {transferRequestCreationError ? <p className="error-message">{transferRequestCreationError}</p> : null}
+            {transferRequestCreationMessage ? <p className="success-message">{transferRequestCreationMessage}</p> : null}
+          </section>
+
           <section className="request-panel">
             <h3>Incoming requests</h3>
             {incomingTransferRequests.length === 0 ? (

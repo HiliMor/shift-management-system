@@ -246,18 +246,27 @@ function App() {
     approveIncomingTransferRequest,
     approveManagerTransferRequest,
     cancelOutgoingTransferRequest,
+    handleTransferRequestCreationFormChange,
     incomingTransferRequests,
+    isCreatingTransferRequest,
     isLoadingTransferRequests,
     outgoingTransferRequests,
     pendingManagerTransferRequests,
     refreshTransferRequests,
     rejectIncomingTransferRequest,
     resetTransferRequests,
+    sourceAssignmentOptions,
+    submitTransferRequestCreation,
+    swapTargetAssignmentOptions,
+    transferRequestCreationError,
+    transferRequestCreationForm,
+    transferRequestCreationMessage,
     transferRequestActionError,
     transferRequestActionMessage,
     transferRequestCount,
     transferRequestsError,
-  } = useTransferRequests(session, isManager, handleApiError);
+    transferTargetEmployeeOptions,
+  } = useTransferRequests(session, isManager, selectedScheduleDetails, handleApiError);
 
   const {
     handlePublicationFormChange,
@@ -756,19 +765,29 @@ function App() {
         actingTransferRequest={actingTransferRequest}
         formatDateTime={formatDateTime}
         incomingTransferRequests={incomingTransferRequests}
+        isCreatingTransferRequest={isCreatingTransferRequest}
         isLoadingTransferRequests={isLoadingTransferRequests}
         isManager={isManager}
         onApproveIncomingTransferRequest={approveIncomingTransferRequest}
         onApproveManagerTransferRequest={approveManagerTransferRequest}
         onCancelOutgoingTransferRequest={cancelOutgoingTransferRequest}
+        onCreateTransferRequest={submitTransferRequestCreation}
         onRefreshTransferRequests={refreshTransferRequests}
         onRejectIncomingTransferRequest={rejectIncomingTransferRequest}
+        onTransferRequestCreationFormChange={handleTransferRequestCreationFormChange}
         outgoingTransferRequests={outgoingTransferRequests}
         pendingManagerTransferRequests={pendingManagerTransferRequests}
+        selectedScheduleDetails={selectedScheduleDetails}
+        sourceAssignmentOptions={sourceAssignmentOptions}
+        swapTargetAssignmentOptions={swapTargetAssignmentOptions}
+        transferRequestCreationError={transferRequestCreationError}
+        transferRequestCreationForm={transferRequestCreationForm}
+        transferRequestCreationMessage={transferRequestCreationMessage}
         transferRequestActionError={transferRequestActionError}
         transferRequestActionMessage={transferRequestActionMessage}
         transferRequestCount={transferRequestCount}
         transferRequestsError={transferRequestsError}
+        transferTargetEmployeeOptions={transferTargetEmployeeOptions}
       />
 
       <NotificationsSection

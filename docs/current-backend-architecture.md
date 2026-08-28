@@ -66,6 +66,7 @@ The current frontend is intentionally small. It is responsible for:
 - Loading unread notification count from `GET /api/notifications/unread-count`.
 - Marking a personal notification as read through `POST /api/notifications/{notificationId}/read`.
 - Loading transfer and swap request lists from `GET /api/requests/me/outgoing`, `GET /api/requests/me/incoming`, and `GET /api/requests/manager/pending`.
+- Creating employee transfer and swap requests through `POST /api/requests/transfers` and `POST /api/requests/swaps`.
 - Running transfer and swap request actions through employee approve/reject, requester cancel, and manager approve endpoints.
 
 The backend remains the authority for authentication, authorization, validation,
