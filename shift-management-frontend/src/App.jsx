@@ -3,11 +3,9 @@ import {
   createAssignment,
   createSchedule,
   createShift,
-  getMyPublishedScheduleDetails,
   listScheduleAssignments,
   listManagedDraftSchedules,
   listMyManagedTeams,
-  listMyPublishedSchedules,
   listStaffingRoles,
   listShifts,
   listTeamEmployees,
@@ -24,6 +22,7 @@ import TransferRequestsSection from "./components/TransferRequestsSection.jsx";
 import useAvailabilityConstraints from "./hooks/useAvailabilityConstraints.js";
 import useAutomaticAssignment from "./hooks/useAutomaticAssignment.js";
 import useNotifications from "./hooks/useNotifications.js";
+import usePublishedSchedules from "./hooks/usePublishedSchedules.js";
 import useSchedulePublication from "./hooks/useSchedulePublication.js";
 import useShiftTemplates from "./hooks/useShiftTemplates.js";
 import useTransferRequests from "./hooks/useTransferRequests.js";
@@ -78,13 +77,6 @@ function App() {
   const [password, setPassword] = useState("");
   const [loginError, setLoginError] = useState("");
   const [isLoggingIn, setIsLoggingIn] = useState(false);
-  const [publishedSchedules, setPublishedSchedules] = useState([]);
-  const [scheduleError, setScheduleError] = useState("");
-  const [isLoadingSchedules, setIsLoadingSchedules] = useState(false);
-  const [selectedScheduleId, setSelectedScheduleId] = useState(null);
-  const [selectedScheduleDetails, setSelectedScheduleDetails] = useState(null);
-  const [detailsError, setDetailsError] = useState("");
-  const [isLoadingDetails, setIsLoadingDetails] = useState(false);
   const [managedTeams, setManagedTeams] = useState([]);
   const [isLoadingManagedTeams, setIsLoadingManagedTeams] = useState(false);
   const [managedTeamsError, setManagedTeamsError] = useState("");
@@ -156,11 +148,6 @@ function App() {
   );
 
   function clearAuthenticatedState() {
-    setPublishedSchedules([]);
-    setScheduleError("");
-    setSelectedScheduleId(null);
-    setSelectedScheduleDetails(null);
-    setDetailsError("");
     setManagedTeams([]);
     setManagedTeamsError("");
     setScheduleForm({ teamId: "", startDate: "", endDate: "" });
@@ -190,6 +177,7 @@ function App() {
     setScheduleAssignmentsError("");
     setCreatedAssignment(null);
     setAssignmentCreationError("");
+    resetPublishedSchedules();
     resetAvailabilityConstraints();
     resetNotifications();
     resetTransferRequests();
@@ -213,6 +201,18 @@ function App() {
 
     setError(error.message);
   }
+
+  const {
+    detailsError,
+    isLoadingDetails,
+    isLoadingSchedules,
+    publishedSchedules,
+    resetPublishedSchedules,
+    scheduleError,
+    selectedScheduleDetails,
+    selectedScheduleId,
+    setSelectedScheduleId,
+  } = usePublishedSchedules(session, handleApiError);
 
   const {
     availabilityActionError,
@@ -371,41 +371,6 @@ function App() {
 
     setAssignmentRefreshKey((current) => current + 1);
   }
-
-  useEffect(() => {
-    if (!session?.accessToken) {
-      setPublishedSchedules([]);
-      setSelectedScheduleId(null);
-      return;
-    }
-
-    setIsLoadingSchedules(true);
-    setScheduleError("");
-
-    listMyPublishedSchedules(session.accessToken)
-      .then(setPublishedSchedules)
-      .catch((error) => handleApiError(error, setScheduleError))
-      .finally(() => setIsLoadingSchedules(false));
-  }, [session]);
-
-  useEffect(() => {
-    if (!session?.accessToken || !selectedScheduleId) {
-      setSelectedScheduleDetails(null);
-      setDetailsError("");
-      return;
-    }
-
-    setIsLoadingDetails(true);
-    setDetailsError("");
-
-    getMyPublishedScheduleDetails(session.accessToken, selectedScheduleId)
-      .then(setSelectedScheduleDetails)
-      .catch((error) => {
-        setSelectedScheduleDetails(null);
-        handleApiError(error, setDetailsError);
-      })
-      .finally(() => setIsLoadingDetails(false));
-  }, [selectedScheduleId, session]);
 
   useEffect(() => {
     if (!session?.accessToken || !isManager) {

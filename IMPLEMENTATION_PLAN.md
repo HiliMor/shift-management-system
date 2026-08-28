@@ -1589,3 +1589,8 @@ Still open:
 - Added an employee-only request creation form to the transfer and swap request screen.
 - The form uses the selected published schedule so employees can create requests from assignments they already see in the UI.
 - Verified the frontend production build succeeds.
+
+### 2026-08-28 - Frontend Refactor: Published Schedule Hook
+
+- Extracted published schedule list loading, selected schedule state, and selected schedule details loading from `App.jsx` into `usePublishedSchedules`.
+- Kept `App.jsx` focused on composing hooks and rendering the main sections.
