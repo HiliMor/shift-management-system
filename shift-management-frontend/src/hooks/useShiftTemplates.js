@@ -32,10 +32,6 @@ const emptyGenerationForm = {
   scheduleId: "",
 };
 
-function shiftCountLabel(count) {
-  return count === 1 ? "1 shift" : `${count} shifts`;
-}
-
 function useShiftTemplates(
   session,
   enabled,
@@ -267,7 +263,7 @@ function useShiftTemplates(
         templateId: template.id.toString(),
         scheduleId: "",
       }));
-      setTemplateActionMessage(`Template "${template.name}" created.`);
+      setTemplateActionMessage({ key: "templateCreated", templateName: template.name });
       refreshTemplates();
     } catch (error) {
       onApiError(error, setTemplateActionError);
@@ -296,7 +292,7 @@ function useShiftTemplates(
         ...current,
         description: "",
       }));
-      setTemplateActionMessage(`Template slot #${slot.id} created.`);
+      setTemplateActionMessage({ key: "templateSlotCreated", slotId: slot.id });
       refreshTemplateSlots();
     } catch (error) {
       onApiError(error, setTemplateActionError);
@@ -319,7 +315,7 @@ function useShiftTemplates(
       );
 
       setTemplateGenerationReport(report);
-      setTemplateActionMessage(`Generated ${shiftCountLabel(report.shiftsCreated)} from template.`);
+      setTemplateActionMessage({ key: "templateShiftsGenerated", shiftsCreated: report.shiftsCreated });
       onShiftsChanged(report.scheduleId);
       onPublicationReadinessChanged();
     } catch (error) {

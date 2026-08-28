@@ -1,11 +1,37 @@
-function renderScheduleOption(schedule, formatDate) {
-  return `#${schedule.id} - ${schedule.teamName}, ${formatDate(schedule.startDate)} to ${formatDate(
+import { useLanguage } from "../../i18n/LanguageContext.jsx";
+
+function renderScheduleOption(schedule, formatDate, t) {
+  return `#${schedule.id} - ${schedule.teamName}, ${formatDate(schedule.startDate)} ${t("dateRangeSeparator")} ${formatDate(
     schedule.endDate,
   )}`;
 }
 
 function renderTemplateOption(template) {
   return `#${template.id} - ${template.name}`;
+}
+
+function templateActionMessageLabel(message, t) {
+  if (!message) {
+    return "";
+  }
+
+  if (typeof message === "string") {
+    return t(message);
+  }
+
+  if (message.key === "templateCreated") {
+    return `${t(message.key)} "${message.templateName}".`;
+  }
+
+  if (message.key === "templateSlotCreated") {
+    return `${t(message.key)} #${message.slotId}.`;
+  }
+
+  if (message.key === "templateShiftsGenerated") {
+    return `${t(message.key)}: ${message.shiftsCreated}.`;
+  }
+
+  return t(message.key);
 }
 
 function ShiftTemplatePanel({
@@ -43,6 +69,7 @@ function ShiftTemplatePanel({
   templateStaffingRoles,
   templateStaffingRolesError,
 }) {
+  const { t } = useLanguage();
   const selectedTemplateMaxDayOffset = selectedTemplate ? selectedTemplate.cycleDays - 1 : 0;
   const canCreateSlot = templates.length > 0 && templateSlotForm.templateId;
   const canGenerate = selectedGenerationTemplate && templateGenerationForm.scheduleId;
@@ -52,7 +79,7 @@ function ShiftTemplatePanel({
       <div className="section-heading compact-heading">
         <div className="manager-panel-heading">
           <span>2</span>
-          <h3>Templates</h3>
+          <h3>{t("templates")}</h3>
         </div>
         <button
           className="secondary-button compact-button"
@@ -60,7 +87,7 @@ function ShiftTemplatePanel({
           onClick={onRefreshTemplates}
           type="button"
         >
-          Refresh
+          {t("refresh")}
         </button>
       </div>
 
@@ -71,7 +98,7 @@ function ShiftTemplatePanel({
 
       <form className="template-form" onSubmit={onCreateTemplate}>
         <label>
-          Team
+          {t("team")}
           <select name="teamId" onChange={onTemplateFormChange} required value={templateForm.teamId}>
             {managedTeams.map((team) => (
               <option key={team.id} value={team.id}>
@@ -82,17 +109,17 @@ function ShiftTemplatePanel({
         </label>
 
         <label>
-          Name
+          {t("name")}
           <input maxLength="150" name="name" onChange={onTemplateFormChange} required type="text" value={templateForm.name} />
         </label>
 
         <label>
-          Cycle days
+          {t("cycleDays")}
           <input min="1" name="cycleDays" onChange={onTemplateFormChange} required type="number" value={templateForm.cycleDays} />
         </label>
 
         <label>
-          Rest hours
+          {t("restHours")}
           <input
             min="0"
             name="defaultMinRestHours"
@@ -104,7 +131,7 @@ function ShiftTemplatePanel({
         </label>
 
         <label>
-          Description
+          {t("description")}
           <input
             maxLength="500"
             name="description"
@@ -115,26 +142,26 @@ function ShiftTemplatePanel({
         </label>
 
         <button disabled={isCreatingTemplate} type="submit">
-          {isCreatingTemplate ? "Creating..." : "Create template"}
+          {isCreatingTemplate ? t("creating") : t("createTemplate")}
         </button>
       </form>
 
       {templateActionMessage ? (
         <div className="success-message">
-          <strong>{templateActionMessage}</strong>
+          <strong>{templateActionMessageLabel(templateActionMessage, t)}</strong>
         </div>
       ) : null}
 
       <div className="template-grid">
         <div className="template-column">
           <div className="section-heading compact-heading">
-            <h4>Templates</h4>
+            <h4>{t("templates")}</h4>
             <span>{templates.length}</span>
           </div>
 
-          {isLoadingTemplates ? <p className="muted">Loading templates...</p> : null}
+          {isLoadingTemplates ? <p className="muted">{t("loadingTemplates")}</p> : null}
           {!isLoadingTemplates && !templateListError && templates.length === 0 ? (
-            <p className="muted">No templates for this team.</p>
+            <p className="muted">{t("noTemplatesForTeam")}</p>
           ) : null}
 
           {templates.length > 0 ? (
@@ -142,8 +169,8 @@ function ShiftTemplatePanel({
               {templates.map((template) => (
                 <div className="template-row" key={template.id}>
                   <strong>{template.name}</strong>
-                  <span>{template.cycleDays} days</span>
-                  <span>{template.defaultMinRestHours} rest hours</span>
+                  <span>{template.cycleDays} {t("days")}</span>
+                  <span>{template.defaultMinRestHours} {t("restHours")}</span>
                 </div>
               ))}
             </div>
@@ -152,23 +179,23 @@ function ShiftTemplatePanel({
 
         <div className="template-column">
           <div className="section-heading compact-heading">
-            <h4>Template slots</h4>
+            <h4>{t("templateSlots")}</h4>
             <button
               className="secondary-button compact-button"
               disabled={isLoadingTemplateSlots || !templateSlotForm.templateId}
               onClick={onRefreshTemplateSlots}
               type="button"
             >
-              Refresh
+              {t("refresh")}
             </button>
           </div>
 
-          {templates.length === 0 ? <p className="muted">Create a template before adding slots.</p> : null}
+          {templates.length === 0 ? <p className="muted">{t("createTemplateBeforeSlots")}</p> : null}
 
           {canCreateSlot ? (
             <form className="template-slot-form" onSubmit={onCreateTemplateSlot}>
               <label>
-                Template
+                {t("template")}
                 <select name="templateId" onChange={onTemplateSlotFormChange} required value={templateSlotForm.templateId}>
                   {templates.map((template) => (
                     <option key={template.id} value={template.id}>
@@ -179,7 +206,7 @@ function ShiftTemplatePanel({
               </label>
 
               <label>
-                Day offset
+                {t("dayOffset")}
                 <input
                   max={selectedTemplateMaxDayOffset}
                   min="0"
@@ -192,7 +219,7 @@ function ShiftTemplatePanel({
               </label>
 
               <label>
-                Start time
+                {t("startTime")}
                 <input
                   name="startTime"
                   onChange={onTemplateSlotFormChange}
@@ -203,7 +230,7 @@ function ShiftTemplatePanel({
               </label>
 
               <label>
-                Duration minutes
+                {t("durationMinutes")}
                 <input
                   min="1"
                   name="durationMinutes"
@@ -215,7 +242,7 @@ function ShiftTemplatePanel({
               </label>
 
               <label>
-                Required workers
+                {t("requiredWorkers")}
                 <input
                   min="1"
                   name="requiredWorkers"
@@ -227,14 +254,14 @@ function ShiftTemplatePanel({
               </label>
 
               <label>
-                Required role
+                {t("requiredRole")}
                 <select
                   disabled={isLoadingTemplateStaffingRoles}
                   name="requiredStaffingRoleId"
                   onChange={onTemplateSlotFormChange}
                   value={templateSlotForm.requiredStaffingRoleId}
                 >
-                  <option value="">No specific role</option>
+                  <option value="">{t("noSpecificRole")}</option>
                   {templateStaffingRoles.map((role) => (
                     <option key={role.id} value={role.id}>
                       {role.name}
@@ -244,7 +271,7 @@ function ShiftTemplatePanel({
               </label>
 
               <label>
-                Description
+                {t("description")}
                 <input
                   maxLength="500"
                   name="description"
@@ -255,24 +282,24 @@ function ShiftTemplatePanel({
               </label>
 
               <button disabled={isCreatingTemplateSlot} type="submit">
-                {isCreatingTemplateSlot ? "Adding..." : "Add slot"}
+                {isCreatingTemplateSlot ? t("adding") : t("addSlot")}
               </button>
             </form>
           ) : null}
 
-          {isLoadingTemplateSlots ? <p className="muted">Loading template slots...</p> : null}
+          {isLoadingTemplateSlots ? <p className="muted">{t("loadingTemplateSlots")}</p> : null}
 
           {templateSlots.length > 0 ? (
             <div className="template-list">
               {templateSlots.map((slot) => (
                 <div className="template-row" key={slot.id}>
                   <strong>
-                    Day {slot.dayOffset}, {slot.startTime}
+                    {t("dayOffset")} {slot.dayOffset}, {slot.startTime}
                   </strong>
-                  <span>{slot.durationMinutes} minutes</span>
-                  <span>{slot.requiredWorkers} workers</span>
-                  <span>{slot.requiredStaffingRoleName || "No role"}</span>
-                  <p>{slot.description || "No description"}</p>
+                  <span>{slot.durationMinutes} {t("minutes")}</span>
+                  <span>{slot.requiredWorkers} {t("workers")}</span>
+                  <span>{slot.requiredStaffingRoleName || t("noRole")}</span>
+                  <p>{slot.description || t("noDescription")}</p>
                 </div>
               ))}
             </div>
@@ -283,7 +310,7 @@ function ShiftTemplatePanel({
       {templates.length > 0 ? (
         <form className="template-generation-form" onSubmit={onGenerateTemplateShifts}>
           <label>
-            Template
+            {t("template")}
             <select
               name="templateId"
               onChange={onTemplateGenerationFormChange}
@@ -299,7 +326,7 @@ function ShiftTemplatePanel({
           </label>
 
           <label>
-            Draft schedule
+            {t("draftSchedule")}
             <select
               name="scheduleId"
               onChange={onTemplateGenerationFormChange}
@@ -308,29 +335,29 @@ function ShiftTemplatePanel({
             >
               {generationDraftSchedules.map((schedule) => (
                 <option key={schedule.id} value={schedule.id}>
-                  {renderScheduleOption(schedule, formatDate)}
+                  {renderScheduleOption(schedule, formatDate, t)}
                 </option>
               ))}
             </select>
           </label>
 
           <button disabled={isGeneratingTemplateShifts || !canGenerate || Boolean(draftSchedulesError)} type="submit">
-            {isGeneratingTemplateShifts ? "Generating..." : "Generate shifts"}
+            {isGeneratingTemplateShifts ? t("generating") : t("generateShifts")}
           </button>
         </form>
       ) : null}
 
       {draftSchedulesError ? <p className="error-message">{draftSchedulesError}</p> : null}
       {selectedGenerationTemplate && generationDraftSchedules.length === 0 ? (
-        <p className="muted">No draft schedule for the selected template team.</p>
+        <p className="muted">{t("noDraftScheduleForTemplate")}</p>
       ) : null}
 
       {templateGenerationReport ? (
         <div className="readiness-panel">
           <div className="readiness-summary">
-            <span>{templateGenerationReport.shiftsCreated} created</span>
-            <span>{templateGenerationReport.skippedExistingShifts} existing skipped</span>
-            <span>{templateGenerationReport.skippedOutsideSchedule} outside skipped</span>
+            <span>{templateGenerationReport.shiftsCreated} {t("created")}</span>
+            <span>{templateGenerationReport.skippedExistingShifts} {t("existingSkipped")}</span>
+            <span>{templateGenerationReport.skippedOutsideSchedule} {t("outsideSkipped")}</span>
           </div>
 
           {templateGenerationReport.shifts.length > 0 ? (
@@ -338,13 +365,13 @@ function ShiftTemplatePanel({
               {templateGenerationReport.shifts.map((shift) => (
                 <div className="assignment-row auto-assignment-row" key={shift.id}>
                   <div className="auto-assignment-main">
-                    <strong>Shift #{shift.id}</strong>
+                    <strong>{t("shift")} #{shift.id}</strong>
                     <span>
-                      {shift.description || "Shift"}, {formatDateTime(shift.startTime)} to{" "}
+                      {shift.description || t("shift")}, {formatDateTime(shift.startTime)} {t("dateRangeSeparator")} {" "}
                       {formatDateTime(shift.endTime)}
                     </span>
                     <span>
-                      {shift.requiredWorkers} workers, template slot #{shift.templateSlotId}
+                      {shift.requiredWorkers} {t("workers")}, {t("templateSlot")} #{shift.templateSlotId}
                     </span>
                   </div>
                 </div>
