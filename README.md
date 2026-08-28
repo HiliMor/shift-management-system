@@ -57,15 +57,17 @@ Implemented:
 - ActiveMQ Artemis JMS configuration.
 - Scheduled outbox dispatcher that sends pending events to JMS.
 - JMS consumer that creates schedule-published notifications for active team members.
-- Transfer request persistence model.
+- Transfer and swap request persistence model.
 - Transfer request creation endpoint for published assignments.
-- Outgoing, incoming, and pending-manager transfer request list endpoints.
-- Target employee approval endpoint for transfer requests.
-- Target employee rejection endpoint for transfer requests.
-- Requester cancellation endpoint for active transfer requests.
+- Swap request creation endpoint for exchanging two published assignments.
+- Outgoing, incoming, and pending-manager request list endpoints.
+- Target employee approval endpoint for transfer and swap requests.
+- Target employee rejection endpoint for transfer and swap requests.
+- Requester cancellation endpoint for active transfer and swap requests.
 - Transfer execution for teams with `EMPLOYEE` approval policy.
 - Manager approval and transfer execution for teams with `MANAGER` approval policy.
-- Basic business logging for schedule, assignment, transfer request, outbox, and notification workflows.
+- Swap execution for teams with `EMPLOYEE` or `MANAGER` approval policy.
+- Basic business logging for schedule, assignment, transfer and swap request, outbox, and notification workflows.
 - Unified JSON error responses for API and security errors.
 - Development seed data for a presentation scenario with users, a managed team, staffing roles, draft and published schedules, assignments, notifications, and an active transfer request.
 
@@ -89,13 +91,12 @@ Frontend:
 - Automatic assignment screen displays the created-assignment report and remaining open slots.
 - Manager publication screen supports readiness checks, publishing draft schedules, and reopening published schedules.
 - Notification center connected to personal notification list, unread count, and mark-as-read APIs.
-- Transfer request screen connected to outgoing, incoming, and pending-manager request APIs.
-- Transfer request screen supports employee approve/reject, requester cancel, and manager approve actions.
+- Transfer and swap request screen connected to outgoing, incoming, and pending-manager request APIs.
+- Transfer and swap request screen supports employee approve/reject, requester cancel, and manager approve actions.
 - Manager template screen supports template creation, slot creation, and shift generation.
 
 Planned next:
 
-- Full swap requests.
 - Submission documentation polish.
 
 ## Backend Documentation

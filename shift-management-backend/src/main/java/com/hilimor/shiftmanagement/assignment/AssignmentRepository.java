@@ -22,13 +22,32 @@ public interface AssignmentRepository extends JpaRepository<Assignment, Long> {
             Instant startTime
     );
 
+    List<Assignment> findByEmployee_IdAndIdNotAndShift_StartTimeLessThanAndShift_EndTimeGreaterThan(
+            Long employeeId,
+            Long ignoredAssignmentId,
+            Instant endTime,
+            Instant startTime
+    );
+
     Optional<Assignment> findTopByEmployee_IdAndShift_EndTimeLessThanEqualOrderByShift_EndTimeDesc(
             Long employeeId,
             Instant startTime
     );
 
+    Optional<Assignment> findTopByEmployee_IdAndIdNotAndShift_EndTimeLessThanEqualOrderByShift_EndTimeDesc(
+            Long employeeId,
+            Long ignoredAssignmentId,
+            Instant startTime
+    );
+
     Optional<Assignment> findTopByEmployee_IdAndShift_StartTimeGreaterThanEqualOrderByShift_StartTimeAsc(
             Long employeeId,
+            Instant endTime
+    );
+
+    Optional<Assignment> findTopByEmployee_IdAndIdNotAndShift_StartTimeGreaterThanEqualOrderByShift_StartTimeAsc(
+            Long employeeId,
+            Long ignoredAssignmentId,
             Instant endTime
     );
 }

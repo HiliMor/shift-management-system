@@ -20,8 +20,8 @@ For end-to-end local run instructions, see:
 - Automatic assignment - manager-only action for filling open draft shifts and reviewing the assignment report.
 - Shift templates - manager-only workflow for creating templates, adding slots, and generating draft shifts.
 - Notifications - authenticated screen section that lists personal notifications, shows unread count, and marks notifications as read.
-- Transfer requests - authenticated screen section for outgoing, incoming, and pending manager approval requests.
-- Transfer request actions - employee approve/reject, requester cancel, and manager approve.
+- Transfer and swap requests - authenticated screen section for outgoing, incoming, and pending manager approval requests.
+- Transfer and swap request actions - employee approve/reject, requester cancel, and manager approve.
 
 ## Run Locally
 

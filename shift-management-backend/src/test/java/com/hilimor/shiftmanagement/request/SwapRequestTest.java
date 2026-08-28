@@ -52,6 +52,38 @@ class SwapRequestTest {
     }
 
     @Test
+    void createSwapInitializesPendingEmployeeRequest() {
+        User requester = user("employee1", 2L);
+        User targetEmployee = user("employee2", 3L);
+        Assignment sourceAssignment = assignment(requester);
+        Assignment targetAssignment = assignment(targetEmployee);
+        Instant createdAt = Instant.parse("2026-08-04T18:00:00Z");
+
+        SwapRequest request = SwapRequest.createSwap(requester, sourceAssignment, targetAssignment, createdAt);
+
+        assertThat(request.getType()).isEqualTo(SwapRequestType.SWAP);
+        assertThat(request.getStatus()).isEqualTo(SwapRequestStatus.PENDING_EMPLOYEE);
+        assertThat(request.getRequester()).isSameAs(requester);
+        assertThat(request.getSourceAssignment()).isSameAs(sourceAssignment);
+        assertThat(request.getTargetEmployee()).isSameAs(targetEmployee);
+        assertThat(request.getTargetAssignment()).isSameAs(targetAssignment);
+        assertThat(request.getCreatedAt()).isEqualTo(createdAt);
+        assertThat(request.getUpdatedAt()).isEqualTo(createdAt);
+    }
+
+    @Test
+    void createSwapRejectsMissingTargetAssignment() {
+        User requester = user("employee1", 2L);
+
+        assertThatThrownBy(() -> SwapRequest.createSwap(
+                requester,
+                assignment(requester),
+                null,
+                Instant.parse("2026-08-04T18:00:00Z")
+        )).isInstanceOf(NullPointerException.class);
+    }
+
+    @Test
     void approveByTargetEmployeeApprovesRequestWhenPolicyIsEmployee() {
         SwapRequest request = transferRequest();
         Instant approvedAt = Instant.parse("2026-08-04T19:00:00Z");

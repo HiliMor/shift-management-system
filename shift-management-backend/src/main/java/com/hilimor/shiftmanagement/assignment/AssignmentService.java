@@ -210,6 +210,15 @@ public class AssignmentService {
         assignmentValidator.validateEmployeeCanReceiveTransferredAssignment(shift, employee);
     }
 
+    @Transactional(readOnly = true)
+    public void validateEmployeeCanReceiveSwappedAssignment(
+            Shift shift,
+            User employee,
+            Assignment assignmentToReplace
+    ) {
+        assignmentValidator.validateEmployeeCanReceiveSwappedAssignment(shift, employee, assignmentToReplace);
+    }
+
     private Assignment assignNextEligibleEmployee(
             String managerUsername,
             Long teamId,

@@ -65,8 +65,8 @@ The current frontend is intentionally small. It is responsible for:
 - Loading personal notifications from `GET /api/notifications`.
 - Loading unread notification count from `GET /api/notifications/unread-count`.
 - Marking a personal notification as read through `POST /api/notifications/{notificationId}/read`.
-- Loading transfer request lists from `GET /api/requests/me/outgoing`, `GET /api/requests/me/incoming`, and `GET /api/requests/manager/pending`.
-- Running transfer request actions through employee approve/reject, requester cancel, and manager approve endpoints.
+- Loading transfer and swap request lists from `GET /api/requests/me/outgoing`, `GET /api/requests/me/incoming`, and `GET /api/requests/manager/pending`.
+- Running transfer and swap request actions through employee approve/reject, requester cancel, and manager approve endpoints.
 
 The backend remains the authority for authentication, authorization, validation,
 business rules, and persistence.
@@ -187,7 +187,7 @@ Current logging is intentionally limited to workflow checkpoints:
 - Schedule creation, publication, and reopening.
 - Assignment creation and deletion.
 - Template, template slot creation, and template-based shift generation.
-- Transfer request creation, employee and manager scoped request lists, approval, rejection, cancellation, invalidation, and assignment transfer execution.
+- Transfer and swap request creation, employee and manager scoped request lists, approval, rejection, cancellation, invalidation, assignment transfer execution, and assignment swap execution.
 - Outbox event dispatch and schedule-published notification creation.
 
 Logs include operational identifiers such as schedule IDs, assignment IDs, user IDs,
@@ -383,7 +383,7 @@ flowchart TD
     staffingApi["Staffing Roles<br/>POST /api/teams/{teamId}/staffing-roles<br/>GET /api/teams/{teamId}/staffing-roles<br/>POST /api/teams/{teamId}/employees/{employeeId}/staffing-roles<br/>GET /api/teams/{teamId}/employees/{employeeId}/staffing-roles"]
     templatesApi["Templates<br/>POST /api/teams/{teamId}/templates<br/>GET /api/teams/{teamId}/templates<br/>POST /api/templates/{templateId}/slots<br/>GET /api/templates/{templateId}/slots<br/>POST /api/templates/{templateId}/generate"]
     notificationApi["Notifications<br/>GET /api/notifications<br/>GET /api/notifications/unread-count<br/>POST /api/notifications/{notificationId}/read"]
-    requestsApi["Requests<br/>POST /api/requests/transfers<br/>GET /api/requests/me/outgoing<br/>GET /api/requests/me/incoming<br/>GET /api/requests/manager/pending<br/>POST /api/requests/{requestId}/employee-approve<br/>POST /api/requests/{requestId}/employee-reject<br/>POST /api/requests/{requestId}/manager-approve<br/>POST /api/requests/{requestId}/cancel"]
+    requestsApi["Requests<br/>POST /api/requests/transfers<br/>POST /api/requests/swaps<br/>GET /api/requests/me/outgoing<br/>GET /api/requests/me/incoming<br/>GET /api/requests/manager/pending<br/>POST /api/requests/{requestId}/employee-approve<br/>POST /api/requests/{requestId}/employee-reject<br/>POST /api/requests/{requestId}/manager-approve<br/>POST /api/requests/{requestId}/cancel"]
 
     api --> healthApi
     api --> authApi
@@ -660,6 +660,29 @@ sequenceDiagram
     SwapRequestController-->>Client: 201 Created
 ```
 
+### Swap Request Creation
+
+```mermaid
+sequenceDiagram
+    participant Client as React or API Client
+    participant Security
+    participant SwapRequestController
+    participant SwapRequestService
+    participant Repositories
+    participant Database
+
+    Client->>Security: POST /api/requests/swaps with Bearer token
+    Security->>SwapRequestController: authenticated request
+    SwapRequestController->>SwapRequestService: createSwapRequest(username, request)
+    SwapRequestService->>Repositories: load requester, source assignment, target assignment
+    Repositories->>Database: queries
+    SwapRequestService->>SwapRequestService: validate ownership, published schedules, same team, target membership, no active requests
+    SwapRequestService->>Repositories: save SwapRequest
+    Repositories->>Database: insert swap_requests row with target_assignment_id
+    SwapRequestService-->>SwapRequestController: SwapRequestResponse
+    SwapRequestController-->>Client: 201 Created
+```
+
 ### Transfer Request Target Approval
 
 ```mermaid
@@ -722,6 +745,11 @@ sequenceDiagram
     SwapRequestController-->>Client: 200 OK
 ```
 
+The same approval endpoints handle `SWAP` requests. For swaps, final execution
+validates both resulting assignments while ignoring the assignment each employee
+is giving up, then exchanges the two assignment owners. If either side fails
+validation, the request becomes `INVALIDATED` and no assignment changes.
+
 ## Database Migration Timeline
 
 ```mermaid
@@ -738,8 +766,9 @@ flowchart LR
     v10["V10<br/>Swap requests"]
     v11["V11<br/>Shift templates"]
     v12["V12<br/>Generated shift uniqueness"]
+    v13["V13<br/>Swap target active uniqueness"]
 
-    v1 --> v2 --> v3 --> v4 --> v5 --> v6 --> v7 --> v8 --> v9 --> v10 --> v11 --> v12
+    v1 --> v2 --> v3 --> v4 --> v5 --> v6 --> v7 --> v8 --> v9 --> v10 --> v11 --> v12 --> v13
 ```
 
 ## Component Responsibilities
@@ -755,7 +784,7 @@ flowchart LR
 | `schedule` | Draft schedule creation, managed draft schedule listing, schedule publication, explicit unfilled-publication confirmation, schedule reopening, publication readiness, employee published schedule list/details, and schedule lifecycle state fields. |
 | `shift` | Shift creation, listing, update, deletion, schedule-range validation, optional required staffing role storage, and optional source template slot storage for generated shifts. |
 | `assignment` | Manual assignment creation/list/delete, basic automatic assignment, and shared assignment validation through `AssignmentValidator`, including capacity, availability, overlap, rest, and required staffing roles. |
-| `request` | Transfer and swap request model, request statuses, transfer creation, employee and manager scoped request lists, target employee approval/rejection, manager approval, requester cancellation, and transfer execution. |
+| `request` | Transfer and swap request model, request statuses, transfer/swap creation, employee and manager scoped request lists, target employee approval/rejection, manager approval, requester cancellation, transfer execution, and swap execution. |
 | `availability` | Employee unavailable time ranges and conflict checks with assignments. |
 | `staffing` | Team-specific professional roles, role create/list API, employee role assignment/list API, and persistence for assigning roles to team members. |
 | `template` | Shift template and template slot persistence model, manager-scoped create/list APIs, and template-based shift generation into draft schedules. |

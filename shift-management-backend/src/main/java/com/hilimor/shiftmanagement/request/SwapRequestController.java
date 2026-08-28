@@ -33,6 +33,15 @@ public class SwapRequestController {
         return swapRequestService.createTransferRequest(authentication.getName(), request);
     }
 
+    @PostMapping("/swaps")
+    @ResponseStatus(HttpStatus.CREATED)
+    public SwapRequestResponse createSwapRequest(
+            Authentication authentication,
+            @Valid @RequestBody CreateSwapRequest request
+    ) {
+        return swapRequestService.createSwapRequest(authentication.getName(), request);
+    }
+
     @GetMapping("/me/outgoing")
     public List<SwapRequestResponse> listMyOutgoingRequests(Authentication authentication) {
         return swapRequestService.listMyOutgoingRequests(authentication.getName());

@@ -715,7 +715,7 @@ Goal: allow employees to transfer a shift or request a shift swap.
 - [x] Run assignment validations before manager final approval.
 - [x] Move the assignment to the target employee after employee-policy transfer approval.
 - [x] Move the assignment to the target employee after manager approval.
-- [ ] Add full swap.
+- [x] Add full swap.
 - [x] Add manager approval according to team policy.
 
 ### Verify
@@ -729,7 +729,7 @@ Goal: allow employees to transfer a shift or request a shift swap.
 - [x] The target employee can reject a pending transfer request.
 - [x] The requester can cancel an active transfer request.
 - [x] Employees and managers can list only transfer requests relevant to them.
-- [ ] A swap exchanges two assignments.
+- [x] A swap exchanges two assignments.
 
 ### Document
 
@@ -1570,3 +1570,12 @@ Still open:
 - Added a manager template panel for creating team templates, adding template slots with optional staffing roles, and generating draft schedule shifts.
 - Displayed the generation report with created shifts and skipped counts.
 - Updated project and frontend documentation to include the template management UI.
+
+### 2026-08-28 - Transfer And Swap Requests: Full Swap Execution
+
+- Added `POST /api/requests/swaps` so employees can request a shift swap with another employee's assignment.
+- Reused the existing request approval workflow: target employee approval first, then optional manager approval according to the team's policy.
+- Added final execution logic that exchanges the two assignments only after re-checking ownership, published schedules, staffing role eligibility, availability, overlap, and minimum rest.
+- Added database uniqueness protection so a target assignment cannot be part of more than one active request.
+- Updated the frontend request list labels so transfer and swap requests are displayed clearly.
+- Added focused service and domain tests for swap creation, swap execution, and invalidation cases.

@@ -1307,7 +1307,7 @@
       ]
     },
     {
-      "name": "Transfer Requests",
+      "name": "Transfer And Swap Requests",
       "item": [
         {
           "name": "Create Transfer Request",
@@ -1358,8 +1358,57 @@
           "response": []
         },
         {
-          "name": "List My Outgoing Transfer Requests",
-          "description": "Run `Login as Employee One` before this request to see transfer requests created by Employee One.",
+          "name": "Create Swap Request",
+          "description": "Run this as the employee who owns `assignmentId`. Set `targetAssignmentId` to another published assignment in the same team.",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "if (pm.response.code === 201) {",
+                  "  const data = pm.response.json();",
+                  "  pm.environment.set('swapRequestId', data.id);",
+                  "  pm.environment.set('transferRequestId', data.id);",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"sourceAssignmentId\": {{assignmentId}},\n  \"targetAssignmentId\": {{targetAssignmentId}}\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/requests/swaps",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "requests",
+                "swaps"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "List My Outgoing Requests",
+          "description": "Run `Login as Employee One` before this request to see transfer or swap requests created by Employee One.",
           "request": {
             "method": "GET",
             "header": [],
@@ -1379,8 +1428,8 @@
           "response": []
         },
         {
-          "name": "List My Incoming Transfer Requests",
-          "description": "Run `Login as Employee Two` before this request when Employee Two is the transfer target.",
+          "name": "List My Incoming Requests",
+          "description": "Run `Login as Employee Two` before this request when Employee Two is the transfer or swap target.",
           "request": {
             "method": "GET",
             "header": [],
@@ -1400,8 +1449,8 @@
           "response": []
         },
         {
-          "name": "List Pending Manager Transfer Requests",
-          "description": "Run `Login as Manager` before this request to see transfer requests waiting for manager approval.",
+          "name": "List Pending Manager Requests",
+          "description": "Run `Login as Manager` before this request to see transfer or swap requests waiting for manager approval.",
           "request": {
             "method": "GET",
             "header": [],
@@ -1421,8 +1470,8 @@
           "response": []
         },
         {
-          "name": "Approve Transfer As Target Employee",
-          "description": "Run `Login as Employee Two` before this request when Employee Two is the transfer target.",
+          "name": "Approve Request As Target Employee",
+          "description": "Run `Login as Employee Two` before this request when Employee Two is the transfer or swap target.",
           "request": {
             "method": "POST",
             "header": [],
@@ -1442,8 +1491,8 @@
           "response": []
         },
         {
-          "name": "Reject Transfer As Target Employee",
-          "description": "Alternative flow: run `Login as Employee Two` before this request when Employee Two is the transfer target. Use this instead of approving the same transfer request.",
+          "name": "Reject Request As Target Employee",
+          "description": "Alternative flow: run `Login as Employee Two` before this request when Employee Two is the transfer or swap target. Use this instead of approving the same request.",
           "request": {
             "method": "POST",
             "header": [],
@@ -1463,8 +1512,8 @@
           "response": []
         },
         {
-          "name": "Cancel Transfer As Requester",
-          "description": "Alternative flow: run `Login as Employee One` before this request when Employee One created the transfer request. Can be used while the request is still PENDING_EMPLOYEE or PENDING_MANAGER.",
+          "name": "Cancel Request As Requester",
+          "description": "Alternative flow: run `Login as Employee One` before this request when Employee One created the transfer or swap request. Can be used while the request is still PENDING_EMPLOYEE or PENDING_MANAGER.",
           "request": {
             "method": "POST",
             "header": [],
@@ -1484,8 +1533,8 @@
           "response": []
         },
         {
-          "name": "Approve Transfer As Manager",
-          "description": "Run `Login as Manager` before this request for teams with MANAGER transfer approval policy.",
+          "name": "Approve Request As Manager",
+          "description": "Run `Login as Manager` before this request for teams with MANAGER request approval policy.",
           "request": {
             "method": "POST",
             "header": [],

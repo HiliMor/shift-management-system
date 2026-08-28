@@ -118,6 +118,25 @@ public class SwapRequest {
         );
     }
 
+    public static SwapRequest createSwap(
+            User requester,
+            Assignment sourceAssignment,
+            Assignment targetAssignment,
+            Instant createdAt
+    ) {
+        Objects.requireNonNull(targetAssignment, "targetAssignment must not be null");
+
+        return new SwapRequest(
+                SwapRequestType.SWAP,
+                requester,
+                sourceAssignment,
+                targetAssignment.getEmployee(),
+                targetAssignment,
+                SwapRequestStatus.PENDING_EMPLOYEE,
+                createdAt
+        );
+    }
+
     public void approveByTargetEmployee(Instant approvedAt, SwapApprovalPolicy approvalPolicy) {
         Objects.requireNonNull(approvedAt, "approvedAt must not be null");
         Objects.requireNonNull(approvalPolicy, "approvalPolicy must not be null");

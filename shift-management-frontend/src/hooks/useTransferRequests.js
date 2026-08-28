@@ -78,7 +78,7 @@ function useTransferRequests(session, isManager, onApiError) {
       requestId,
       "employee-approve",
       approveTransferAsTargetEmployee,
-      "Transfer request approved.",
+      "Request approved.",
     );
   }
 
@@ -87,7 +87,7 @@ function useTransferRequests(session, isManager, onApiError) {
       requestId,
       "manager-approve",
       approveTransferAsManager,
-      "Transfer request approved by manager.",
+      "Request approved by manager.",
     );
   }
 
@@ -96,7 +96,7 @@ function useTransferRequests(session, isManager, onApiError) {
       requestId,
       "cancel",
       cancelTransferAsRequester,
-      "Transfer request cancelled.",
+      "Request cancelled.",
     );
   }
 
@@ -105,7 +105,7 @@ function useTransferRequests(session, isManager, onApiError) {
       requestId,
       "employee-reject",
       rejectTransferAsTargetEmployee,
-      "Transfer request rejected.",
+      "Request rejected.",
     );
   }
 

@@ -80,24 +80,25 @@ Implemented:
 - Scheduled outbox dispatcher that sends pending events to JMS queue `notification.events`.
 - JMS consumer that creates schedule-published notifications for active team members.
 - Notification creation is idempotent by `eventId` and recipient.
-- Transfer request persistence model.
+- Transfer and swap request persistence model.
 - Transfer request creation endpoint: `POST /api/requests/transfers`.
-- Outgoing transfer request list endpoint: `GET /api/requests/me/outgoing`.
-- Incoming transfer request list endpoint: `GET /api/requests/me/incoming`.
-- Pending manager approval transfer request list endpoint: `GET /api/requests/manager/pending`.
-- Target employee approval endpoint: `POST /api/requests/{requestId}/employee-approve`.
-- Target employee rejection endpoint: `POST /api/requests/{requestId}/employee-reject`.
-- Requester cancellation endpoint: `POST /api/requests/{requestId}/cancel`.
+- Swap request creation endpoint: `POST /api/requests/swaps`.
+- Outgoing request list endpoint: `GET /api/requests/me/outgoing`.
+- Incoming request list endpoint: `GET /api/requests/me/incoming`.
+- Pending manager approval request list endpoint: `GET /api/requests/manager/pending`.
+- Target employee approval endpoint for transfer and swap requests: `POST /api/requests/{requestId}/employee-approve`.
+- Target employee rejection endpoint for transfer and swap requests: `POST /api/requests/{requestId}/employee-reject`.
+- Requester cancellation endpoint for active transfer and swap requests: `POST /api/requests/{requestId}/cancel`.
 - Transfer execution for teams with `EMPLOYEE` approval policy.
 - Manager approval endpoint: `POST /api/requests/{requestId}/manager-approve`.
 - Transfer execution for teams with `MANAGER` approval policy.
-- Basic business logging for schedule, assignment, transfer request, outbox, and notification workflows.
+- Swap execution for teams with `EMPLOYEE` or `MANAGER` approval policy.
+- Basic business logging for schedule, assignment, transfer and swap request, outbox, and notification workflows.
 - Unified JSON error responses for API and security errors.
 
 Not implemented yet:
 
 - Schedule list, update, and delete endpoints.
-- Full shift swap endpoints.
 - Remaining team-scoped authorization for future manager workflows.
 
 ## Requirements
@@ -951,7 +952,7 @@ Scheduling validation failures return a stable error code:
 }
 ```
 
-## Transfer Request Endpoints
+## Transfer And Swap Request Endpoints
 
 Create a transfer request for one of the authenticated employee's published assignments:
 
@@ -978,6 +979,7 @@ Expected response:
   "targetEmployeeUsername": "employee2",
   "targetEmployeeFullName": "Demo Employee Two",
   "targetAssignmentId": null,
+  "targetShiftId": null,
   "employeeApprovedAt": null,
   "managerApprovedById": null,
   "managerApprovedAt": null,
@@ -993,34 +995,79 @@ Current transfer request rules:
 3. The source assignment must belong to a `PUBLISHED` schedule.
 4. The target employee must be a different `EMPLOYEE` user.
 5. The target employee must be an active member of the source shift's team.
-6. Only one active request can exist for the same source assignment.
+6. Only one active request can involve the same source assignment.
 
-List transfer requests created by the authenticated employee:
+Create a swap request for one of the authenticated employee's published assignments
+and another employee's published assignment in the same team:
+
+```bash
+curl -X POST http://localhost:8080/api/requests/swaps \
+  -H 'Content-Type: application/json' \
+  -H "Authorization: Bearer <TOKEN>" \
+  -d '{"sourceAssignmentId":1,"targetAssignmentId":2}'
+```
+
+Expected response:
+
+```json
+{
+  "id": 2,
+  "type": "SWAP",
+  "status": "PENDING_EMPLOYEE",
+  "requesterId": 2,
+  "requesterUsername": "employee1",
+  "requesterFullName": "Demo Employee One",
+  "sourceAssignmentId": 1,
+  "sourceShiftId": 1,
+  "targetEmployeeId": 3,
+  "targetEmployeeUsername": "employee2",
+  "targetEmployeeFullName": "Demo Employee Two",
+  "targetAssignmentId": 2,
+  "targetShiftId": 2,
+  "employeeApprovedAt": null,
+  "managerApprovedById": null,
+  "managerApprovedAt": null,
+  "createdAt": "2026-08-28T18:00:00.000000Z",
+  "updatedAt": "2026-08-28T18:00:00.000000Z"
+}
+```
+
+Current swap request rules:
+
+1. Only an `EMPLOYEE` user can create a swap request.
+2. The source assignment must belong to the authenticated employee.
+3. The target assignment must belong to a different employee.
+4. Both assignments must belong to `PUBLISHED` schedules.
+5. Both assignments must belong to the same team.
+6. The target employee must be an active member of the source shift's team.
+7. Only one active request can involve either assignment.
+
+List transfer or swap requests created by the authenticated employee:
 
 ```bash
 curl http://localhost:8080/api/requests/me/outgoing \
   -H "Authorization: Bearer <TOKEN>"
 ```
 
-List transfer requests targeting the authenticated employee:
+List transfer or swap requests targeting the authenticated employee:
 
 ```bash
 curl http://localhost:8080/api/requests/me/incoming \
   -H "Authorization: Bearer <TOKEN>"
 ```
 
-List transfer requests waiting for manager approval in teams managed by the authenticated manager:
+List transfer or swap requests waiting for manager approval in teams managed by the authenticated manager:
 
 ```bash
 curl http://localhost:8080/api/requests/manager/pending \
   -H "Authorization: Bearer <TOKEN>"
 ```
 
-Transfer request list endpoints return the same response shape as transfer creation.
+Request list endpoints return the same response shape as transfer or swap creation.
 Employee list endpoints are limited to the authenticated employee, and the manager
 list endpoint is limited to teams managed by the authenticated manager.
 
-Approve an incoming transfer request as the target employee:
+Approve an incoming transfer or swap request as the target employee:
 
 ```bash
 curl -X POST http://localhost:8080/api/requests/1/employee-approve \
@@ -1043,6 +1090,7 @@ Expected response for a team with `MANAGER` approval policy:
   "targetEmployeeUsername": "employee2",
   "targetEmployeeFullName": "Demo Employee Two",
   "targetAssignmentId": null,
+  "targetShiftId": null,
   "employeeApprovedAt": "2026-08-05T18:00:00.000000Z",
   "managerApprovedById": null,
   "managerApprovedAt": null,
@@ -1055,13 +1103,14 @@ Employee approval rules:
 
 1. Only the target employee can approve the request.
 2. Requests can be approved only while their status is `PENDING_EMPLOYEE`.
-3. If the team's approval policy is `EMPLOYEE`, the request status becomes `APPROVED` and the source assignment moves to the target employee.
+3. If the team's approval policy is `EMPLOYEE`, the request status becomes `APPROVED` and the backend executes the transfer or swap immediately.
 4. If the team's approval policy is `MANAGER`, the request status becomes `PENDING_MANAGER`.
-5. For `EMPLOYEE` policy teams, the backend re-runs transfer eligibility checks before moving the assignment.
+5. For `EMPLOYEE` policy teams, the backend re-runs assignment eligibility checks before changing assignments.
 
-If transfer eligibility fails during an `EMPLOYEE` policy approval, the request becomes `INVALIDATED` and the assignment remains unchanged.
+If eligibility fails during an `EMPLOYEE` policy approval, the request becomes
+`INVALIDATED` and assignments remain unchanged.
 
-Reject an incoming transfer request as the target employee:
+Reject an incoming transfer or swap request as the target employee:
 
 ```bash
 curl -X POST http://localhost:8080/api/requests/1/employee-reject \
@@ -1075,7 +1124,7 @@ Employee rejection rules:
 3. Rejection changes the request status to `REJECTED`.
 4. Rejection never changes the assignment.
 
-Cancel an active transfer request as the requester:
+Cancel an active transfer or swap request as the requester:
 
 ```bash
 curl -X POST http://localhost:8080/api/requests/1/cancel \
@@ -1089,7 +1138,7 @@ Cancellation rules:
 3. Cancellation changes the request status to `CANCELLED`.
 4. Cancellation never changes the assignment.
 
-Approve a pending transfer request as a manager:
+Approve a pending transfer or swap request as a manager:
 
 ```bash
 curl -X POST http://localhost:8080/api/requests/1/manager-approve \
@@ -1112,6 +1161,7 @@ Expected response when the target employee is still eligible:
   "targetEmployeeUsername": "employee2",
   "targetEmployeeFullName": "Demo Employee Two",
   "targetAssignmentId": null,
+  "targetShiftId": null,
   "employeeApprovedAt": "2026-08-05T18:00:00.000000Z",
   "managerApprovedById": 1,
   "managerApprovedAt": "2026-08-05T18:30:00.000000Z",
@@ -1125,9 +1175,12 @@ Manager approval rules:
 1. Only a `MANAGER` user can approve at this step.
 2. The manager must manage the source shift's team.
 3. Requests can be manager-approved only while their status is `PENDING_MANAGER`.
-4. Before moving the assignment, the backend re-runs transfer eligibility checks for the target employee.
+4. Before changing assignments, the backend re-runs assignment eligibility checks.
+5. A transfer moves the source assignment to the target employee.
+6. A swap exchanges the source and target assignments.
 
-If transfer eligibility fails during manager approval, the request becomes `INVALIDATED` and the assignment remains unchanged.
+If eligibility fails during manager approval, the request becomes `INVALIDATED`
+and assignments remain unchanged.
 
 ## Availability Constraint Endpoints
 

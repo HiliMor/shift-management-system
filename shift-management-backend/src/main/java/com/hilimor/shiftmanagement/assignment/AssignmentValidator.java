@@ -2,6 +2,7 @@ package com.hilimor.shiftmanagement.assignment;
 
 import java.time.Duration;
 import java.time.Instant;
+import java.util.Objects;
 
 import com.hilimor.shiftmanagement.availability.AvailabilityConstraintRepository;
 import com.hilimor.shiftmanagement.shift.Shift;
@@ -54,6 +55,25 @@ public class AssignmentValidator {
         validateMinimumRest(shift, employeeId);
     }
 
+    public void validateEmployeeCanReceiveSwappedAssignment(
+            Shift shift,
+            User employee,
+            Assignment assignmentToReplace
+    ) {
+        Objects.requireNonNull(assignmentToReplace, "assignmentToReplace must not be null");
+
+        Long teamId = shift.getSchedule().getTeam().getId();
+        Long employeeId = employee.getId();
+        Long ignoredAssignmentId = assignmentToReplace.getId();
+
+        validateTeamMembership(employeeId, teamId);
+        validateRequiredStaffingRole(shift, employeeId, teamId);
+        validateNotAlreadyAssigned(shift.getId(), employeeId);
+        validateAvailability(shift, employeeId);
+        validateNoOverlap(shift, employeeId, ignoredAssignmentId);
+        validateMinimumRest(shift, employeeId, ignoredAssignmentId);
+    }
+
     private void validateTeamMembership(Long employeeId, Long teamId) {
         if (!teamMemberRepository.existsByUser_IdAndTeam_IdAndActiveTrue(employeeId, teamId)) {
             throw conflict("TEAM_MEMBERSHIP", "Employee must be an active member of the shift team");
@@ -74,7 +94,10 @@ public class AssignmentValidator {
                 );
 
         if (!hasRequiredRole) {
-            throw conflict("STAFFING_ROLE_REQUIRED", "Employee does not have the staffing role required for this shift");
+            throw conflict(
+                    "STAFFING_ROLE_REQUIRED",
+                    "Employee does not have the staffing role required for this shift"
+            );
         }
     }
 
@@ -119,6 +142,26 @@ public class AssignmentValidator {
         }
     }
 
+    private void validateNoOverlap(Shift shift, Long employeeId, Long ignoredAssignmentId) {
+        if (ignoredAssignmentId == null) {
+            validateNoOverlap(shift, employeeId);
+            return;
+        }
+
+        boolean hasOverlap = !assignmentRepository
+                .findByEmployee_IdAndIdNotAndShift_StartTimeLessThanAndShift_EndTimeGreaterThan(
+                        employeeId,
+                        ignoredAssignmentId,
+                        shift.getEndTime(),
+                        shift.getStartTime()
+                )
+                .isEmpty();
+
+        if (hasOverlap) {
+            throw conflict("SHIFT_OVERLAP", "Employee already has an overlapping assignment");
+        }
+    }
+
     private void validateMinimumRest(Shift shift, Long employeeId) {
         assignmentRepository
                 .findTopByEmployee_IdAndShift_EndTimeLessThanEqualOrderByShift_EndTimeDesc(
@@ -130,6 +173,29 @@ public class AssignmentValidator {
         assignmentRepository
                 .findTopByEmployee_IdAndShift_StartTimeGreaterThanEqualOrderByShift_StartTimeAsc(
                         employeeId,
+                        shift.getEndTime()
+                )
+                .ifPresent(nextAssignment -> validateRestBeforeNextShift(shift, nextAssignment.getShift()));
+    }
+
+    private void validateMinimumRest(Shift shift, Long employeeId, Long ignoredAssignmentId) {
+        if (ignoredAssignmentId == null) {
+            validateMinimumRest(shift, employeeId);
+            return;
+        }
+
+        assignmentRepository
+                .findTopByEmployee_IdAndIdNotAndShift_EndTimeLessThanEqualOrderByShift_EndTimeDesc(
+                        employeeId,
+                        ignoredAssignmentId,
+                        shift.getStartTime()
+                )
+                .ifPresent(previousAssignment -> validateRestAfterPreviousShift(previousAssignment.getShift(), shift));
+
+        assignmentRepository
+                .findTopByEmployee_IdAndIdNotAndShift_StartTimeGreaterThanEqualOrderByShift_StartTimeAsc(
+                        employeeId,
+                        ignoredAssignmentId,
                         shift.getEndTime()
                 )
                 .ifPresent(nextAssignment -> validateRestBeforeNextShift(shift, nextAssignment.getShift()));

@@ -1,17 +1,23 @@
-function isActiveTransferRequest(request) {
+function isActiveRequest(request) {
   return request.status === "PENDING_EMPLOYEE" || request.status === "PENDING_MANAGER";
 }
 
-function isActingOnTransferRequest(actingTransferRequest, requestId, actionName) {
+function isActingOnRequest(actingTransferRequest, requestId, actionName) {
   return actingTransferRequest?.id === requestId && actingTransferRequest.action === actionName;
 }
 
-function renderTransferRequest(request, formatDateTime, actions = null) {
+function requestTypeLabel(type) {
+  return type === "SWAP" ? "Swap" : "Transfer";
+}
+
+function renderRequest(request, formatDateTime, actions = null) {
   return (
     <article className="request-row" key={request.id}>
       <div>
         <div className="request-title-row">
-          <h3>Transfer request #{request.id}</h3>
+          <h3>
+            {requestTypeLabel(request.type)} request #{request.id}
+          </h3>
           <span className={`status-badge status-${request.status.toLowerCase().replaceAll("_", "-")}`}>
             {request.status}
           </span>
@@ -29,10 +35,17 @@ function renderTransferRequest(request, formatDateTime, actions = null) {
             <span>{request.targetEmployeeUsername}</span>
           </div>
           <div>
-            <p className="eyebrow">Assignment</p>
+            <p className="eyebrow">Source assignment</p>
             <strong>#{request.sourceAssignmentId}</strong>
             <span>Shift #{request.sourceShiftId}</span>
           </div>
+          {request.targetAssignmentId ? (
+            <div>
+              <p className="eyebrow">Target assignment</p>
+              <strong>#{request.targetAssignmentId}</strong>
+              <span>Shift #{request.targetShiftId}</span>
+            </div>
+          ) : null}
           <div>
             <p className="eyebrow">Created</p>
             <strong>{formatDateTime(request.createdAt)}</strong>
@@ -67,7 +80,7 @@ function TransferRequestsSection({
   return (
     <section className="section-block" id="transfer-requests">
       <div className="section-heading">
-        <h2>Transfer requests</h2>
+        <h2>Transfer and swap requests</h2>
         <div className="section-actions">
           <span>{transferRequestCount}</span>
           <button
@@ -81,13 +94,13 @@ function TransferRequestsSection({
         </div>
       </div>
 
-      {isLoadingTransferRequests ? <p className="muted">Loading transfer requests...</p> : null}
+      {isLoadingTransferRequests ? <p className="muted">Loading requests...</p> : null}
       {transferRequestsError ? <p className="error-message">{transferRequestsError}</p> : null}
       {transferRequestActionError ? <p className="error-message">{transferRequestActionError}</p> : null}
       {transferRequestActionMessage ? <p className="success-message">{transferRequestActionMessage}</p> : null}
 
       {!isLoadingTransferRequests && !transferRequestsError && transferRequestCount === 0 ? (
-        <p className="muted">No transfer requests are available for this user.</p>
+        <p className="muted">No transfer or swap requests are available for this user.</p>
       ) : null}
 
       {isManager ? (
@@ -96,7 +109,7 @@ function TransferRequestsSection({
             <h3>Pending manager approval</h3>
             <div className="request-list">
               {pendingManagerTransferRequests.map((request) =>
-                renderTransferRequest(
+                renderRequest(
                   request,
                   formatDateTime,
                   request.status === "PENDING_MANAGER" ? (
@@ -106,7 +119,7 @@ function TransferRequestsSection({
                       onClick={() => onApproveManagerTransferRequest(request.id)}
                       type="button"
                     >
-                      {isActingOnTransferRequest(actingTransferRequest, request.id, "manager-approve")
+                      {isActingOnRequest(actingTransferRequest, request.id, "manager-approve")
                         ? "Approving..."
                         : "Approve"}
                     </button>
@@ -121,11 +134,11 @@ function TransferRequestsSection({
           <section className="request-panel">
             <h3>Incoming requests</h3>
             {incomingTransferRequests.length === 0 ? (
-              <p className="muted">No incoming transfer requests.</p>
+              <p className="muted">No incoming requests.</p>
             ) : null}
             <div className="request-list">
               {incomingTransferRequests.map((request) =>
-                renderTransferRequest(
+                renderRequest(
                   request,
                   formatDateTime,
                   request.status === "PENDING_EMPLOYEE" ? (
@@ -136,7 +149,7 @@ function TransferRequestsSection({
                         onClick={() => onApproveIncomingTransferRequest(request.id)}
                         type="button"
                       >
-                        {isActingOnTransferRequest(actingTransferRequest, request.id, "employee-approve")
+                        {isActingOnRequest(actingTransferRequest, request.id, "employee-approve")
                           ? "Approving..."
                           : "Approve"}
                       </button>
@@ -146,7 +159,7 @@ function TransferRequestsSection({
                         onClick={() => onRejectIncomingTransferRequest(request.id)}
                         type="button"
                       >
-                        {isActingOnTransferRequest(actingTransferRequest, request.id, "employee-reject")
+                        {isActingOnRequest(actingTransferRequest, request.id, "employee-reject")
                           ? "Rejecting..."
                           : "Reject"}
                       </button>
@@ -160,21 +173,21 @@ function TransferRequestsSection({
           <section className="request-panel">
             <h3>Outgoing requests</h3>
             {outgoingTransferRequests.length === 0 ? (
-              <p className="muted">No outgoing transfer requests.</p>
+              <p className="muted">No outgoing requests.</p>
             ) : null}
             <div className="request-list">
               {outgoingTransferRequests.map((request) =>
-                renderTransferRequest(
+                renderRequest(
                   request,
                   formatDateTime,
-                  isActiveTransferRequest(request) ? (
+                  isActiveRequest(request) ? (
                     <button
                       className="secondary-button compact-button"
                       disabled={actingTransferRequest !== null}
                       onClick={() => onCancelOutgoingTransferRequest(request.id)}
                       type="button"
                     >
-                      {isActingOnTransferRequest(actingTransferRequest, request.id, "cancel")
+                      {isActingOnRequest(actingTransferRequest, request.id, "cancel")
                         ? "Cancelling..."
                         : "Cancel"}
                     </button>

@@ -215,6 +215,123 @@ class SwapRequestServiceTest {
     }
 
     @Test
+    void createSwapRequestSavesPendingEmployeeRequest() {
+        User requester = employee("employee1", 2L);
+        User targetEmployee = employee("employee2", 3L);
+        Schedule schedule = schedule(ScheduleStatus.PUBLISHED, SwapApprovalPolicy.EMPLOYEE);
+        Assignment sourceAssignment = assignment(
+                schedule,
+                requester,
+                30L,
+                20L,
+                Instant.parse("2026-08-04T06:00:00Z"),
+                Instant.parse("2026-08-04T14:00:00Z"),
+                "Morning shift"
+        );
+        Assignment targetAssignment = assignment(
+                schedule,
+                targetEmployee,
+                31L,
+                21L,
+                Instant.parse("2026-08-05T06:00:00Z"),
+                Instant.parse("2026-08-05T14:00:00Z"),
+                "Next morning shift"
+        );
+
+        when(userRepository.findByUsername("employee1")).thenReturn(Optional.of(requester));
+        when(assignmentRepository.findById(30L)).thenReturn(Optional.of(sourceAssignment));
+        when(assignmentRepository.findById(31L)).thenReturn(Optional.of(targetAssignment));
+        when(teamMemberRepository.existsByUser_IdAndTeam_IdAndActiveTrue(3L, 1L)).thenReturn(true);
+        when(swapRequestRepository.save(any(SwapRequest.class))).thenAnswer(invocation -> {
+            SwapRequest request = invocation.getArgument(0);
+            ReflectionTestUtils.setField(request, "id", 40L);
+            return request;
+        });
+
+        SwapRequestResponse response = swapRequestService.createSwapRequest(
+                "employee1",
+                new CreateSwapRequest(30L, 31L)
+        );
+
+        assertThat(response.id()).isEqualTo(40L);
+        assertThat(response.type()).isEqualTo(SwapRequestType.SWAP);
+        assertThat(response.status()).isEqualTo(SwapRequestStatus.PENDING_EMPLOYEE);
+        assertThat(response.requesterId()).isEqualTo(2L);
+        assertThat(response.sourceAssignmentId()).isEqualTo(30L);
+        assertThat(response.sourceShiftId()).isEqualTo(20L);
+        assertThat(response.targetEmployeeId()).isEqualTo(3L);
+        assertThat(response.targetAssignmentId()).isEqualTo(31L);
+        assertThat(response.targetShiftId()).isEqualTo(21L);
+
+        ArgumentCaptor<SwapRequest> captor = ArgumentCaptor.forClass(SwapRequest.class);
+        verify(swapRequestRepository).save(captor.capture());
+        assertThat(captor.getValue().getRequester()).isSameAs(requester);
+        assertThat(captor.getValue().getSourceAssignment()).isSameAs(sourceAssignment);
+        assertThat(captor.getValue().getTargetEmployee()).isSameAs(targetEmployee);
+        assertThat(captor.getValue().getTargetAssignment()).isSameAs(targetAssignment);
+    }
+
+    @Test
+    void createSwapRequestRejectsAssignmentsFromDifferentTeams() {
+        User requester = employee("employee1", 2L);
+        User targetEmployee = employee("employee2", 3L);
+        Assignment sourceAssignment = assignment(
+                schedule(ScheduleStatus.PUBLISHED, SwapApprovalPolicy.MANAGER, 1L),
+                requester,
+                30L
+        );
+        Assignment targetAssignment = assignment(
+                schedule(ScheduleStatus.PUBLISHED, SwapApprovalPolicy.MANAGER, 2L),
+                targetEmployee,
+                31L
+        );
+
+        when(userRepository.findByUsername("employee1")).thenReturn(Optional.of(requester));
+        when(assignmentRepository.findById(30L)).thenReturn(Optional.of(sourceAssignment));
+        when(assignmentRepository.findById(31L)).thenReturn(Optional.of(targetAssignment));
+
+        assertResponseStatus(
+                () -> swapRequestService.createSwapRequest("employee1", new CreateSwapRequest(30L, 31L)),
+                HttpStatus.BAD_REQUEST
+        );
+
+        verify(swapRequestRepository, never()).save(any());
+    }
+
+    @Test
+    void createSwapRequestRejectsAssignmentAlreadyInActiveRequest() {
+        User requester = employee("employee1", 2L);
+        User targetEmployee = employee("employee2", 3L);
+        Schedule schedule = schedule(ScheduleStatus.PUBLISHED, SwapApprovalPolicy.MANAGER);
+        Assignment sourceAssignment = assignment(schedule, requester, 30L);
+        Assignment targetAssignment = assignment(schedule, targetEmployee, 31L, 21L);
+
+        when(userRepository.findByUsername("employee1")).thenReturn(Optional.of(requester));
+        when(assignmentRepository.findById(30L)).thenReturn(Optional.of(sourceAssignment));
+        when(assignmentRepository.findById(31L)).thenReturn(Optional.of(targetAssignment));
+        when(teamMemberRepository.existsByUser_IdAndTeam_IdAndActiveTrue(3L, 1L)).thenReturn(true);
+        when(swapRequestRepository.existsBySourceAssignment_IdAndStatusIn(
+                30L,
+                List.of(SwapRequestStatus.PENDING_EMPLOYEE, SwapRequestStatus.PENDING_MANAGER)
+        )).thenReturn(false);
+        when(swapRequestRepository.existsByTargetAssignment_IdAndStatusIn(
+                30L,
+                List.of(SwapRequestStatus.PENDING_EMPLOYEE, SwapRequestStatus.PENDING_MANAGER)
+        )).thenReturn(false);
+        when(swapRequestRepository.existsBySourceAssignment_IdAndStatusIn(
+                31L,
+                List.of(SwapRequestStatus.PENDING_EMPLOYEE, SwapRequestStatus.PENDING_MANAGER)
+        )).thenReturn(true);
+
+        assertResponseStatus(
+                () -> swapRequestService.createSwapRequest("employee1", new CreateSwapRequest(30L, 31L)),
+                HttpStatus.CONFLICT
+        );
+
+        verify(swapRequestRepository, never()).save(any());
+    }
+
+    @Test
     void listMyOutgoingRequestsReturnsRequestsCreatedByCurrentEmployee() {
         User requester = employee("employee1", 2L);
         User targetEmployee = employee("employee2", 3L);
@@ -378,6 +495,73 @@ class SwapRequestServiceTest {
     }
 
     @Test
+    void approveByTargetEmployeeSwapsAssignmentsWhenTeamPolicyIsEmployeeOnly() {
+        User requester = employee("employee1", 2L);
+        User targetEmployee = employee("employee2", 3L);
+        SwapRequest request = swapRequest(
+                requester,
+                targetEmployee,
+                schedule(ScheduleStatus.PUBLISHED, SwapApprovalPolicy.EMPLOYEE)
+        );
+        Assignment sourceAssignment = request.getSourceAssignment();
+        Assignment targetAssignment = request.getTargetAssignment();
+
+        when(userRepository.findByUsername("employee2")).thenReturn(Optional.of(targetEmployee));
+        when(swapRequestRepository.findById(40L)).thenReturn(Optional.of(request));
+
+        SwapRequestResponse response = swapRequestService.approveByTargetEmployee("employee2", 40L);
+
+        assertThat(response.status()).isEqualTo(SwapRequestStatus.APPROVED);
+        assertThat(response.employeeApprovedAt()).isNotNull();
+        assertThat(sourceAssignment.getEmployee()).isSameAs(targetEmployee);
+        assertThat(targetAssignment.getEmployee()).isSameAs(requester);
+        assertThat(sourceAssignment.getAssignedAt()).isEqualTo(response.employeeApprovedAt());
+        assertThat(targetAssignment.getAssignedAt()).isEqualTo(response.employeeApprovedAt());
+        verify(assignmentService).validateEmployeeCanReceiveSwappedAssignment(
+                sourceAssignment.getShift(),
+                targetEmployee,
+                targetAssignment
+        );
+        verify(assignmentService).validateEmployeeCanReceiveSwappedAssignment(
+                targetAssignment.getShift(),
+                requester,
+                sourceAssignment
+        );
+    }
+
+    @Test
+    void approveByTargetEmployeeInvalidatesSwapWhenValidationFails() {
+        User requester = employee("employee1", 2L);
+        User targetEmployee = employee("employee2", 3L);
+        SwapRequest request = swapRequest(
+                requester,
+                targetEmployee,
+                schedule(ScheduleStatus.PUBLISHED, SwapApprovalPolicy.EMPLOYEE)
+        );
+        Assignment sourceAssignment = request.getSourceAssignment();
+        Assignment targetAssignment = request.getTargetAssignment();
+
+        when(userRepository.findByUsername("employee2")).thenReturn(Optional.of(targetEmployee));
+        when(swapRequestRepository.findById(40L)).thenReturn(Optional.of(request));
+        doThrow(new AssignmentValidationException(
+                HttpStatus.CONFLICT,
+                "MINIMUM_REST",
+                "Employee does not have enough rest before this shift"
+        )).when(assignmentService).validateEmployeeCanReceiveSwappedAssignment(
+                sourceAssignment.getShift(),
+                targetEmployee,
+                targetAssignment
+        );
+
+        SwapRequestResponse response = swapRequestService.approveByTargetEmployee("employee2", 40L);
+
+        assertThat(response.status()).isEqualTo(SwapRequestStatus.INVALIDATED);
+        assertThat(response.employeeApprovedAt()).isNotNull();
+        assertThat(sourceAssignment.getEmployee()).isSameAs(requester);
+        assertThat(targetAssignment.getEmployee()).isSameAs(targetEmployee);
+    }
+
+    @Test
     void approveByTargetEmployeeRejectsRequesterApproval() {
         User requester = employee("employee1", 2L);
         User targetEmployee = employee("employee2", 3L);
@@ -503,6 +687,35 @@ class SwapRequestServiceTest {
         assertThat(response.managerApprovedAt()).isNotNull();
         assertThat(response.updatedAt()).isEqualTo(response.managerApprovedAt());
         assertThat(request.getSourceAssignment().getEmployee()).isSameAs(requester);
+    }
+
+    @Test
+    void approveByManagerSwapsAssignmentsWhenManagerApprovalCompletes() {
+        User requester = employee("employee1", 2L);
+        User targetEmployee = employee("employee2", 3L);
+        User manager = user("manager1", 4L, ApplicationRole.MANAGER);
+        SwapRequest request = swapRequest(
+                requester,
+                targetEmployee,
+                schedule(ScheduleStatus.PUBLISHED, SwapApprovalPolicy.MANAGER)
+        );
+        request.approveByTargetEmployee(Instant.parse("2026-08-04T19:00:00Z"), SwapApprovalPolicy.MANAGER);
+        Assignment sourceAssignment = request.getSourceAssignment();
+        Assignment targetAssignment = request.getTargetAssignment();
+
+        when(userRepository.findByUsername("manager1")).thenReturn(Optional.of(manager));
+        when(swapRequestRepository.findById(40L)).thenReturn(Optional.of(request));
+        when(teamManagerRepository.existsByManager_UsernameAndTeam_Id("manager1", 1L)).thenReturn(true);
+
+        SwapRequestResponse response = swapRequestService.approveByManager("manager1", 40L);
+
+        assertThat(response.status()).isEqualTo(SwapRequestStatus.APPROVED);
+        assertThat(response.managerApprovedById()).isEqualTo(4L);
+        assertThat(response.managerApprovedAt()).isNotNull();
+        assertThat(sourceAssignment.getEmployee()).isSameAs(targetEmployee);
+        assertThat(targetAssignment.getEmployee()).isSameAs(requester);
+        assertThat(sourceAssignment.getAssignedAt()).isEqualTo(response.managerApprovedAt());
+        assertThat(targetAssignment.getAssignedAt()).isEqualTo(response.managerApprovedAt());
     }
 
     @Test
@@ -731,15 +944,39 @@ class SwapRequestServiceTest {
     }
 
     private Assignment assignment(Schedule schedule, User employee, Long id) {
-        Shift shift = new Shift(
+        return assignment(schedule, employee, id, 20L);
+    }
+
+    private Assignment assignment(Schedule schedule, User employee, Long id, Long shiftId) {
+        return assignment(
                 schedule,
+                employee,
+                id,
+                shiftId,
                 Instant.parse("2026-08-04T06:00:00Z"),
                 Instant.parse("2026-08-04T14:00:00Z"),
-                "Morning shift",
+                "Morning shift"
+        );
+    }
+
+    private Assignment assignment(
+            Schedule schedule,
+            User employee,
+            Long id,
+            Long shiftId,
+            Instant startTime,
+            Instant endTime,
+            String description
+    ) {
+        Shift shift = new Shift(
+                schedule,
+                startTime,
+                endTime,
+                description,
                 1,
                 8
         );
-        ReflectionTestUtils.setField(shift, "id", 20L);
+        ReflectionTestUtils.setField(shift, "id", shiftId);
 
         Assignment assignment = new Assignment(shift, employee, Instant.parse("2026-08-03T10:00:00Z"));
         ReflectionTestUtils.setField(assignment, "id", id);
@@ -751,8 +988,12 @@ class SwapRequestServiceTest {
     }
 
     private Schedule schedule(ScheduleStatus status, SwapApprovalPolicy approvalPolicy) {
+        return schedule(status, approvalPolicy, 1L);
+    }
+
+    private Schedule schedule(ScheduleStatus status, SwapApprovalPolicy approvalPolicy, Long teamId) {
         Team team = new Team("Operations", approvalPolicy, 8, "Asia/Jerusalem");
-        ReflectionTestUtils.setField(team, "id", 1L);
+        ReflectionTestUtils.setField(team, "id", teamId);
 
         Schedule schedule = new Schedule(team, LocalDate.of(2026, 8, 4), LocalDate.of(2026, 8, 10));
         ReflectionTestUtils.setField(schedule, "id", 10L);
@@ -765,6 +1006,17 @@ class SwapRequestServiceTest {
                 requester,
                 assignment(schedule, requester, 30L),
                 targetEmployee,
+                Instant.parse("2026-08-04T18:00:00Z")
+        );
+        ReflectionTestUtils.setField(request, "id", 40L);
+        return request;
+    }
+
+    private SwapRequest swapRequest(User requester, User targetEmployee, Schedule schedule) {
+        SwapRequest request = SwapRequest.createSwap(
+                requester,
+                assignment(schedule, requester, 30L, 20L),
+                assignment(schedule, targetEmployee, 31L, 21L),
                 Instant.parse("2026-08-04T18:00:00Z")
         );
         ReflectionTestUtils.setField(request, "id", 40L);
