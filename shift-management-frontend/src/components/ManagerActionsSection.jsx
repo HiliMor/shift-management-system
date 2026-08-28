@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useLanguage } from "../i18n/LanguageContext.jsx";
 import AssignEmployeePanel from "./manager/AssignEmployeePanel.jsx";
 import AutomaticAssignmentPanel from "./manager/AutomaticAssignmentPanel.jsx";
 import CreateSchedulePanel from "./manager/CreateSchedulePanel.jsx";
@@ -100,39 +101,40 @@ function ManagerActionsSection({
   teamEmployees,
   teamEmployeesError,
 }) {
+  const { t } = useLanguage();
   const [activeWorkflowStep, setActiveWorkflowStep] = useState("draft");
   const readinessLabel = publicationReadiness
     ? publicationReadiness.readyToPublish
-      ? "Ready"
-      : `${publicationReadiness.totalOpenSlots} open slots`
-    : "Not checked";
+      ? t("ready")
+      : `${publicationReadiness.totalOpenSlots} ${t("openSlots")}`
+    : t("notChecked");
 
   const workflowSteps = [
     {
       id: "draft",
       number: "1",
-      label: "Draft",
-      summary: `${managedDraftSchedules.length} drafts`,
+      label: t("draft"),
+      summary: `${managedDraftSchedules.length} ${t("drafts")}`,
       panelId: "manager-workflow-draft",
     },
     {
       id: "build",
       number: "2",
-      label: "Build shifts",
-      summary: `${templates.length} templates`,
+      label: t("buildShifts"),
+      summary: `${templates.length} ${t("templates")}`,
       panelId: "manager-workflow-build",
     },
     {
       id: "assign",
       number: "3",
-      label: "Assign",
-      summary: `${scheduleAssignments.length} visible`,
+      label: t("assign"),
+      summary: `${scheduleAssignments.length} ${t("visible")}`,
       panelId: "manager-workflow-assign",
     },
     {
       id: "publish",
       number: "4",
-      label: "Publish",
+      label: t("publish"),
       summary: readinessLabel,
       panelId: "manager-workflow-publish",
     },
@@ -141,20 +143,20 @@ function ManagerActionsSection({
   return (
     <section className="section-block" id="manager">
       <div className="section-heading">
-        <h2>Schedule workflow</h2>
-        <span>{managedTeams.length} teams</span>
+        <h2>{t("scheduleWorkflow")}</h2>
+        <span>{managedTeams.length} {t("teams")}</span>
       </div>
 
-      {isLoadingManagedTeams ? <p className="muted">Loading managed teams...</p> : null}
+      {isLoadingManagedTeams ? <p className="muted">{t("loadingManagedTeams")}</p> : null}
       {managedTeamsError ? <p className="error-message">{managedTeamsError}</p> : null}
 
       {!isLoadingManagedTeams && !managedTeamsError && managedTeams.length === 0 ? (
-        <p className="muted">No managed teams are available for this user.</p>
+        <p className="muted">{t("noManagedTeams")}</p>
       ) : null}
 
       {managedTeams.length > 0 ? (
         <div className="manager-stack">
-          <div className="workflow-steps" aria-label="Manager schedule workflow" role="tablist">
+          <div className="workflow-steps" aria-label={t("managerScheduleWorkflow")} role="tablist">
             {workflowSteps.map((step) => (
               <button
                 aria-controls={step.panelId}

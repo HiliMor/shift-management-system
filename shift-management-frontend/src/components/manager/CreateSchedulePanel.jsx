@@ -1,3 +1,5 @@
+import { useLanguage } from "../../i18n/LanguageContext.jsx";
+
 function CreateSchedulePanel({
   isCreatingSchedule,
   managedTeams,
@@ -5,15 +7,17 @@ function CreateSchedulePanel({
   onScheduleFormChange,
   scheduleForm,
 }) {
+  const { t } = useLanguage();
+
   return (
     <section className="manager-panel" id="manager-drafts">
       <div className="manager-panel-heading">
         <span>1</span>
-        <h3>Draft schedule</h3>
+        <h3>{t("draftSchedule")}</h3>
       </div>
       <form className="manager-form" onSubmit={onCreateSchedule}>
         <label>
-          Team
+          {t("team")}
           <select name="teamId" onChange={onScheduleFormChange} required value={scheduleForm.teamId}>
             {managedTeams.map((team) => (
               <option key={team.id} value={team.id}>
@@ -24,7 +28,7 @@ function CreateSchedulePanel({
         </label>
 
         <label>
-          Start date
+          {t("startDate")}
           <input
             name="startDate"
             onChange={onScheduleFormChange}
@@ -35,7 +39,7 @@ function CreateSchedulePanel({
         </label>
 
         <label>
-          End date
+          {t("endDate")}
           <input
             name="endDate"
             onChange={onScheduleFormChange}
@@ -46,7 +50,7 @@ function CreateSchedulePanel({
         </label>
 
         <button disabled={isCreatingSchedule} type="submit">
-          {isCreatingSchedule ? "Creating..." : "Create draft schedule"}
+          {isCreatingSchedule ? t("creating") : t("createDraftSchedule")}
         </button>
       </form>
     </section>
