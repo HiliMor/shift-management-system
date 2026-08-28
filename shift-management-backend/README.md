@@ -93,6 +93,7 @@ Implemented:
 - Manager approval endpoint: `POST /api/requests/{requestId}/manager-approve`.
 - Transfer execution for teams with `MANAGER` approval policy.
 - Swap execution for teams with `EMPLOYEE` or `MANAGER` approval policy.
+- Separate `SwapRequestExecutor` component for approved transfer and swap execution.
 - Basic business logging for schedule, assignment, transfer and swap request, outbox, and notification workflows.
 - Unified JSON error responses for API and security errors.
 

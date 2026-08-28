@@ -6,8 +6,6 @@ import java.util.Objects;
 
 import com.hilimor.shiftmanagement.assignment.Assignment;
 import com.hilimor.shiftmanagement.assignment.AssignmentRepository;
-import com.hilimor.shiftmanagement.assignment.AssignmentService;
-import com.hilimor.shiftmanagement.assignment.AssignmentValidationException;
 import com.hilimor.shiftmanagement.schedule.Schedule;
 import com.hilimor.shiftmanagement.schedule.ScheduleStatus;
 import com.hilimor.shiftmanagement.team.TeamManagerRepository;
@@ -35,7 +33,7 @@ public class SwapRequestService {
 
     private final SwapRequestRepository swapRequestRepository;
     private final AssignmentRepository assignmentRepository;
-    private final AssignmentService assignmentService;
+    private final SwapRequestExecutor swapRequestExecutor;
     private final UserRepository userRepository;
     private final TeamMemberRepository teamMemberRepository;
     private final TeamManagerRepository teamManagerRepository;
@@ -43,14 +41,14 @@ public class SwapRequestService {
     public SwapRequestService(
             SwapRequestRepository swapRequestRepository,
             AssignmentRepository assignmentRepository,
-            AssignmentService assignmentService,
+            SwapRequestExecutor swapRequestExecutor,
             UserRepository userRepository,
             TeamMemberRepository teamMemberRepository,
             TeamManagerRepository teamManagerRepository
     ) {
         this.swapRequestRepository = swapRequestRepository;
         this.assignmentRepository = assignmentRepository;
-        this.assignmentService = assignmentService;
+        this.swapRequestExecutor = swapRequestExecutor;
         this.userRepository = userRepository;
         this.teamMemberRepository = teamMemberRepository;
         this.teamManagerRepository = teamManagerRepository;
@@ -265,7 +263,7 @@ public class SwapRequestService {
             throw new ResponseStatusException(HttpStatus.CONFLICT, exception.getMessage(), exception);
         }
 
-        executeApprovedRequestIfReady(request, approvedAt);
+        swapRequestExecutor.executeIfReady(request, approvedAt);
         log.info(
                 "{} request {} approved by target employee {}; status is {}",
                 request.getType(),
@@ -300,7 +298,7 @@ public class SwapRequestService {
             throw new ResponseStatusException(HttpStatus.CONFLICT, exception.getMessage(), exception);
         }
 
-        executeApprovedRequestIfReady(request, approvedAt);
+        swapRequestExecutor.executeIfReady(request, approvedAt);
         log.info(
                 "{} request {} approved by manager {}; status is {}",
                 request.getType(),
@@ -361,119 +359,6 @@ public class SwapRequestService {
         return SwapRequestResponse.from(request);
     }
 
-    private void executeApprovedRequestIfReady(SwapRequest request, Instant executedAt) {
-        if (request.getStatus() != SwapRequestStatus.APPROVED) {
-            return;
-        }
-
-        if (request.getType() == SwapRequestType.TRANSFER) {
-            executeApprovedTransfer(request, executedAt);
-            return;
-        }
-
-        executeApprovedSwap(request, executedAt);
-    }
-
-    private void executeApprovedTransfer(SwapRequest request, Instant executedAt) {
-        Assignment sourceAssignment = request.getSourceAssignment();
-        User targetEmployee = request.getTargetEmployee();
-
-        if (!Objects.equals(sourceAssignment.getEmployee().getId(), request.getRequester().getId())) {
-            invalidateRequest(request, executedAt, "Source assignment owner changed before transfer execution");
-            return;
-        }
-
-        if (sourceAssignment.getShift().getSchedule().getStatus() != ScheduleStatus.PUBLISHED) {
-            invalidateRequest(request, executedAt, "Schedule is no longer published before transfer execution");
-            return;
-        }
-
-        try {
-            assignmentService.validateEmployeeCanReceiveTransferredAssignment(
-                    sourceAssignment.getShift(),
-                    targetEmployee
-            );
-        } catch (AssignmentValidationException exception) {
-            request.invalidate(executedAt);
-            log.warn(
-                    "Transfer request {} invalidated before assignment transfer; assignment={}, targetEmployee={}, reason={}",
-                    request.getId(),
-                    sourceAssignment.getId(),
-                    targetEmployee.getId(),
-                    exception.getCode()
-            );
-            return;
-        }
-
-        Long previousEmployeeId = sourceAssignment.getEmployee().getId();
-        sourceAssignment.transferTo(targetEmployee, executedAt);
-        log.info(
-                "Assignment {} transferred from employee {} to employee {} through transfer request {}",
-                sourceAssignment.getId(),
-                previousEmployeeId,
-                targetEmployee.getId(),
-                request.getId()
-        );
-    }
-
-    private void executeApprovedSwap(SwapRequest request, Instant executedAt) {
-        Assignment sourceAssignment = request.getSourceAssignment();
-        Assignment targetAssignment = request.getTargetAssignment();
-        User requester = request.getRequester();
-        User targetEmployee = request.getTargetEmployee();
-
-        if (targetAssignment == null) {
-            invalidateRequest(request, executedAt, "Swap target assignment is missing before execution");
-            return;
-        }
-
-        if (!Objects.equals(sourceAssignment.getEmployee().getId(), requester.getId())
-                || !Objects.equals(targetAssignment.getEmployee().getId(), targetEmployee.getId())) {
-            invalidateRequest(request, executedAt, "Assignment owner changed before swap execution");
-            return;
-        }
-
-        if (sourceAssignment.getShift().getSchedule().getStatus() != ScheduleStatus.PUBLISHED
-                || targetAssignment.getShift().getSchedule().getStatus() != ScheduleStatus.PUBLISHED) {
-            invalidateRequest(request, executedAt, "Schedule is no longer published before swap execution");
-            return;
-        }
-
-        try {
-            assignmentService.validateEmployeeCanReceiveSwappedAssignment(
-                    sourceAssignment.getShift(),
-                    targetEmployee,
-                    targetAssignment
-            );
-            assignmentService.validateEmployeeCanReceiveSwappedAssignment(
-                    targetAssignment.getShift(),
-                    requester,
-                    sourceAssignment
-            );
-        } catch (AssignmentValidationException exception) {
-            request.invalidate(executedAt);
-            log.warn(
-                    "Swap request {} invalidated before assignment exchange; sourceAssignment={}, targetAssignment={}, reason={}",
-                    request.getId(),
-                    sourceAssignment.getId(),
-                    targetAssignment.getId(),
-                    exception.getCode()
-            );
-            return;
-        }
-
-        sourceAssignment.transferTo(targetEmployee, executedAt);
-        targetAssignment.transferTo(requester, executedAt);
-        log.info(
-                "Assignments {} and {} swapped between employees {} and {} through request {}",
-                sourceAssignment.getId(),
-                targetAssignment.getId(),
-                requester.getId(),
-                targetEmployee.getId(),
-                request.getId()
-        );
-    }
-
     private boolean hasActiveRequestForAssignment(Long assignmentId) {
         return swapRequestRepository.existsBySourceAssignment_IdAndStatusIn(
                 assignmentId,
@@ -482,11 +367,6 @@ public class SwapRequestService {
                 assignmentId,
                 ACTIVE_REQUEST_STATUSES
         );
-    }
-
-    private void invalidateRequest(SwapRequest request, Instant invalidatedAt, String reason) {
-        request.invalidate(invalidatedAt);
-        log.warn("{} request {} invalidated: {}", request.getType(), request.getId(), reason);
     }
 
     private User currentUser(String username) {

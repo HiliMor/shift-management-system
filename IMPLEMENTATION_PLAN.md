@@ -1599,3 +1599,9 @@ Still open:
 
 - Extracted manager team loading, draft schedule loading, shift creation, manual assignment, staffing role loading, and assignment data loading from `App.jsx` into `useManagerScheduling`.
 - Reduced `App.jsx` so it mostly composes hooks and passes state/actions into screen sections.
+
+### 2026-08-28 - Transfer And Swap Requests: Execution Refactor
+
+- Extracted approved transfer and swap execution from `SwapRequestService` into `SwapRequestExecutor`.
+- Kept `SwapRequestService` focused on request creation, listing, approval, rejection, cancellation, and authorization checks.
+- Added focused executor tests for transfer execution, swap execution, stale ownership invalidation, unpublished schedule invalidation, and assignment validation failures.

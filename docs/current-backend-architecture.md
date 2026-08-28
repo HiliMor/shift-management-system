@@ -87,7 +87,7 @@ flowchart TD
     schedule["schedule<br/>Draft schedule creation, publication, reopening, readiness, and employee published views"]
     shift["shift<br/>Shift CRUD inside schedules"]
     assignment["assignment<br/>Manual and automatic assignment workflow<br/>AssignmentValidator"]
-    request["request<br/>Transfer and swap request workflow"]
+    request["request<br/>Transfer and swap request workflow<br/>SwapRequestExecutor"]
     availability["availability<br/>Employee unavailable time ranges"]
     staffing["staffing<br/>Team staffing roles, member-role links, and role assignment API"]
     template["template<br/>Shift template, template slot, and shift generation workflow"]
@@ -693,6 +693,7 @@ sequenceDiagram
     participant SwapRequestController
     participant SwapRequestService
     participant SwapRequest
+    participant SwapRequestExecutor
     participant AssignmentService
     participant Assignment
 
@@ -702,15 +703,16 @@ sequenceDiagram
     SwapRequestService->>SwapRequestService: validate current user is the target employee
     SwapRequestService->>SwapRequest: approveByTargetEmployee(now, teamApprovalPolicy)
     SwapRequest->>SwapRequest: PENDING_EMPLOYEE to APPROVED or PENDING_MANAGER
+    SwapRequestService->>SwapRequestExecutor: executeIfReady(request, approvedAt)
     alt Team policy is EMPLOYEE
-        SwapRequestService->>AssignmentService: validateEmployeeCanReceiveTransferredAssignment(shift, targetEmployee)
+        SwapRequestExecutor->>AssignmentService: validateEmployeeCanReceiveTransferredAssignment(shift, targetEmployee)
         alt Target employee is eligible
-            SwapRequestService->>Assignment: transferTo(targetEmployee, approvedAt)
+            SwapRequestExecutor->>Assignment: transferTo(targetEmployee, approvedAt)
         else Target employee is not eligible
-            SwapRequestService->>SwapRequest: invalidate(approvedAt)
+            SwapRequestExecutor->>SwapRequest: invalidate(approvedAt)
         end
     else Team policy is MANAGER
-        SwapRequestService->>SwapRequestService: wait for manager approval
+        SwapRequestExecutor-->>SwapRequestService: request is not ready for execution yet
     end
     SwapRequestService-->>SwapRequestController: SwapRequestResponse
     SwapRequestController-->>Client: 200 OK
@@ -726,6 +728,7 @@ sequenceDiagram
     participant SwapRequestService
     participant SwapRequest
     participant TeamManagerRepository
+    participant SwapRequestExecutor
     participant AssignmentService
     participant Assignment
 
@@ -736,11 +739,12 @@ sequenceDiagram
     SwapRequestService->>TeamManagerRepository: confirm manager owns the source shift team
     SwapRequestService->>SwapRequest: approveByManager(manager, now)
     SwapRequest->>SwapRequest: PENDING_MANAGER to APPROVED
-    SwapRequestService->>AssignmentService: validateEmployeeCanReceiveTransferredAssignment(shift, targetEmployee)
+    SwapRequestService->>SwapRequestExecutor: executeIfReady(request, approvedAt)
+    SwapRequestExecutor->>AssignmentService: validateEmployeeCanReceiveTransferredAssignment(shift, targetEmployee)
     alt Target employee is eligible
-        SwapRequestService->>Assignment: transferTo(targetEmployee, approvedAt)
+        SwapRequestExecutor->>Assignment: transferTo(targetEmployee, approvedAt)
     else Target employee is not eligible
-        SwapRequestService->>SwapRequest: invalidate(approvedAt)
+        SwapRequestExecutor->>SwapRequest: invalidate(approvedAt)
     end
     SwapRequestService-->>SwapRequestController: SwapRequestResponse
     SwapRequestController-->>Client: 200 OK
@@ -785,7 +789,7 @@ flowchart LR
 | `schedule` | Draft schedule creation, managed draft schedule listing, schedule publication, explicit unfilled-publication confirmation, schedule reopening, publication readiness, employee published schedule list/details, and schedule lifecycle state fields. |
 | `shift` | Shift creation, listing, update, deletion, schedule-range validation, optional required staffing role storage, and optional source template slot storage for generated shifts. |
 | `assignment` | Manual assignment creation/list/delete, basic automatic assignment, and shared assignment validation through `AssignmentValidator`, including capacity, availability, overlap, rest, and required staffing roles. |
-| `request` | Transfer and swap request model, request statuses, transfer/swap creation, employee and manager scoped request lists, target employee approval/rejection, manager approval, requester cancellation, transfer execution, and swap execution. |
+| `request` | Transfer and swap request model, request statuses, transfer/swap creation, employee and manager scoped request lists, target employee approval/rejection, manager approval, requester cancellation, and approved request execution through `SwapRequestExecutor`. |
 | `availability` | Employee unavailable time ranges and conflict checks with assignments. |
 | `staffing` | Team-specific professional roles, role create/list API, employee role assignment/list API, and persistence for assigning roles to team members. |
 | `template` | Shift template and template slot persistence model, manager-scoped create/list APIs, and template-based shift generation into draft schedules. |

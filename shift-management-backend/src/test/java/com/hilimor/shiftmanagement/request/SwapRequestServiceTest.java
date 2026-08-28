@@ -3,7 +3,7 @@ package com.hilimor.shiftmanagement.request;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.Mockito.doThrow;
+import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
@@ -16,8 +16,6 @@ import java.util.Optional;
 
 import com.hilimor.shiftmanagement.assignment.Assignment;
 import com.hilimor.shiftmanagement.assignment.AssignmentRepository;
-import com.hilimor.shiftmanagement.assignment.AssignmentService;
-import com.hilimor.shiftmanagement.assignment.AssignmentValidationException;
 import com.hilimor.shiftmanagement.schedule.Schedule;
 import com.hilimor.shiftmanagement.schedule.ScheduleStatus;
 import com.hilimor.shiftmanagement.shift.Shift;
@@ -50,7 +48,7 @@ class SwapRequestServiceTest {
     private AssignmentRepository assignmentRepository;
 
     @Mock
-    private AssignmentService assignmentService;
+    private SwapRequestExecutor swapRequestExecutor;
 
     @Mock
     private UserRepository userRepository;
@@ -436,11 +434,11 @@ class SwapRequestServiceTest {
         assertThat(response.employeeApprovedAt()).isNotNull();
         assertThat(response.updatedAt()).isEqualTo(response.employeeApprovedAt());
         assertThat(request.getSourceAssignment().getEmployee()).isSameAs(requester);
-        verifyNoInteractions(assignmentService);
+        verify(swapRequestExecutor).executeIfReady(request, response.employeeApprovedAt());
     }
 
     @Test
-    void approveByTargetEmployeeTransfersAssignmentWhenTeamPolicyIsEmployeeOnly() {
+    void approveByTargetEmployeeDelegatesExecutionWhenTeamPolicyIsEmployeeOnly() {
         User requester = employee("employee1", 2L);
         User targetEmployee = employee("employee2", 3L);
         SwapRequest request = transferRequest(
@@ -457,16 +455,12 @@ class SwapRequestServiceTest {
         assertThat(response.status()).isEqualTo(SwapRequestStatus.APPROVED);
         assertThat(response.employeeApprovedAt()).isNotNull();
         assertThat(response.updatedAt()).isEqualTo(response.employeeApprovedAt());
-        assertThat(request.getSourceAssignment().getEmployee()).isSameAs(targetEmployee);
-        assertThat(request.getSourceAssignment().getAssignedAt()).isEqualTo(response.employeeApprovedAt());
-        verify(assignmentService).validateEmployeeCanReceiveTransferredAssignment(
-                request.getSourceAssignment().getShift(),
-                targetEmployee
-        );
+        assertThat(request.getSourceAssignment().getEmployee()).isSameAs(requester);
+        verify(swapRequestExecutor).executeIfReady(request, response.employeeApprovedAt());
     }
 
     @Test
-    void approveByTargetEmployeeInvalidatesRequestWhenTransferValidationFails() {
+    void approveByTargetEmployeeReturnsRequestStatusUpdatedByExecutor() {
         User requester = employee("employee1", 2L);
         User targetEmployee = employee("employee2", 3L);
         SwapRequest request = transferRequest(
@@ -477,14 +471,10 @@ class SwapRequestServiceTest {
 
         when(userRepository.findByUsername("employee2")).thenReturn(Optional.of(targetEmployee));
         when(swapRequestRepository.findById(40L)).thenReturn(Optional.of(request));
-        doThrow(new AssignmentValidationException(
-                HttpStatus.CONFLICT,
-                "SHIFT_OVERLAP",
-                "Employee already has an overlapping assignment"
-        )).when(assignmentService).validateEmployeeCanReceiveTransferredAssignment(
-                request.getSourceAssignment().getShift(),
-                targetEmployee
-        );
+        doAnswer(invocation -> {
+            request.invalidate(invocation.getArgument(1));
+            return null;
+        }).when(swapRequestExecutor).executeIfReady(any(SwapRequest.class), any(Instant.class));
 
         SwapRequestResponse response = swapRequestService.approveByTargetEmployee("employee2", 40L);
 
@@ -495,7 +485,7 @@ class SwapRequestServiceTest {
     }
 
     @Test
-    void approveByTargetEmployeeSwapsAssignmentsWhenTeamPolicyIsEmployeeOnly() {
+    void approveByTargetEmployeeDelegatesSwapExecutionWhenTeamPolicyIsEmployeeOnly() {
         User requester = employee("employee1", 2L);
         User targetEmployee = employee("employee2", 3L);
         SwapRequest request = swapRequest(
@@ -513,52 +503,9 @@ class SwapRequestServiceTest {
 
         assertThat(response.status()).isEqualTo(SwapRequestStatus.APPROVED);
         assertThat(response.employeeApprovedAt()).isNotNull();
-        assertThat(sourceAssignment.getEmployee()).isSameAs(targetEmployee);
-        assertThat(targetAssignment.getEmployee()).isSameAs(requester);
-        assertThat(sourceAssignment.getAssignedAt()).isEqualTo(response.employeeApprovedAt());
-        assertThat(targetAssignment.getAssignedAt()).isEqualTo(response.employeeApprovedAt());
-        verify(assignmentService).validateEmployeeCanReceiveSwappedAssignment(
-                sourceAssignment.getShift(),
-                targetEmployee,
-                targetAssignment
-        );
-        verify(assignmentService).validateEmployeeCanReceiveSwappedAssignment(
-                targetAssignment.getShift(),
-                requester,
-                sourceAssignment
-        );
-    }
-
-    @Test
-    void approveByTargetEmployeeInvalidatesSwapWhenValidationFails() {
-        User requester = employee("employee1", 2L);
-        User targetEmployee = employee("employee2", 3L);
-        SwapRequest request = swapRequest(
-                requester,
-                targetEmployee,
-                schedule(ScheduleStatus.PUBLISHED, SwapApprovalPolicy.EMPLOYEE)
-        );
-        Assignment sourceAssignment = request.getSourceAssignment();
-        Assignment targetAssignment = request.getTargetAssignment();
-
-        when(userRepository.findByUsername("employee2")).thenReturn(Optional.of(targetEmployee));
-        when(swapRequestRepository.findById(40L)).thenReturn(Optional.of(request));
-        doThrow(new AssignmentValidationException(
-                HttpStatus.CONFLICT,
-                "MINIMUM_REST",
-                "Employee does not have enough rest before this shift"
-        )).when(assignmentService).validateEmployeeCanReceiveSwappedAssignment(
-                sourceAssignment.getShift(),
-                targetEmployee,
-                targetAssignment
-        );
-
-        SwapRequestResponse response = swapRequestService.approveByTargetEmployee("employee2", 40L);
-
-        assertThat(response.status()).isEqualTo(SwapRequestStatus.INVALIDATED);
-        assertThat(response.employeeApprovedAt()).isNotNull();
         assertThat(sourceAssignment.getEmployee()).isSameAs(requester);
         assertThat(targetAssignment.getEmployee()).isSameAs(targetEmployee);
+        verify(swapRequestExecutor).executeIfReady(request, response.employeeApprovedAt());
     }
 
     @Test
@@ -579,7 +526,7 @@ class SwapRequestServiceTest {
                 HttpStatus.NOT_FOUND
         );
 
-        verifyNoInteractions(assignmentService);
+        verifyNoInteractions(swapRequestExecutor);
     }
 
     @Test
@@ -601,7 +548,7 @@ class SwapRequestServiceTest {
                 HttpStatus.NOT_FOUND
         );
 
-        verifyNoInteractions(assignmentService);
+        verifyNoInteractions(swapRequestExecutor);
     }
 
     @Test
@@ -623,11 +570,11 @@ class SwapRequestServiceTest {
                 HttpStatus.CONFLICT
         );
 
-        verifyNoInteractions(assignmentService);
+        verifyNoInteractions(swapRequestExecutor);
     }
 
     @Test
-    void approveByManagerTransfersAssignmentWhenManagerApprovalCompletes() {
+    void approveByManagerDelegatesExecutionWhenManagerApprovalCompletes() {
         User requester = employee("employee1", 2L);
         User targetEmployee = employee("employee2", 3L);
         User manager = user("manager1", 4L, ApplicationRole.MANAGER);
@@ -648,16 +595,12 @@ class SwapRequestServiceTest {
         assertThat(response.managerApprovedById()).isEqualTo(4L);
         assertThat(response.managerApprovedAt()).isNotNull();
         assertThat(response.updatedAt()).isEqualTo(response.managerApprovedAt());
-        assertThat(request.getSourceAssignment().getEmployee()).isSameAs(targetEmployee);
-        assertThat(request.getSourceAssignment().getAssignedAt()).isEqualTo(response.managerApprovedAt());
-        verify(assignmentService).validateEmployeeCanReceiveTransferredAssignment(
-                request.getSourceAssignment().getShift(),
-                targetEmployee
-        );
+        assertThat(request.getSourceAssignment().getEmployee()).isSameAs(requester);
+        verify(swapRequestExecutor).executeIfReady(request, response.managerApprovedAt());
     }
 
     @Test
-    void approveByManagerInvalidatesRequestWhenTransferValidationFails() {
+    void approveByManagerReturnsRequestStatusUpdatedByExecutor() {
         User requester = employee("employee1", 2L);
         User targetEmployee = employee("employee2", 3L);
         User manager = user("manager1", 4L, ApplicationRole.MANAGER);
@@ -671,14 +614,10 @@ class SwapRequestServiceTest {
         when(userRepository.findByUsername("manager1")).thenReturn(Optional.of(manager));
         when(swapRequestRepository.findById(40L)).thenReturn(Optional.of(request));
         when(teamManagerRepository.existsByManager_UsernameAndTeam_Id("manager1", 1L)).thenReturn(true);
-        doThrow(new AssignmentValidationException(
-                HttpStatus.CONFLICT,
-                "SHIFT_OVERLAP",
-                "Employee already has an overlapping assignment"
-        )).when(assignmentService).validateEmployeeCanReceiveTransferredAssignment(
-                request.getSourceAssignment().getShift(),
-                targetEmployee
-        );
+        doAnswer(invocation -> {
+            request.invalidate(invocation.getArgument(1));
+            return null;
+        }).when(swapRequestExecutor).executeIfReady(any(SwapRequest.class), any(Instant.class));
 
         SwapRequestResponse response = swapRequestService.approveByManager("manager1", 40L);
 
@@ -690,7 +629,7 @@ class SwapRequestServiceTest {
     }
 
     @Test
-    void approveByManagerSwapsAssignmentsWhenManagerApprovalCompletes() {
+    void approveByManagerDelegatesSwapExecutionWhenManagerApprovalCompletes() {
         User requester = employee("employee1", 2L);
         User targetEmployee = employee("employee2", 3L);
         User manager = user("manager1", 4L, ApplicationRole.MANAGER);
@@ -712,10 +651,9 @@ class SwapRequestServiceTest {
         assertThat(response.status()).isEqualTo(SwapRequestStatus.APPROVED);
         assertThat(response.managerApprovedById()).isEqualTo(4L);
         assertThat(response.managerApprovedAt()).isNotNull();
-        assertThat(sourceAssignment.getEmployee()).isSameAs(targetEmployee);
-        assertThat(targetAssignment.getEmployee()).isSameAs(requester);
-        assertThat(sourceAssignment.getAssignedAt()).isEqualTo(response.managerApprovedAt());
-        assertThat(targetAssignment.getAssignedAt()).isEqualTo(response.managerApprovedAt());
+        assertThat(sourceAssignment.getEmployee()).isSameAs(requester);
+        assertThat(targetAssignment.getEmployee()).isSameAs(targetEmployee);
+        verify(swapRequestExecutor).executeIfReady(request, response.managerApprovedAt());
     }
 
     @Test
@@ -730,7 +668,7 @@ class SwapRequestServiceTest {
         );
 
         verify(swapRequestRepository, never()).findById(any());
-        verifyNoInteractions(assignmentService);
+        verifyNoInteractions(swapRequestExecutor);
     }
 
     @Test
@@ -755,7 +693,7 @@ class SwapRequestServiceTest {
         );
 
         assertThat(request.getSourceAssignment().getEmployee()).isSameAs(requester);
-        verifyNoInteractions(assignmentService);
+        verifyNoInteractions(swapRequestExecutor);
     }
 
     @Test
@@ -779,7 +717,7 @@ class SwapRequestServiceTest {
         );
 
         assertThat(request.getSourceAssignment().getEmployee()).isSameAs(requester);
-        verifyNoInteractions(assignmentService);
+        verifyNoInteractions(swapRequestExecutor);
     }
 
     @Test
@@ -800,7 +738,7 @@ class SwapRequestServiceTest {
         assertThat(response.status()).isEqualTo(SwapRequestStatus.REJECTED);
         assertThat(response.updatedAt()).isNotEqualTo(response.createdAt());
         assertThat(request.getSourceAssignment().getEmployee()).isSameAs(requester);
-        verifyNoInteractions(assignmentService);
+        verifyNoInteractions(swapRequestExecutor);
     }
 
     @Test
@@ -823,7 +761,7 @@ class SwapRequestServiceTest {
         );
 
         assertThat(request.getStatus()).isEqualTo(SwapRequestStatus.PENDING_EMPLOYEE);
-        verifyNoInteractions(assignmentService);
+        verifyNoInteractions(swapRequestExecutor);
     }
 
     @Test
@@ -846,7 +784,7 @@ class SwapRequestServiceTest {
         );
 
         assertThat(request.getStatus()).isEqualTo(SwapRequestStatus.PENDING_MANAGER);
-        verifyNoInteractions(assignmentService);
+        verifyNoInteractions(swapRequestExecutor);
     }
 
     @Test
@@ -867,7 +805,7 @@ class SwapRequestServiceTest {
         assertThat(response.status()).isEqualTo(SwapRequestStatus.CANCELLED);
         assertThat(response.updatedAt()).isNotEqualTo(response.createdAt());
         assertThat(request.getSourceAssignment().getEmployee()).isSameAs(requester);
-        verifyNoInteractions(assignmentService);
+        verifyNoInteractions(swapRequestExecutor);
     }
 
     @Test
@@ -889,7 +827,7 @@ class SwapRequestServiceTest {
         assertThat(response.status()).isEqualTo(SwapRequestStatus.CANCELLED);
         assertThat(response.updatedAt()).isNotEqualTo(response.createdAt());
         assertThat(request.getSourceAssignment().getEmployee()).isSameAs(requester);
-        verifyNoInteractions(assignmentService);
+        verifyNoInteractions(swapRequestExecutor);
     }
 
     @Test
@@ -911,7 +849,7 @@ class SwapRequestServiceTest {
         );
 
         assertThat(request.getStatus()).isEqualTo(SwapRequestStatus.PENDING_EMPLOYEE);
-        verifyNoInteractions(assignmentService);
+        verifyNoInteractions(swapRequestExecutor);
     }
 
     @Test
@@ -934,7 +872,7 @@ class SwapRequestServiceTest {
         );
 
         assertThat(request.getStatus()).isEqualTo(SwapRequestStatus.APPROVED);
-        verifyNoInteractions(assignmentService);
+        verifyNoInteractions(swapRequestExecutor);
     }
 
     private void assertResponseStatus(Runnable action, HttpStatus expectedStatus) {
