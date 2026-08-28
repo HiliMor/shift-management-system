@@ -1,3 +1,5 @@
+import { useLanguage } from "../i18n/LanguageContext.jsx";
+
 function AvailabilityConstraintsSection({
   availabilityActionError,
   availabilityActionMessage,
@@ -13,10 +15,12 @@ function AvailabilityConstraintsSection({
   onDeleteAvailabilityConstraint,
   onRefreshAvailabilityConstraints,
 }) {
+  const { t } = useLanguage();
+
   return (
     <section className="section-block" id="availability">
       <div className="section-heading">
-        <h2>My availability</h2>
+        <h2>{t("myAvailability")}</h2>
         <div className="section-actions">
           <span>{availabilityConstraints.length}</span>
           <button
@@ -25,7 +29,7 @@ function AvailabilityConstraintsSection({
             onClick={onRefreshAvailabilityConstraints}
             type="button"
           >
-            Refresh
+            {t("refresh")}
           </button>
         </div>
       </div>
@@ -38,12 +42,12 @@ function AvailabilityConstraintsSection({
             onChange={onAvailabilityFormChange}
             type="checkbox"
           />
-          Full day
+          {t("fullDay")}
         </label>
 
         {availabilityForm.allDay ? (
           <label>
-            Date
+            {t("date")}
             <input
               name="date"
               onChange={onAvailabilityFormChange}
@@ -55,7 +59,7 @@ function AvailabilityConstraintsSection({
         ) : (
           <>
             <label>
-              Start time
+              {t("startTime")}
               <input
                 name="startTime"
                 onChange={onAvailabilityFormChange}
@@ -66,7 +70,7 @@ function AvailabilityConstraintsSection({
             </label>
 
             <label>
-              End time
+              {t("endTime")}
               <input
                 name="endTime"
                 onChange={onAvailabilityFormChange}
@@ -79,29 +83,29 @@ function AvailabilityConstraintsSection({
         )}
 
         <label>
-          Reason
+          {t("reason")}
           <input
             maxLength="500"
             name="reason"
             onChange={onAvailabilityFormChange}
-            placeholder="Optional"
+            placeholder={t("optional")}
             type="text"
             value={availabilityForm.reason}
           />
         </label>
 
         <button disabled={isCreatingAvailability} type="submit">
-          {isCreatingAvailability ? "Saving..." : "Add constraint"}
+          {isCreatingAvailability ? t("saving") : t("addConstraint")}
         </button>
       </form>
 
       {availabilityActionError ? <p className="error-message">{availabilityActionError}</p> : null}
       {availabilityActionMessage ? <p className="success-message">{availabilityActionMessage}</p> : null}
-      {isLoadingAvailability ? <p className="muted">Loading availability constraints...</p> : null}
+      {isLoadingAvailability ? <p className="muted">{t("loadingAvailability")}</p> : null}
       {availabilityError ? <p className="error-message">{availabilityError}</p> : null}
 
       {!isLoadingAvailability && !availabilityError && availabilityConstraints.length === 0 ? (
-        <p className="muted">No availability constraints were submitted yet.</p>
+        <p className="muted">{t("noAvailabilityConstraints")}</p>
       ) : null}
 
       {availabilityConstraints.length > 0 ? (
@@ -112,8 +116,10 @@ function AvailabilityConstraintsSection({
                 <h3>
                   {formatDateTime(constraint.startTime)} to {formatDateTime(constraint.endTime)}
                 </h3>
-                <p>{constraint.reason || "No reason provided"}</p>
-                <p className="notification-meta">Created {formatDateTime(constraint.createdAt)}</p>
+                <p>{constraint.reason || t("noReasonProvided")}</p>
+                <p className="notification-meta">
+                  {t("created")} {formatDateTime(constraint.createdAt)}
+                </p>
               </div>
 
               <button
@@ -122,7 +128,7 @@ function AvailabilityConstraintsSection({
                 onClick={() => onDeleteAvailabilityConstraint(constraint.id)}
                 type="button"
               >
-                {deletingAvailabilityId === constraint.id ? "Deleting..." : "Delete"}
+                {deletingAvailabilityId === constraint.id ? t("deleting") : t("delete")}
               </button>
             </article>
           ))}
