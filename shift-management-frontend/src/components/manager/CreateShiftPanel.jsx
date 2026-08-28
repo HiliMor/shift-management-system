@@ -1,3 +1,5 @@
+import { useLanguage } from "../../i18n/LanguageContext.jsx";
+
 function CreateShiftPanel({
   draftSchedulesError,
   formatDate,
@@ -11,29 +13,31 @@ function CreateShiftPanel({
   staffingRoles,
   staffingRolesError,
 }) {
+  const { t } = useLanguage();
+
   return (
     <section className="manager-panel" id="manager-shifts">
       <div className="manager-panel-heading">
         <span>2</span>
-        <h3>Manual shifts</h3>
+        <h3>{t("manualShifts")}</h3>
       </div>
 
-      {isLoadingDraftSchedules ? <p className="muted">Loading draft schedules...</p> : null}
+      {isLoadingDraftSchedules ? <p className="muted">{t("loadingDraftSchedules")}</p> : null}
       {draftSchedulesError ? <p className="error-message">{draftSchedulesError}</p> : null}
       {staffingRolesError ? <p className="error-message">{staffingRolesError}</p> : null}
 
       {!isLoadingDraftSchedules && !draftSchedulesError && managedDraftSchedules.length === 0 ? (
-        <p className="muted">Create a draft schedule before adding shifts.</p>
+        <p className="muted">{t("createDraftBeforeShifts")}</p>
       ) : null}
 
       {managedDraftSchedules.length > 0 ? (
         <form className="shift-form" onSubmit={onCreateShift}>
           <label>
-            Draft schedule
+            {t("draftSchedule")}
             <select name="scheduleId" onChange={onShiftFormChange} required value={shiftForm.scheduleId}>
               {managedDraftSchedules.map((schedule) => (
                 <option key={schedule.id} value={schedule.id}>
-                  #{schedule.id} - {schedule.teamName}, {formatDate(schedule.startDate)} to{" "}
+                  #{schedule.id} - {schedule.teamName}, {formatDate(schedule.startDate)} {t("dateRangeSeparator")} {" "}
                   {formatDate(schedule.endDate)}
                 </option>
               ))}
@@ -41,7 +45,7 @@ function CreateShiftPanel({
           </label>
 
           <label>
-            Start time
+            {t("startTime")}
             <input
               name="startTime"
               onChange={onShiftFormChange}
@@ -52,7 +56,7 @@ function CreateShiftPanel({
           </label>
 
           <label>
-            End time
+            {t("endTime")}
             <input
               name="endTime"
               onChange={onShiftFormChange}
@@ -63,7 +67,7 @@ function CreateShiftPanel({
           </label>
 
           <label>
-            Description
+            {t("description")}
             <input
               maxLength="500"
               name="description"
@@ -74,7 +78,7 @@ function CreateShiftPanel({
           </label>
 
           <label>
-            Required workers
+            {t("requiredWorkers")}
             <input
               min="1"
               name="requiredWorkers"
@@ -86,7 +90,7 @@ function CreateShiftPanel({
           </label>
 
           <label>
-            Minimum rest hours
+            {t("minimumRestHours")}
             <input
               min="0"
               name="minRestHours"
@@ -98,14 +102,14 @@ function CreateShiftPanel({
           </label>
 
           <label>
-            Required role
+            {t("requiredRole")}
             <select
               disabled={isLoadingStaffingRoles}
               name="requiredStaffingRoleId"
               onChange={onShiftFormChange}
               value={shiftForm.requiredStaffingRoleId}
             >
-              <option value="">No specific role</option>
+              <option value="">{t("noSpecificRole")}</option>
               {staffingRoles.map((role) => (
                 <option key={role.id} value={role.id}>
                   {role.name}
@@ -115,7 +119,7 @@ function CreateShiftPanel({
           </label>
 
           <button disabled={isCreatingShift} type="submit">
-            {isCreatingShift ? "Creating..." : "Create shift"}
+            {isCreatingShift ? t("creating") : t("createShift")}
           </button>
         </form>
       ) : null}
