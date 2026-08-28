@@ -1,16 +1,5 @@
-import { useEffect, useMemo, useState } from "react";
-import {
-  createAssignment,
-  createSchedule,
-  createShift,
-  listScheduleAssignments,
-  listManagedDraftSchedules,
-  listMyManagedTeams,
-  listStaffingRoles,
-  listShifts,
-  listTeamEmployees,
-  login,
-} from "./api.js";
+import { useMemo, useState } from "react";
+import { login } from "./api.js";
 import AppShell from "./components/AppShell.jsx";
 import AvailabilityConstraintsSection from "./components/AvailabilityConstraintsSection.jsx";
 import LoginScreen from "./components/LoginScreen.jsx";
@@ -21,6 +10,7 @@ import ScheduleDetailsSection from "./components/ScheduleDetailsSection.jsx";
 import TransferRequestsSection from "./components/TransferRequestsSection.jsx";
 import useAvailabilityConstraints from "./hooks/useAvailabilityConstraints.js";
 import useAutomaticAssignment from "./hooks/useAutomaticAssignment.js";
+import useManagerScheduling from "./hooks/useManagerScheduling.js";
 import useNotifications from "./hooks/useNotifications.js";
 import usePublishedSchedules from "./hooks/usePublishedSchedules.js";
 import useSchedulePublication from "./hooks/useSchedulePublication.js";
@@ -52,10 +42,6 @@ function formatDateTime(value) {
   return value ? dateTimeFormatter.format(new Date(value)) : "Not set";
 }
 
-function toIsoStringFromLocalDateTime(value) {
-  return value ? new Date(value).toISOString() : "";
-}
-
 function loadStoredSession() {
   const stored = localStorage.getItem(STORAGE_KEY);
 
@@ -77,50 +63,6 @@ function App() {
   const [password, setPassword] = useState("");
   const [loginError, setLoginError] = useState("");
   const [isLoggingIn, setIsLoggingIn] = useState(false);
-  const [managedTeams, setManagedTeams] = useState([]);
-  const [isLoadingManagedTeams, setIsLoadingManagedTeams] = useState(false);
-  const [managedTeamsError, setManagedTeamsError] = useState("");
-  const [scheduleForm, setScheduleForm] = useState({ teamId: "", startDate: "", endDate: "" });
-  const [createdSchedule, setCreatedSchedule] = useState(null);
-  const [scheduleCreationError, setScheduleCreationError] = useState("");
-  const [isCreatingSchedule, setIsCreatingSchedule] = useState(false);
-  const [managedDraftSchedules, setManagedDraftSchedules] = useState([]);
-  const [isLoadingDraftSchedules, setIsLoadingDraftSchedules] = useState(false);
-  const [draftSchedulesError, setDraftSchedulesError] = useState("");
-  const [draftScheduleRefreshKey, setDraftScheduleRefreshKey] = useState(0);
-  const [staffingRoles, setStaffingRoles] = useState([]);
-  const [isLoadingStaffingRoles, setIsLoadingStaffingRoles] = useState(false);
-  const [staffingRolesError, setStaffingRolesError] = useState("");
-  const [shiftForm, setShiftForm] = useState({
-    scheduleId: "",
-    startTime: "",
-    endTime: "",
-    description: "",
-    requiredWorkers: "1",
-    minRestHours: "8",
-    requiredStaffingRoleId: "",
-  });
-  const [createdShift, setCreatedShift] = useState(null);
-  const [shiftCreationError, setShiftCreationError] = useState("");
-  const [isCreatingShift, setIsCreatingShift] = useState(false);
-  const [assignmentForm, setAssignmentForm] = useState({
-    scheduleId: "",
-    shiftId: "",
-    employeeId: "",
-  });
-  const [assignmentShifts, setAssignmentShifts] = useState([]);
-  const [isLoadingAssignmentShifts, setIsLoadingAssignmentShifts] = useState(false);
-  const [assignmentShiftsError, setAssignmentShiftsError] = useState("");
-  const [teamEmployees, setTeamEmployees] = useState([]);
-  const [isLoadingTeamEmployees, setIsLoadingTeamEmployees] = useState(false);
-  const [teamEmployeesError, setTeamEmployeesError] = useState("");
-  const [scheduleAssignments, setScheduleAssignments] = useState([]);
-  const [isLoadingScheduleAssignments, setIsLoadingScheduleAssignments] = useState(false);
-  const [scheduleAssignmentsError, setScheduleAssignmentsError] = useState("");
-  const [assignmentRefreshKey, setAssignmentRefreshKey] = useState(0);
-  const [createdAssignment, setCreatedAssignment] = useState(null);
-  const [assignmentCreationError, setAssignmentCreationError] = useState("");
-  const [isCreatingAssignment, setIsCreatingAssignment] = useState(false);
   const isManager = session?.user?.applicationRole === "MANAGER";
   const isEmployee = session?.user?.applicationRole === "EMPLOYEE";
 
@@ -132,52 +74,9 @@ function App() {
     return session.user.fullName || session.user.username;
   }, [session]);
 
-  const selectedDraftSchedule = useMemo(
-    () => managedDraftSchedules.find((schedule) => schedule.id.toString() === shiftForm.scheduleId) ?? null,
-    [managedDraftSchedules, shiftForm.scheduleId],
-  );
-
-  const selectedAssignmentSchedule = useMemo(
-    () => managedDraftSchedules.find((schedule) => schedule.id.toString() === assignmentForm.scheduleId) ?? null,
-    [assignmentForm.scheduleId, managedDraftSchedules],
-  );
-
-  const assignmentShiftMap = useMemo(
-    () => new Map(assignmentShifts.map((shift) => [shift.id, shift])),
-    [assignmentShifts],
-  );
-
   function clearAuthenticatedState() {
-    setManagedTeams([]);
-    setManagedTeamsError("");
-    setScheduleForm({ teamId: "", startDate: "", endDate: "" });
-    setCreatedSchedule(null);
-    setScheduleCreationError("");
-    setManagedDraftSchedules([]);
-    setDraftSchedulesError("");
-    setStaffingRoles([]);
-    setStaffingRolesError("");
-    setShiftForm({
-      scheduleId: "",
-      startTime: "",
-      endTime: "",
-      description: "",
-      requiredWorkers: "1",
-      minRestHours: "8",
-      requiredStaffingRoleId: "",
-    });
-    setCreatedShift(null);
-    setShiftCreationError("");
-    setAssignmentForm({ scheduleId: "", shiftId: "", employeeId: "" });
-    setAssignmentShifts([]);
-    setAssignmentShiftsError("");
-    setTeamEmployees([]);
-    setTeamEmployeesError("");
-    setScheduleAssignments([]);
-    setScheduleAssignmentsError("");
-    setCreatedAssignment(null);
-    setAssignmentCreationError("");
     resetPublishedSchedules();
+    resetManagerScheduling();
     resetAvailabilityConstraints();
     resetNotifications();
     resetTransferRequests();
@@ -213,6 +112,59 @@ function App() {
     selectedScheduleId,
     setSelectedScheduleId,
   } = usePublishedSchedules(session, handleApiError);
+
+  function handleManagerScheduleContentChanged() {
+    refreshPublicationReadiness();
+  }
+
+  const {
+    assignmentCreationError,
+    assignmentForm,
+    assignmentShiftMap,
+    assignmentShifts,
+    assignmentShiftsError,
+    createdAssignment,
+    createdSchedule,
+    createdShift,
+    draftSchedulesError,
+    handleAssignmentFormChange,
+    handleCreateAssignment,
+    handleCreateSchedule,
+    handleCreateShift,
+    handleScheduleFormChange,
+    handleShiftFormChange,
+    isCreatingAssignment,
+    isCreatingSchedule,
+    isCreatingShift,
+    isLoadingAssignmentShifts,
+    isLoadingDraftSchedules,
+    isLoadingManagedTeams,
+    isLoadingScheduleAssignments,
+    isLoadingStaffingRoles,
+    isLoadingTeamEmployees,
+    managedDraftSchedules,
+    managedTeams,
+    managedTeamsError,
+    refreshAssignmentData,
+    refreshDraftSchedules,
+    resetManagerScheduling,
+    scheduleAssignments,
+    scheduleAssignmentsError,
+    scheduleCreationError,
+    scheduleForm,
+    selectedAssignmentSchedule,
+    shiftCreationError,
+    shiftForm,
+    staffingRoles,
+    staffingRolesError,
+    teamEmployees,
+    teamEmployeesError,
+  } = useManagerScheduling(
+    session,
+    isManager,
+    handleApiError,
+    handleManagerScheduleContentChanged,
+  );
 
   const {
     availabilityActionError,
@@ -347,182 +299,6 @@ function App() {
     handleApiError,
   );
 
-  function refreshDraftSchedules() {
-    setDraftScheduleRefreshKey((current) => current + 1);
-  }
-
-  function refreshAssignmentData(scheduleId) {
-    if (scheduleId) {
-      setAssignmentForm((current) => {
-        const nextScheduleId = scheduleId.toString();
-
-        if (current.scheduleId === nextScheduleId) {
-          return current;
-        }
-
-        return {
-          ...current,
-          scheduleId: nextScheduleId,
-          shiftId: "",
-          employeeId: "",
-        };
-      });
-    }
-
-    setAssignmentRefreshKey((current) => current + 1);
-  }
-
-  useEffect(() => {
-    if (!session?.accessToken || !isManager) {
-      setManagedTeams([]);
-      setManagedTeamsError("");
-      setScheduleForm({ teamId: "", startDate: "", endDate: "" });
-      return;
-    }
-
-    setIsLoadingManagedTeams(true);
-    setManagedTeamsError("");
-
-    listMyManagedTeams(session.accessToken)
-      .then((teams) => {
-        setManagedTeams(teams);
-        setScheduleForm((current) => ({
-          ...current,
-          teamId: current.teamId || teams[0]?.id?.toString() || "",
-        }));
-      })
-      .catch((error) => handleApiError(error, setManagedTeamsError))
-      .finally(() => setIsLoadingManagedTeams(false));
-  }, [isManager, session]);
-
-  useEffect(() => {
-    if (!session?.accessToken || !isManager) {
-      setManagedDraftSchedules([]);
-      setDraftSchedulesError("");
-      setShiftForm({
-        scheduleId: "",
-        startTime: "",
-        endTime: "",
-        description: "",
-        requiredWorkers: "1",
-        minRestHours: "8",
-        requiredStaffingRoleId: "",
-      });
-      setAssignmentForm({ scheduleId: "", shiftId: "", employeeId: "" });
-      setAssignmentShifts([]);
-      setAssignmentShiftsError("");
-      setTeamEmployees([]);
-      setTeamEmployeesError("");
-      setScheduleAssignments([]);
-      setScheduleAssignmentsError("");
-      return;
-    }
-
-    setIsLoadingDraftSchedules(true);
-    setDraftSchedulesError("");
-
-    listManagedDraftSchedules(session.accessToken)
-      .then((schedules) => {
-        setManagedDraftSchedules(schedules);
-        setShiftForm((current) => ({
-          ...current,
-          scheduleId: current.scheduleId || schedules[0]?.id?.toString() || "",
-        }));
-        setAssignmentForm((current) => ({
-          ...current,
-          scheduleId: current.scheduleId || schedules[0]?.id?.toString() || "",
-        }));
-      })
-      .catch((error) => handleApiError(error, setDraftSchedulesError))
-      .finally(() => setIsLoadingDraftSchedules(false));
-  }, [draftScheduleRefreshKey, isManager, session]);
-
-  useEffect(() => {
-    if (!session?.accessToken || !selectedDraftSchedule) {
-      setStaffingRoles([]);
-      setStaffingRolesError("");
-      return;
-    }
-
-    setIsLoadingStaffingRoles(true);
-    setStaffingRolesError("");
-
-    listStaffingRoles(session.accessToken, selectedDraftSchedule.teamId)
-      .then(setStaffingRoles)
-      .catch((error) => handleApiError(error, setStaffingRolesError))
-      .finally(() => setIsLoadingStaffingRoles(false));
-  }, [selectedDraftSchedule, session]);
-
-  useEffect(() => {
-    if (!session?.accessToken || !assignmentForm.scheduleId) {
-      setAssignmentShifts([]);
-      setAssignmentShiftsError("");
-      setAssignmentForm((current) => ({ ...current, shiftId: "" }));
-      return;
-    }
-
-    setIsLoadingAssignmentShifts(true);
-    setAssignmentShiftsError("");
-
-    listShifts(session.accessToken, assignmentForm.scheduleId)
-      .then((shifts) => {
-        setAssignmentShifts(shifts);
-        setAssignmentForm((current) => {
-          const currentShiftExists = shifts.some((shift) => shift.id.toString() === current.shiftId);
-
-          return {
-            ...current,
-            shiftId: currentShiftExists ? current.shiftId : shifts[0]?.id?.toString() || "",
-          };
-        });
-      })
-      .catch((error) => handleApiError(error, setAssignmentShiftsError))
-      .finally(() => setIsLoadingAssignmentShifts(false));
-  }, [assignmentForm.scheduleId, assignmentRefreshKey, session]);
-
-  useEffect(() => {
-    if (!session?.accessToken || !selectedAssignmentSchedule) {
-      setTeamEmployees([]);
-      setTeamEmployeesError("");
-      setAssignmentForm((current) => ({ ...current, employeeId: "" }));
-      return;
-    }
-
-    setIsLoadingTeamEmployees(true);
-    setTeamEmployeesError("");
-
-    listTeamEmployees(session.accessToken, selectedAssignmentSchedule.teamId)
-      .then((employees) => {
-        setTeamEmployees(employees);
-        setAssignmentForm((current) => {
-          const currentEmployeeExists = employees.some((employee) => employee.id.toString() === current.employeeId);
-
-          return {
-            ...current,
-            employeeId: currentEmployeeExists ? current.employeeId : employees[0]?.id?.toString() || "",
-          };
-        });
-      })
-      .catch((error) => handleApiError(error, setTeamEmployeesError))
-      .finally(() => setIsLoadingTeamEmployees(false));
-  }, [selectedAssignmentSchedule, session]);
-
-  useEffect(() => {
-    if (!session?.accessToken || !assignmentForm.scheduleId) {
-      setScheduleAssignments([]);
-      setScheduleAssignmentsError("");
-      return;
-    }
-
-    setIsLoadingScheduleAssignments(true);
-    setScheduleAssignmentsError("");
-
-    listScheduleAssignments(session.accessToken, assignmentForm.scheduleId)
-      .then(setScheduleAssignments)
-      .catch((error) => handleApiError(error, setScheduleAssignmentsError))
-      .finally(() => setIsLoadingScheduleAssignments(false));
-  }, [assignmentForm.scheduleId, assignmentRefreshKey, session]);
-
   async function handleLogin(event) {
     event.preventDefault();
     setIsLoggingIn(true);
@@ -545,125 +321,6 @@ function App() {
     setSession(null);
     clearAuthenticatedState();
     setLoginError("");
-  }
-
-  function handleScheduleFormChange(event) {
-    const { name, value } = event.target;
-
-    setScheduleForm((current) => ({
-      ...current,
-      [name]: value,
-    }));
-  }
-
-  async function handleCreateSchedule(event) {
-    event.preventDefault();
-    setIsCreatingSchedule(true);
-    setScheduleCreationError("");
-    setCreatedSchedule(null);
-
-    try {
-      const response = await createSchedule(session.accessToken, {
-        teamId: Number(scheduleForm.teamId),
-        startDate: scheduleForm.startDate,
-        endDate: scheduleForm.endDate,
-      });
-      setCreatedSchedule(response);
-      setShiftForm((current) => ({
-        ...current,
-        scheduleId: response.id.toString(),
-        minRestHours: managedTeams
-          .find((team) => team.id === response.teamId)
-          ?.defaultMinRestHours?.toString() || current.minRestHours,
-      }));
-      setAssignmentForm((current) => ({
-        ...current,
-        scheduleId: response.id.toString(),
-        shiftId: "",
-      }));
-      refreshDraftSchedules();
-    } catch (error) {
-      handleApiError(error, setScheduleCreationError);
-    } finally {
-      setIsCreatingSchedule(false);
-    }
-  }
-
-  function handleShiftFormChange(event) {
-    const { name, value } = event.target;
-
-    setShiftForm((current) => ({
-      ...current,
-      [name]: value,
-      ...(name === "scheduleId" ? { requiredStaffingRoleId: "" } : {}),
-    }));
-  }
-
-  async function handleCreateShift(event) {
-    event.preventDefault();
-    setIsCreatingShift(true);
-    setShiftCreationError("");
-    setCreatedShift(null);
-
-    try {
-      const response = await createShift(session.accessToken, shiftForm.scheduleId, {
-        startTime: toIsoStringFromLocalDateTime(shiftForm.startTime),
-        endTime: toIsoStringFromLocalDateTime(shiftForm.endTime),
-        description: shiftForm.description || null,
-        requiredWorkers: Number(shiftForm.requiredWorkers),
-        minRestHours: Number(shiftForm.minRestHours),
-        requiredStaffingRoleId: shiftForm.requiredStaffingRoleId ? Number(shiftForm.requiredStaffingRoleId) : null,
-      });
-      setCreatedShift(response);
-      setShiftForm((current) => ({
-        ...current,
-        startTime: "",
-        endTime: "",
-        description: "",
-      }));
-      setAssignmentForm((current) => ({
-        ...current,
-        scheduleId: response.scheduleId.toString(),
-        shiftId: response.id.toString(),
-      }));
-      refreshAssignmentData();
-      refreshPublicationReadiness();
-    } catch (error) {
-      handleApiError(error, setShiftCreationError);
-    } finally {
-      setIsCreatingShift(false);
-    }
-  }
-
-  function handleAssignmentFormChange(event) {
-    const { name, value } = event.target;
-
-    setAssignmentForm((current) => ({
-      ...current,
-      [name]: value,
-      ...(name === "scheduleId" ? { shiftId: "", employeeId: "" } : {}),
-    }));
-  }
-
-  async function handleCreateAssignment(event) {
-    event.preventDefault();
-    setIsCreatingAssignment(true);
-    setAssignmentCreationError("");
-    setCreatedAssignment(null);
-
-    try {
-      const response = await createAssignment(session.accessToken, {
-        shiftId: Number(assignmentForm.shiftId),
-        employeeId: Number(assignmentForm.employeeId),
-      });
-      setCreatedAssignment(response);
-      refreshAssignmentData();
-      refreshPublicationReadiness();
-    } catch (error) {
-      handleApiError(error, setAssignmentCreationError);
-    } finally {
-      setIsCreatingAssignment(false);
-    }
   }
 
   if (!session) {

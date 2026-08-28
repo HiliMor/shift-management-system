@@ -54,3 +54,10 @@ To use a different backend URL:
 ```bash
 VITE_API_BASE_URL=http://localhost:8082 pnpm dev
 ```
+
+## Frontend Structure
+
+- `App.jsx` composes the main workspace sections and connects page-level hooks.
+- `src/hooks/` contains stateful workflow logic, such as published schedule loading,
+  manager scheduling, notifications, templates, availability, and transfer/swap requests.
+- `src/components/` contains presentational screen sections and manager workflow panels.

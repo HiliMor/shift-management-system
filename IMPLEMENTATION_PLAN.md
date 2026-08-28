@@ -1594,3 +1594,8 @@ Still open:
 
 - Extracted published schedule list loading, selected schedule state, and selected schedule details loading from `App.jsx` into `usePublishedSchedules`.
 - Kept `App.jsx` focused on composing hooks and rendering the main sections.
+
+### 2026-08-28 - Frontend Refactor: Manager Scheduling Hook
+
+- Extracted manager team loading, draft schedule loading, shift creation, manual assignment, staffing role loading, and assignment data loading from `App.jsx` into `useManagerScheduling`.
+- Reduced `App.jsx` so it mostly composes hooks and passes state/actions into screen sections.
