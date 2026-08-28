@@ -3,6 +3,7 @@ import AutomaticAssignmentPanel from "./manager/AutomaticAssignmentPanel.jsx";
 import CreateSchedulePanel from "./manager/CreateSchedulePanel.jsx";
 import CreateShiftPanel from "./manager/CreateShiftPanel.jsx";
 import SchedulePublicationPanel from "./manager/SchedulePublicationPanel.jsx";
+import ShiftTemplatePanel from "./manager/ShiftTemplatePanel.jsx";
 
 function ManagerActionsSection({
   automaticAssignmentError,
@@ -20,9 +21,13 @@ function ManagerActionsSection({
   draftSchedulesError,
   formatDate,
   formatDateTime,
+  generationDraftSchedules,
   isCreatingAssignment,
   isCreatingSchedule,
   isCreatingShift,
+  isCreatingTemplate,
+  isCreatingTemplateSlot,
+  isGeneratingTemplateShifts,
   isLoadingAssignmentShifts,
   isLoadingDraftSchedules,
   isLoadingManagedTeams,
@@ -30,6 +35,9 @@ function ManagerActionsSection({
   isLoadingPublicationReadiness,
   isLoadingScheduleAssignments,
   isLoadingStaffingRoles,
+  isLoadingTemplateSlots,
+  isLoadingTemplateStaffingRoles,
+  isLoadingTemplates,
   isLoadingTeamEmployees,
   isRunningAutomaticAssignment,
   isPublishingSchedule,
@@ -43,14 +51,22 @@ function ManagerActionsSection({
   onCreateAssignment,
   onCreateSchedule,
   onCreateShift,
+  onCreateTemplate,
+  onCreateTemplateSlot,
+  onGenerateTemplateShifts,
   onPublicationFormChange,
   onPublishSchedule,
   onRefreshPublishedSchedules,
   onRefreshPublicationReadiness,
+  onRefreshTemplateSlots,
+  onRefreshTemplates,
   onReopenSchedule,
   onRunAutomaticAssignment,
   onScheduleFormChange,
   onShiftFormChange,
+  onTemplateFormChange,
+  onTemplateGenerationFormChange,
+  onTemplateSlotFormChange,
   publicationActionError,
   publicationActionMessage,
   publicationError,
@@ -61,11 +77,25 @@ function ManagerActionsSection({
   scheduleAssignmentsError,
   scheduleCreationError,
   scheduleForm,
+  selectedGenerationTemplate,
   selectedAssignmentSchedule,
+  selectedTemplate,
   shiftCreationError,
   shiftForm,
   staffingRoles,
   staffingRolesError,
+  templateActionError,
+  templateActionMessage,
+  templateForm,
+  templateGenerationForm,
+  templateGenerationReport,
+  templateListError,
+  templates,
+  templateSlotError,
+  templateSlotForm,
+  templateSlots,
+  templateStaffingRoles,
+  templateStaffingRolesError,
   teamEmployees,
   teamEmployeesError,
 }) {
@@ -91,6 +121,42 @@ function ManagerActionsSection({
             onCreateSchedule={onCreateSchedule}
             onScheduleFormChange={onScheduleFormChange}
             scheduleForm={scheduleForm}
+          />
+
+          <ShiftTemplatePanel
+            draftSchedulesError={draftSchedulesError}
+            formatDate={formatDate}
+            formatDateTime={formatDateTime}
+            generationDraftSchedules={generationDraftSchedules}
+            isCreatingTemplate={isCreatingTemplate}
+            isCreatingTemplateSlot={isCreatingTemplateSlot}
+            isGeneratingTemplateShifts={isGeneratingTemplateShifts}
+            isLoadingTemplateSlots={isLoadingTemplateSlots}
+            isLoadingTemplateStaffingRoles={isLoadingTemplateStaffingRoles}
+            isLoadingTemplates={isLoadingTemplates}
+            managedTeams={managedTeams}
+            onCreateTemplate={onCreateTemplate}
+            onCreateTemplateSlot={onCreateTemplateSlot}
+            onGenerateTemplateShifts={onGenerateTemplateShifts}
+            onRefreshTemplateSlots={onRefreshTemplateSlots}
+            onRefreshTemplates={onRefreshTemplates}
+            onTemplateFormChange={onTemplateFormChange}
+            onTemplateGenerationFormChange={onTemplateGenerationFormChange}
+            onTemplateSlotFormChange={onTemplateSlotFormChange}
+            selectedGenerationTemplate={selectedGenerationTemplate}
+            selectedTemplate={selectedTemplate}
+            templateActionError={templateActionError}
+            templateActionMessage={templateActionMessage}
+            templateForm={templateForm}
+            templateGenerationForm={templateGenerationForm}
+            templateGenerationReport={templateGenerationReport}
+            templateListError={templateListError}
+            templates={templates}
+            templateSlotError={templateSlotError}
+            templateSlotForm={templateSlotForm}
+            templateSlots={templateSlots}
+            templateStaffingRoles={templateStaffingRoles}
+            templateStaffingRolesError={templateStaffingRolesError}
           />
 
           <CreateShiftPanel

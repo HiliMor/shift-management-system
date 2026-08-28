@@ -25,6 +25,7 @@ import useAvailabilityConstraints from "./hooks/useAvailabilityConstraints.js";
 import useAutomaticAssignment from "./hooks/useAutomaticAssignment.js";
 import useNotifications from "./hooks/useNotifications.js";
 import useSchedulePublication from "./hooks/useSchedulePublication.js";
+import useShiftTemplates from "./hooks/useShiftTemplates.js";
 import useTransferRequests from "./hooks/useTransferRequests.js";
 
 const STORAGE_KEY = "shift-management-session";
@@ -194,6 +195,7 @@ function App() {
     resetTransferRequests();
     resetSchedulePublication();
     resetAutomaticAssignment();
+    resetShiftTemplates();
   }
 
   function expireSession() {
@@ -289,6 +291,47 @@ function App() {
   } = useAutomaticAssignment(
     session,
     isManager,
+    managedDraftSchedules,
+    refreshAssignmentData,
+    refreshPublicationReadiness,
+    handleApiError,
+  );
+
+  const {
+    generationDraftSchedules,
+    handleTemplateFormChange,
+    handleTemplateGenerationFormChange,
+    handleTemplateSlotFormChange,
+    isCreatingTemplate,
+    isCreatingTemplateSlot,
+    isGeneratingTemplateShifts,
+    isLoadingTemplateSlots,
+    isLoadingTemplateStaffingRoles,
+    isLoadingTemplates,
+    refreshTemplateSlots,
+    refreshTemplates,
+    resetShiftTemplates,
+    selectedGenerationTemplate,
+    selectedTemplate,
+    submitCreateTemplate,
+    submitCreateTemplateSlot,
+    submitGenerateTemplateShifts,
+    templateActionError,
+    templateActionMessage,
+    templateForm,
+    templateGenerationForm,
+    templateGenerationReport,
+    templateListError,
+    templates,
+    templateSlotError,
+    templateSlotForm,
+    templateSlots,
+    templateStaffingRoles,
+    templateStaffingRolesError,
+  } = useShiftTemplates(
+    session,
+    isManager,
+    managedTeams,
     managedDraftSchedules,
     refreshAssignmentData,
     refreshPublicationReadiness,
@@ -759,6 +802,9 @@ function App() {
           isCreatingAssignment={isCreatingAssignment}
           isCreatingSchedule={isCreatingSchedule}
           isCreatingShift={isCreatingShift}
+          isCreatingTemplate={isCreatingTemplate}
+          isCreatingTemplateSlot={isCreatingTemplateSlot}
+          isGeneratingTemplateShifts={isGeneratingTemplateShifts}
           isLoadingAssignmentShifts={isLoadingAssignmentShifts}
           isLoadingDraftSchedules={isLoadingDraftSchedules}
           isLoadingManagedTeams={isLoadingManagedTeams}
@@ -766,9 +812,13 @@ function App() {
           isLoadingPublicationReadiness={isLoadingPublicationReadiness}
           isLoadingScheduleAssignments={isLoadingScheduleAssignments}
           isLoadingStaffingRoles={isLoadingStaffingRoles}
+          isLoadingTemplateSlots={isLoadingTemplateSlots}
+          isLoadingTemplateStaffingRoles={isLoadingTemplateStaffingRoles}
+          isLoadingTemplates={isLoadingTemplates}
           isLoadingTeamEmployees={isLoadingTeamEmployees}
           isRunningAutomaticAssignment={isRunningAutomaticAssignment}
           isPublishingSchedule={isPublishingSchedule}
+          generationDraftSchedules={generationDraftSchedules}
           managedDraftSchedules={managedDraftSchedules}
           managedPublishedSchedules={managedPublishedSchedules}
           managedPublishedSchedulesError={managedPublishedSchedulesError}
@@ -779,14 +829,22 @@ function App() {
           onCreateAssignment={handleCreateAssignment}
           onCreateSchedule={handleCreateSchedule}
           onCreateShift={handleCreateShift}
+          onCreateTemplate={submitCreateTemplate}
+          onCreateTemplateSlot={submitCreateTemplateSlot}
+          onGenerateTemplateShifts={submitGenerateTemplateShifts}
           onPublicationFormChange={handlePublicationFormChange}
           onPublishSchedule={submitPublishSchedule}
           onRefreshPublishedSchedules={refreshManagedPublishedSchedules}
           onRefreshPublicationReadiness={refreshPublicationReadiness}
+          onRefreshTemplateSlots={refreshTemplateSlots}
+          onRefreshTemplates={refreshTemplates}
           onReopenSchedule={submitReopenSchedule}
           onRunAutomaticAssignment={submitAutomaticAssignment}
           onScheduleFormChange={handleScheduleFormChange}
           onShiftFormChange={handleShiftFormChange}
+          onTemplateFormChange={handleTemplateFormChange}
+          onTemplateGenerationFormChange={handleTemplateGenerationFormChange}
+          onTemplateSlotFormChange={handleTemplateSlotFormChange}
           publicationActionError={publicationActionError}
           publicationActionMessage={publicationActionMessage}
           publicationError={publicationError}
@@ -796,12 +854,26 @@ function App() {
           scheduleAssignments={scheduleAssignments}
           scheduleAssignmentsError={scheduleAssignmentsError}
           scheduleCreationError={scheduleCreationError}
+          selectedGenerationTemplate={selectedGenerationTemplate}
           scheduleForm={scheduleForm}
           selectedAssignmentSchedule={selectedAssignmentSchedule}
+          selectedTemplate={selectedTemplate}
           shiftCreationError={shiftCreationError}
           shiftForm={shiftForm}
           staffingRoles={staffingRoles}
           staffingRolesError={staffingRolesError}
+          templateActionError={templateActionError}
+          templateActionMessage={templateActionMessage}
+          templateForm={templateForm}
+          templateGenerationForm={templateGenerationForm}
+          templateGenerationReport={templateGenerationReport}
+          templateListError={templateListError}
+          templates={templates}
+          templateSlotError={templateSlotError}
+          templateSlotForm={templateSlotForm}
+          templateSlots={templateSlots}
+          templateStaffingRoles={templateStaffingRoles}
+          templateStaffingRolesError={templateStaffingRolesError}
           teamEmployees={teamEmployees}
           teamEmployeesError={teamEmployeesError}
         />

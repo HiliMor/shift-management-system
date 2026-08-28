@@ -758,6 +758,7 @@ Goal: generate shifts from templates and offer automatic assignment.
 - [x] Rank employees by fewer assigned hours.
 - [x] Return a report of unassigned shifts.
 - [x] Add manager UI for running automatic assignment.
+- [x] Add manager UI for template creation, slot creation, and shift generation.
 
 ### Verify
 
@@ -768,6 +769,7 @@ Goal: generate shifts from templates and offer automatic assignment.
 - [x] A shift remains unfilled if no employee is eligible.
 - [x] The report explains what was not assigned.
 - [x] A manager can run automatic assignment from the frontend and see the report.
+- [x] A manager can create a template, add slots, and generate shifts from the frontend.
 
 ### Document
 
@@ -777,6 +779,7 @@ Goal: generate shifts from templates and offer automatic assignment.
 - [x] The template persistence model.
 - [x] The template management API.
 - [x] The template shift generation workflow.
+- [x] The template management frontend workflow.
 
 ## Phase 11 - Notifications And JMS
 
@@ -1559,3 +1562,11 @@ Still open:
 - Added validation that generation is allowed only for draft schedules belonging to the same team as the template.
 - Added focused service tests for expected generated dates, duplicate skipping, out-of-range slot skipping, published schedule rejection, team mismatch rejection, and empty-template rejection.
 - Updated README, backend architecture documentation, and the Postman collection for template shift generation.
+
+### 2026-08-27 - Templates: Management UI
+
+- Added frontend API helpers for template creation, template listing, slot creation, slot listing, and shift generation from templates.
+- Added `useShiftTemplates` to manage template forms, slot forms, generation forms, lists, loading states, errors, and success messages outside `App.jsx`.
+- Added a manager template panel for creating team templates, adding template slots with optional staffing roles, and generating draft schedule shifts.
+- Displayed the generation report with created shifts and skipped counts.
+- Updated project and frontend documentation to include the template management UI.

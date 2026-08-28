@@ -5,9 +5,8 @@ A course project for managing employee shifts across teams.
 The project is being implemented gradually. The current focus is a working
 Spring Boot backend with authentication, teams, schedules, shifts, manual
 assignment rules, availability constraint support, staffing role support,
-basic automatic assignment, JMS-backed notifications, and the first React
-frontend workflows. Shift template persistence is now in place as the next
-backend foundation for template-based shift generation.
+basic automatic assignment, shift templates, JMS-backed notifications, and
+React frontend workflows for the main manager and employee flows.
 
 ## Repository Structure
 
@@ -33,6 +32,7 @@ Implemented:
 - Shift template and template slot persistence model.
 - Manager template create/list endpoints.
 - Manager template slot create/list endpoints.
+- Manager template shift generation endpoint.
 - Availability constraint persistence model.
 - Availability constraint create, personal list, and delete operations.
 - Availability constraint creation is rejected when it overlaps an existing assignment.
@@ -91,12 +91,12 @@ Frontend:
 - Notification center connected to personal notification list, unread count, and mark-as-read APIs.
 - Transfer request screen connected to outgoing, incoming, and pending-manager request APIs.
 - Transfer request screen supports employee approve/reject, requester cancel, and manager approve actions.
-- Backend template generation endpoint creates draft schedule shifts from template slots.
+- Manager template screen supports template creation, slot creation, and shift generation.
 
 Planned next:
 
 - Full swap requests.
-- Template management UI.
+- Submission documentation polish.
 
 ## Backend Documentation
 

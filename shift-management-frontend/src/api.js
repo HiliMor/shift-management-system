@@ -132,6 +132,38 @@ export function autoAssignSchedule(token, scheduleId) {
   });
 }
 
+export function createShiftTemplate(token, teamId, template) {
+  return request(`/api/teams/${teamId}/templates`, {
+    method: "POST",
+    token,
+    body: JSON.stringify(template),
+  });
+}
+
+export function listShiftTemplates(token, teamId) {
+  return request(`/api/teams/${teamId}/templates`, { token });
+}
+
+export function createTemplateSlot(token, templateId, slot) {
+  return request(`/api/templates/${templateId}/slots`, {
+    method: "POST",
+    token,
+    body: JSON.stringify(slot),
+  });
+}
+
+export function listTemplateSlots(token, templateId) {
+  return request(`/api/templates/${templateId}/slots`, { token });
+}
+
+export function generateShiftsFromTemplate(token, templateId, scheduleId) {
+  return request(`/api/templates/${templateId}/generate`, {
+    method: "POST",
+    token,
+    body: JSON.stringify({ scheduleId: Number(scheduleId) }),
+  });
+}
+
 export function createAvailabilityConstraint(token, constraint) {
   return request("/api/availability-constraints", {
     method: "POST",
