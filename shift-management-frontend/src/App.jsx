@@ -20,28 +20,6 @@ import { useLanguage } from "./i18n/LanguageContext.jsx";
 
 const STORAGE_KEY = "shift-management-session";
 
-const dateFormatter = new Intl.DateTimeFormat("en-GB", {
-  day: "2-digit",
-  month: "short",
-  year: "numeric",
-});
-
-const dateTimeFormatter = new Intl.DateTimeFormat("en-GB", {
-  day: "2-digit",
-  hour: "2-digit",
-  minute: "2-digit",
-  month: "short",
-  year: "numeric",
-});
-
-function formatDate(value) {
-  return value ? dateFormatter.format(new Date(value)) : "Not set";
-}
-
-function formatDateTime(value) {
-  return value ? dateTimeFormatter.format(new Date(value)) : "Not set";
-}
-
 function loadStoredSession() {
   const stored = localStorage.getItem(STORAGE_KEY);
 
@@ -63,9 +41,37 @@ function App() {
   const [password, setPassword] = useState("");
   const [loginError, setLoginError] = useState("");
   const [isLoggingIn, setIsLoggingIn] = useState(false);
-  const { t } = useLanguage();
+  const { language, t } = useLanguage();
   const isManager = session?.user?.applicationRole === "MANAGER";
   const isEmployee = session?.user?.applicationRole === "EMPLOYEE";
+
+  const dateFormatter = useMemo(
+    () => new Intl.DateTimeFormat(language === "he" ? "he-IL" : "en-GB", {
+      day: "2-digit",
+      month: "short",
+      year: "numeric",
+    }),
+    [language],
+  );
+
+  const dateTimeFormatter = useMemo(
+    () => new Intl.DateTimeFormat(language === "he" ? "he-IL" : "en-GB", {
+      day: "2-digit",
+      hour: "2-digit",
+      minute: "2-digit",
+      month: "short",
+      year: "numeric",
+    }),
+    [language],
+  );
+
+  function formatDate(value) {
+    return value ? dateFormatter.format(new Date(value)) : "Not set";
+  }
+
+  function formatDateTime(value) {
+    return value ? dateTimeFormatter.format(new Date(value)) : "Not set";
+  }
 
   const displayName = useMemo(() => {
     if (!session?.user) {
