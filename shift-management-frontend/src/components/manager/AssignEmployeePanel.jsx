@@ -1,3 +1,11 @@
+import { useLanguage } from "../../i18n/LanguageContext.jsx";
+
+function renderScheduleOption(schedule, formatDate, t) {
+  return `#${schedule.id} - ${schedule.teamName}, ${formatDate(schedule.startDate)} ${t("dateRangeSeparator")} ${formatDate(
+    schedule.endDate,
+  )}`;
+}
+
 function AssignEmployeePanel({
   assignmentForm,
   assignmentShiftMap,
@@ -20,11 +28,13 @@ function AssignEmployeePanel({
   teamEmployees,
   teamEmployeesError,
 }) {
+  const { t } = useLanguage();
+
   return (
     <section className="manager-panel" id="manager-assignments">
       <div className="manager-panel-heading">
         <span>3</span>
-        <h3>Manual assignment</h3>
+        <h3>{t("manualAssignment")}</h3>
       </div>
 
       {assignmentShiftsError ? <p className="error-message">{assignmentShiftsError}</p> : null}
@@ -32,13 +42,13 @@ function AssignEmployeePanel({
       {scheduleAssignmentsError ? <p className="error-message">{scheduleAssignmentsError}</p> : null}
 
       {!isLoadingDraftSchedules && !draftSchedulesError && managedDraftSchedules.length === 0 ? (
-        <p className="muted">Create a draft schedule before assigning employees.</p>
+        <p className="muted">{t("createDraftBeforeAssignment")}</p>
       ) : null}
 
       {managedDraftSchedules.length > 0 ? (
         <form className="assignment-form" onSubmit={onCreateAssignment}>
           <label>
-            Draft schedule
+            {t("draftSchedule")}
             <select
               name="scheduleId"
               onChange={onAssignmentFormChange}
@@ -47,15 +57,14 @@ function AssignEmployeePanel({
             >
               {managedDraftSchedules.map((schedule) => (
                 <option key={schedule.id} value={schedule.id}>
-                  #{schedule.id} - {schedule.teamName}, {formatDate(schedule.startDate)} to{" "}
-                  {formatDate(schedule.endDate)}
+                  {renderScheduleOption(schedule, formatDate, t)}
                 </option>
               ))}
             </select>
           </label>
 
           <label>
-            Shift
+            {t("shift")}
             <select
               disabled={isLoadingAssignmentShifts || assignmentShifts.length === 0}
               name="shiftId"
@@ -65,14 +74,14 @@ function AssignEmployeePanel({
             >
               {assignmentShifts.map((shift) => (
                 <option key={shift.id} value={shift.id}>
-                  #{shift.id} - {shift.description || "Shift"}, {formatDateTime(shift.startTime)}
+                  #{shift.id} - {shift.description || t("shift")}, {formatDateTime(shift.startTime)}
                 </option>
               ))}
             </select>
           </label>
 
           <label>
-            Employee
+            {t("employee")}
             <select
               disabled={isLoadingTeamEmployees || teamEmployees.length === 0}
               name="employeeId"
@@ -98,34 +107,34 @@ function AssignEmployeePanel({
             }
             type="submit"
           >
-            {isCreatingAssignment ? "Assigning..." : "Assign employee"}
+            {isCreatingAssignment ? t("assigning") : t("assignEmployee")}
           </button>
         </form>
       ) : null}
 
-      {isLoadingAssignmentShifts ? <p className="muted">Loading shifts...</p> : null}
-      {isLoadingTeamEmployees ? <p className="muted">Loading employees...</p> : null}
+      {isLoadingAssignmentShifts ? <p className="muted">{t("loadingShifts")}</p> : null}
+      {isLoadingTeamEmployees ? <p className="muted">{t("loadingEmployees")}</p> : null}
 
       {!isLoadingAssignmentShifts &&
       !assignmentShiftsError &&
       managedDraftSchedules.length > 0 &&
       assignmentShifts.length === 0 ? (
-        <p className="muted">Add a shift before assigning employees.</p>
+        <p className="muted">{t("addShiftBeforeAssignment")}</p>
       ) : null}
 
       {!isLoadingTeamEmployees && !teamEmployeesError && selectedAssignmentSchedule && teamEmployees.length === 0 ? (
-        <p className="muted">No active employees are available for this team.</p>
+        <p className="muted">{t("noActiveEmployees")}</p>
       ) : null}
 
       <div className="assignment-panel-list">
-        <h4>Current assignments</h4>
-        {isLoadingScheduleAssignments ? <p className="muted">Loading assignments...</p> : null}
+        <h4>{t("currentAssignments")}</h4>
+        {isLoadingScheduleAssignments ? <p className="muted">{t("loadingAssignments")}</p> : null}
 
         {!isLoadingScheduleAssignments &&
         !scheduleAssignmentsError &&
         assignmentForm.scheduleId &&
         scheduleAssignments.length === 0 ? (
-          <p className="muted">No employees assigned in this draft schedule yet.</p>
+          <p className="muted">{t("noAssignmentsInDraft")}</p>
         ) : null}
 
         {scheduleAssignments.map((assignment) => {
@@ -136,10 +145,10 @@ function AssignEmployeePanel({
               <strong>{assignment.employeeFullName || assignment.employeeUsername}</strong>
               <span>
                 {assignedShift
-                  ? `#${assignedShift.id} - ${assignedShift.description || "Shift"}, ${formatDateTime(
+                  ? `#${assignedShift.id} - ${assignedShift.description || t("shift")}, ${formatDateTime(
                       assignedShift.startTime,
                     )}`
-                  : `Shift #${assignment.shiftId}`}
+                  : `${t("shift")} #${assignment.shiftId}`}
               </span>
             </div>
           );

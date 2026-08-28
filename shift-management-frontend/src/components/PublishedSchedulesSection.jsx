@@ -41,7 +41,7 @@ function PublishedSchedulesSection({
             <div>
               <h3>{schedule.teamName}</h3>
               <p>
-                {formatDate(schedule.startDate)} to {formatDate(schedule.endDate)}
+                {formatDate(schedule.startDate)} {t("dateRangeSeparator")} {formatDate(schedule.endDate)}
               </p>
             </div>
             <span>{statusLabel(schedule.status)}</span>

@@ -100,7 +100,7 @@ function AvailabilityConstraintsSection({
       </form>
 
       {availabilityActionError ? <p className="error-message">{availabilityActionError}</p> : null}
-      {availabilityActionMessage ? <p className="success-message">{availabilityActionMessage}</p> : null}
+      {availabilityActionMessage ? <p className="success-message">{t(availabilityActionMessage)}</p> : null}
       {isLoadingAvailability ? <p className="muted">{t("loadingAvailability")}</p> : null}
       {availabilityError ? <p className="error-message">{availabilityError}</p> : null}
 
@@ -114,7 +114,7 @@ function AvailabilityConstraintsSection({
             <article className="availability-row" key={constraint.id}>
               <div>
                 <h3>
-                  {formatDateTime(constraint.startTime)} to {formatDateTime(constraint.endTime)}
+                  {formatDateTime(constraint.startTime)} {t("dateRangeSeparator")} {formatDateTime(constraint.endTime)}
                 </h3>
                 <p>{constraint.reason || t("noReasonProvided")}</p>
                 <p className="notification-meta">

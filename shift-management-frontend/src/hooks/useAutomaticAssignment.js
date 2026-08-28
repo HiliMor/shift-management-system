@@ -6,10 +6,6 @@ const emptyAutomaticAssignmentForm = {
   scheduleId: "",
 };
 
-function assignmentCountLabel(count) {
-  return count === 1 ? "1 assignment" : `${count} assignments`;
-}
-
 function useAutomaticAssignment(
   session,
   enabled,
@@ -63,7 +59,10 @@ function useAutomaticAssignment(
       const report = await autoAssignSchedule(session.accessToken, automaticAssignmentForm.scheduleId);
 
       setAutomaticAssignmentReport(report);
-      setAutomaticAssignmentMessage(`Automatic assignment created ${assignmentCountLabel(report.assignmentsCreated)}.`);
+      setAutomaticAssignmentMessage({
+        key: "automaticAssignmentCreated",
+        count: report.assignmentsCreated,
+      });
       onAssignmentsChanged(report.scheduleId);
       onPublicationReadinessChanged();
     } catch (error) {

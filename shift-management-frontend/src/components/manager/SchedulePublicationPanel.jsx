@@ -1,5 +1,7 @@
-function renderScheduleOption(schedule, formatDate) {
-  return `#${schedule.id} - ${schedule.teamName}, ${formatDate(schedule.startDate)} to ${formatDate(
+import { useLanguage } from "../../i18n/LanguageContext.jsx";
+
+function renderScheduleOption(schedule, formatDate, t) {
+  return `#${schedule.id} - ${schedule.teamName}, ${formatDate(schedule.startDate)} ${t("dateRangeSeparator")} ${formatDate(
     schedule.endDate,
   )}`;
 }
@@ -25,24 +27,26 @@ function SchedulePublicationPanel({
   publicationError,
   reopeningScheduleId,
 }) {
+  const { t } = useLanguage();
+
   return (
     <section className="manager-panel" id="manager-publication">
       <div className="manager-panel-heading">
         <span>4</span>
-        <h3>Publish or reopen</h3>
+        <h3>{t("publishOrReopen")}</h3>
       </div>
 
       {draftSchedulesError ? <p className="error-message">{draftSchedulesError}</p> : null}
       {publicationError ? <p className="error-message">{publicationError}</p> : null}
 
       {!isLoadingDraftSchedules && !draftSchedulesError && managedDraftSchedules.length === 0 ? (
-        <p className="muted">No draft schedules are available for publication.</p>
+        <p className="muted">{t("noDraftSchedulesForPublication")}</p>
       ) : null}
 
       {managedDraftSchedules.length > 0 ? (
         <form className="publication-form" onSubmit={onPublishSchedule}>
           <label>
-            Draft schedule
+            {t("draftSchedule")}
             <select
               name="scheduleId"
               onChange={onPublicationFormChange}
@@ -51,7 +55,7 @@ function SchedulePublicationPanel({
             >
               {managedDraftSchedules.map((schedule) => (
                 <option key={schedule.id} value={schedule.id}>
-                  {renderScheduleOption(schedule, formatDate)}
+                  {renderScheduleOption(schedule, formatDate, t)}
                 </option>
               ))}
             </select>
@@ -64,7 +68,7 @@ function SchedulePublicationPanel({
               onChange={onPublicationFormChange}
               type="checkbox"
             />
-            Publish with unfilled shifts
+            {t("publishWithUnfilled")}
           </label>
 
           <button
@@ -73,11 +77,11 @@ function SchedulePublicationPanel({
             onClick={onRefreshPublicationReadiness}
             type="button"
           >
-            {isLoadingPublicationReadiness ? "Checking..." : "Check readiness"}
+            {isLoadingPublicationReadiness ? t("checking") : t("checkReadiness")}
           </button>
 
           <button disabled={isPublishingSchedule} type="submit">
-            {isPublishingSchedule ? "Publishing..." : "Publish schedule"}
+            {isPublishingSchedule ? t("publishing") : t("publishSchedule")}
           </button>
         </form>
       ) : null}
@@ -86,24 +90,24 @@ function SchedulePublicationPanel({
         <div className="readiness-panel">
           <div className="readiness-summary">
             <span className={publicationReadiness.readyToPublish ? "ready-badge" : "warning-badge"}>
-              {publicationReadiness.readyToPublish ? "Ready" : "Needs confirmation"}
+              {publicationReadiness.readyToPublish ? t("ready") : t("needsConfirmation")}
             </span>
-            <span>{publicationReadiness.totalShifts} shifts</span>
+            <span>{publicationReadiness.totalShifts} {t("shifts")}</span>
             <span>
-              {publicationReadiness.totalAssignedWorkers}/{publicationReadiness.totalRequiredWorkers} workers
+              {publicationReadiness.totalAssignedWorkers}/{publicationReadiness.totalRequiredWorkers} {t("workers")}
             </span>
-            <span>{publicationReadiness.totalOpenSlots} open slots</span>
+            <span>{publicationReadiness.totalOpenSlots} {t("openSlots")}</span>
           </div>
 
           {publicationReadiness.unfilledShifts.length > 0 ? (
             <div className="unfilled-shift-list">
-              <h4>Unfilled shifts</h4>
+              <h4>{t("unfilledShifts")}</h4>
               {publicationReadiness.unfilledShifts.map((shift) => (
                 <div className="assignment-row" key={shift.shiftId}>
-                  <strong>Shift #{shift.shiftId}</strong>
+                  <strong>{t("shift")} #{shift.shiftId}</strong>
                   <span>
-                    {shift.description || "Shift"}, {formatDateTime(shift.startTime)} to{" "}
-                    {formatDateTime(shift.endTime)} - {shift.openSlots} open
+                    {shift.description || t("shift")}, {formatDateTime(shift.startTime)} {t("dateRangeSeparator")} {" "}
+                    {formatDateTime(shift.endTime)} - {shift.openSlots} {t("openSlots")}
                   </span>
                 </div>
               ))}
@@ -114,32 +118,32 @@ function SchedulePublicationPanel({
 
       <div className="assignment-panel-list">
         <div className="section-heading compact-heading">
-          <h4>Published schedules</h4>
+          <h4>{t("publishedSchedules")}</h4>
           <button
             className="secondary-button compact-button"
             disabled={isLoadingManagedPublishedSchedules}
             onClick={onRefreshPublishedSchedules}
             type="button"
           >
-            Refresh
+            {t("refresh")}
           </button>
         </div>
 
-        {isLoadingManagedPublishedSchedules ? <p className="muted">Loading published schedules...</p> : null}
+        {isLoadingManagedPublishedSchedules ? <p className="muted">{t("loadingPublishedSchedules")}</p> : null}
         {managedPublishedSchedulesError ? <p className="error-message">{managedPublishedSchedulesError}</p> : null}
 
         {!isLoadingManagedPublishedSchedules &&
         !managedPublishedSchedulesError &&
         managedPublishedSchedules.length === 0 ? (
-          <p className="muted">No published schedules are available to reopen.</p>
+          <p className="muted">{t("noPublishedSchedulesToReopen")}</p>
         ) : null}
 
         {managedPublishedSchedules.map((schedule) => (
           <div className="assignment-row" key={schedule.id}>
-            <strong>{renderScheduleOption(schedule, formatDate)}</strong>
+            <strong>{renderScheduleOption(schedule, formatDate, t)}</strong>
             <span>
-              Published #{schedule.publicationNumber}
-              {schedule.publishedAt ? ` on ${formatDateTime(schedule.publishedAt)}` : ""}
+              {t("published")} #{schedule.publicationNumber}
+              {schedule.publishedAt ? ` ${t("onDate")} ${formatDateTime(schedule.publishedAt)}` : ""}
             </span>
             <button
               className="secondary-button compact-button"
@@ -147,7 +151,7 @@ function SchedulePublicationPanel({
               onClick={() => onReopenSchedule(schedule.id)}
               type="button"
             >
-              {reopeningScheduleId === schedule.id ? "Reopening..." : "Reopen"}
+              {reopeningScheduleId === schedule.id ? t("reopening") : t("reopen")}
             </button>
           </div>
         ))}

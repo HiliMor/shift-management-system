@@ -66,11 +66,11 @@ function App() {
   );
 
   function formatDate(value) {
-    return value ? dateFormatter.format(new Date(value)) : "Not set";
+    return value ? dateFormatter.format(new Date(value)) : t("notSet");
   }
 
   function formatDateTime(value) {
-    return value ? dateTimeFormatter.format(new Date(value)) : "Not set";
+    return value ? dateTimeFormatter.format(new Date(value)) : t("notSet");
   }
 
   const displayName = useMemo(() => {

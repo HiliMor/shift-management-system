@@ -108,7 +108,7 @@ function useSchedulePublication(
         publicationForm.confirmUnfilled,
       );
 
-      setPublicationActionMessage(`Schedule #${publishedSchedule.id} published.`);
+      setPublicationActionMessage({ key: "schedulePublishedMessage", id: publishedSchedule.id });
       setPublicationReadiness(null);
       setPublicationForm(emptyPublicationForm);
       onDraftSchedulesChanged();
@@ -127,7 +127,7 @@ function useSchedulePublication(
 
     try {
       const reopenedSchedule = await reopenSchedule(session.accessToken, scheduleId);
-      setPublicationActionMessage(`Schedule #${reopenedSchedule.id} reopened as draft.`);
+      setPublicationActionMessage({ key: "scheduleReopenedMessage", id: reopenedSchedule.id });
       onDraftSchedulesChanged();
       refreshManagedPublishedSchedules();
     } catch (error) {

@@ -83,7 +83,7 @@ function useAvailabilityConstraints(session, enabled, onApiError) {
         reason: availabilityForm.reason || null,
       });
       setAvailabilityForm(emptyAvailabilityForm);
-      setAvailabilityActionMessage("Availability constraint created.");
+      setAvailabilityActionMessage("availabilityCreated");
       refreshAvailabilityConstraints();
     } catch (error) {
       onApiError(error, setAvailabilityActionError);
@@ -102,7 +102,7 @@ function useAvailabilityConstraints(session, enabled, onApiError) {
       setAvailabilityConstraints((current) =>
         current.filter((constraint) => constraint.id !== constraintId),
       );
-      setAvailabilityActionMessage("Availability constraint deleted.");
+      setAvailabilityActionMessage("availabilityDeleted");
     } catch (error) {
       onApiError(error, setAvailabilityActionError);
     } finally {

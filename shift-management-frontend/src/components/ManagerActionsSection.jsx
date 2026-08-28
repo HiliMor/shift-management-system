@@ -7,6 +7,18 @@ import CreateShiftPanel from "./manager/CreateShiftPanel.jsx";
 import SchedulePublicationPanel from "./manager/SchedulePublicationPanel.jsx";
 import ShiftTemplatePanel from "./manager/ShiftTemplatePanel.jsx";
 
+function managerActionMessageLabel(message, t) {
+  if (!message) {
+    return "";
+  }
+
+  if (typeof message === "string") {
+    return t(message);
+  }
+
+  return `${t(message.key)} #${message.id}.`;
+}
+
 function ManagerActionsSection({
   automaticAssignmentError,
   automaticAssignmentForm,
@@ -321,9 +333,9 @@ function ManagerActionsSection({
 
       {createdSchedule ? (
         <div className="success-message">
-          <strong>Draft schedule #{createdSchedule.id} created</strong>
+          <strong>{t("draftScheduleCreated")} #{createdSchedule.id}</strong>
           <span>
-            {createdSchedule.teamName}: {formatDate(createdSchedule.startDate)} to{" "}
+            {createdSchedule.teamName}: {formatDate(createdSchedule.startDate)} {t("dateRangeSeparator")} {" "}
             {formatDate(createdSchedule.endDate)}
           </span>
         </div>
@@ -331,18 +343,18 @@ function ManagerActionsSection({
 
       {createdShift ? (
         <div className="success-message">
-          <strong>Shift #{createdShift.id} created</strong>
+          <strong>{t("shiftCreated")} #{createdShift.id}</strong>
           <span>
-            {formatDateTime(createdShift.startTime)} to {formatDateTime(createdShift.endTime)}
+            {formatDateTime(createdShift.startTime)} {t("dateRangeSeparator")} {formatDateTime(createdShift.endTime)}
           </span>
         </div>
       ) : null}
 
       {createdAssignment ? (
         <div className="success-message">
-          <strong>Assignment #{createdAssignment.id} created</strong>
+          <strong>{t("assignmentCreated")} #{createdAssignment.id}</strong>
           <span>
-            {createdAssignment.employeeFullName || createdAssignment.employeeUsername} assigned to shift #
+            {createdAssignment.employeeFullName || createdAssignment.employeeUsername} {t("assignedToShift")} #
             {createdAssignment.shiftId}
           </span>
         </div>
@@ -350,7 +362,7 @@ function ManagerActionsSection({
 
       {publicationActionMessage ? (
         <div className="success-message">
-          <strong>{publicationActionMessage}</strong>
+          <strong>{managerActionMessageLabel(publicationActionMessage, t)}</strong>
         </div>
       ) : null}
     </section>

@@ -31,7 +31,7 @@ function ScheduleDetailsSection({
             <div>
               <p className="eyebrow">{t("dates")}</p>
               <strong>
-                {formatDate(selectedScheduleDetails.schedule.startDate)} to{" "}
+                {formatDate(selectedScheduleDetails.schedule.startDate)} {t("dateRangeSeparator")} {" "}
                 {formatDate(selectedScheduleDetails.schedule.endDate)}
               </strong>
             </div>
@@ -52,7 +52,7 @@ function ScheduleDetailsSection({
                   <div>
                     <h3>{shift.description || t("shift")}</h3>
                     <p>
-                      {formatDateTime(shift.startTime)} to {formatDateTime(shift.endTime)}
+                      {formatDateTime(shift.startTime)} {t("dateRangeSeparator")} {formatDateTime(shift.endTime)}
                     </p>
                   </div>
                   <div className="shift-meta">

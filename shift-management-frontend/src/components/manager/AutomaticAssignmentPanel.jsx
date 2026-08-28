@@ -1,17 +1,31 @@
-function renderScheduleOption(schedule, formatDate) {
-  return `#${schedule.id} - ${schedule.teamName}, ${formatDate(schedule.startDate)} to ${formatDate(
+import { useLanguage } from "../../i18n/LanguageContext.jsx";
+
+function renderScheduleOption(schedule, formatDate, t) {
+  return `#${schedule.id} - ${schedule.teamName}, ${formatDate(schedule.startDate)} ${t("dateRangeSeparator")} ${formatDate(
     schedule.endDate,
   )}`;
 }
 
-function renderAssignedEmployees(assignments) {
+function renderAssignedEmployees(assignments, t) {
   if (assignments.length === 0) {
-    return <span>No new assignments</span>;
+    return <span>{t("noNewAssignments")}</span>;
   }
 
   return assignments.map((assignment) => (
     <span key={assignment.id}>{assignment.employeeFullName || assignment.employeeUsername}</span>
   ));
+}
+
+function automaticAssignmentMessageLabel(message, t) {
+  if (!message) {
+    return "";
+  }
+
+  if (typeof message === "string") {
+    return t(message);
+  }
+
+  return `${t(message.key)} ${message.count} ${t("assignments")}.`;
 }
 
 function AutomaticAssignmentPanel({
@@ -28,24 +42,26 @@ function AutomaticAssignmentPanel({
   onAutomaticAssignmentFormChange,
   onRunAutomaticAssignment,
 }) {
+  const { t } = useLanguage();
+
   return (
     <section className="manager-panel" id="manager-auto-assign">
       <div className="manager-panel-heading">
         <span>3</span>
-        <h3>Automatic assignment</h3>
+        <h3>{t("automaticAssignment")}</h3>
       </div>
 
       {draftSchedulesError ? <p className="error-message">{draftSchedulesError}</p> : null}
       {automaticAssignmentError ? <p className="error-message">{automaticAssignmentError}</p> : null}
 
       {!isLoadingDraftSchedules && !draftSchedulesError && managedDraftSchedules.length === 0 ? (
-        <p className="muted">Create a draft schedule before running automatic assignment.</p>
+        <p className="muted">{t("createDraftBeforeAutoAssign")}</p>
       ) : null}
 
       {managedDraftSchedules.length > 0 ? (
         <form className="automatic-assignment-form" onSubmit={onRunAutomaticAssignment}>
           <label>
-            Draft schedule
+            {t("draftSchedule")}
             <select
               name="scheduleId"
               onChange={onAutomaticAssignmentFormChange}
@@ -54,7 +70,7 @@ function AutomaticAssignmentPanel({
             >
               {managedDraftSchedules.map((schedule) => (
                 <option key={schedule.id} value={schedule.id}>
-                  {renderScheduleOption(schedule, formatDate)}
+                  {renderScheduleOption(schedule, formatDate, t)}
                 </option>
               ))}
             </select>
@@ -66,23 +82,23 @@ function AutomaticAssignmentPanel({
             }
             type="submit"
           >
-            {isRunningAutomaticAssignment ? "Assigning..." : "Run auto assignment"}
+            {isRunningAutomaticAssignment ? t("assigning") : t("runAutoAssignment")}
           </button>
         </form>
       ) : null}
 
       {automaticAssignmentMessage ? (
         <div className="success-message">
-          <strong>{automaticAssignmentMessage}</strong>
+          <strong>{automaticAssignmentMessageLabel(automaticAssignmentMessage, t)}</strong>
         </div>
       ) : null}
 
       {automaticAssignmentReport ? (
         <div className="readiness-panel">
           <div className="readiness-summary">
-            <span>{automaticAssignmentReport.totalShifts} shifts</span>
-            <span>{automaticAssignmentReport.assignmentsCreated} assignments created</span>
-            <span>{automaticAssignmentReport.totalOpenSlotsBefore} open before</span>
+            <span>{automaticAssignmentReport.totalShifts} {t("shifts")}</span>
+            <span>{automaticAssignmentReport.assignmentsCreated} {t("assignmentsCreated")}</span>
+            <span>{automaticAssignmentReport.totalOpenSlotsBefore} {t("openBefore")}</span>
             <span
               className={
                 automaticAssignmentReport.totalOpenSlotsAfter === 0 && automaticAssignmentReport.totalShifts > 0
@@ -90,7 +106,7 @@ function AutomaticAssignmentPanel({
                   : "warning-badge"
               }
             >
-              {automaticAssignmentReport.totalOpenSlotsAfter} open after
+              {automaticAssignmentReport.totalOpenSlotsAfter} {t("openAfter")}
             </span>
           </div>
 
@@ -99,9 +115,9 @@ function AutomaticAssignmentPanel({
               {automaticAssignmentReport.shifts.map((shift) => (
                 <div className="assignment-row auto-assignment-row" key={shift.shiftId}>
                   <div className="auto-assignment-main">
-                    <strong>Shift #{shift.shiftId}</strong>
+                    <strong>{t("shift")} #{shift.shiftId}</strong>
                     <span>
-                      {shift.description || "Shift"}, {formatDateTime(shift.startTime)} to{" "}
+                      {shift.description || t("shift")}, {formatDateTime(shift.startTime)} {t("dateRangeSeparator")} {" "}
                       {formatDateTime(shift.endTime)}
                     </span>
                     <span>{shift.message}</span>
@@ -109,15 +125,15 @@ function AutomaticAssignmentPanel({
 
                   <div className="auto-assignment-created-list">
                     <strong>
-                      {shift.assignmentsCreated}/{shift.openSlotsBefore} created
+                      {shift.assignmentsCreated}/{shift.openSlotsBefore} {t("createdCount")}
                     </strong>
-                    {renderAssignedEmployees(shift.createdAssignments)}
+                    {renderAssignedEmployees(shift.createdAssignments, t)}
                   </div>
                 </div>
               ))}
             </div>
           ) : (
-            <p className="muted">No shifts are available in this draft schedule.</p>
+            <p className="muted">{t("noShiftsInDraft")}</p>
           )}
         </div>
       ) : null}
