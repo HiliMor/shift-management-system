@@ -196,13 +196,13 @@ function useTransferRequests(session, isManager, selectedScheduleDetails, onApiE
           sourceAssignmentId: Number(transferRequestCreationForm.sourceAssignmentId),
           targetAssignmentId: Number(transferRequestCreationForm.targetAssignmentId),
         });
-        setTransferRequestCreationMessage("Swap request created.");
+        setTransferRequestCreationMessage("swapRequestCreated");
       } else {
         await createTransferRequest(session.accessToken, {
           sourceAssignmentId: Number(transferRequestCreationForm.sourceAssignmentId),
           targetEmployeeId: Number(transferRequestCreationForm.targetEmployeeId),
         });
-        setTransferRequestCreationMessage("Transfer request created.");
+        setTransferRequestCreationMessage("transferRequestCreated");
       }
 
       refreshTransferRequests();
@@ -236,7 +236,7 @@ function useTransferRequests(session, isManager, selectedScheduleDetails, onApiE
       requestId,
       "employee-approve",
       approveTransferAsTargetEmployee,
-      "Request approved.",
+      "requestApproved",
     );
   }
 
@@ -245,7 +245,7 @@ function useTransferRequests(session, isManager, selectedScheduleDetails, onApiE
       requestId,
       "manager-approve",
       approveTransferAsManager,
-      "Request approved by manager.",
+      "requestApprovedByManager",
     );
   }
 
@@ -254,7 +254,7 @@ function useTransferRequests(session, isManager, selectedScheduleDetails, onApiE
       requestId,
       "cancel",
       cancelTransferAsRequester,
-      "Request cancelled.",
+      "requestCancelled",
     );
   }
 
@@ -263,7 +263,7 @@ function useTransferRequests(session, isManager, selectedScheduleDetails, onApiE
       requestId,
       "employee-reject",
       rejectTransferAsTargetEmployee,
-      "Request rejected.",
+      "requestRejected",
     );
   }
 

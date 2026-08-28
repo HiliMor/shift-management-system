@@ -6,70 +6,82 @@ function isActingOnRequest(actingTransferRequest, requestId, actionName) {
   return actingTransferRequest?.id === requestId && actingTransferRequest.action === actionName;
 }
 
-function requestTypeLabel(type) {
-  return type === "SWAP" ? "Swap" : "Transfer";
+import { useLanguage } from "../i18n/LanguageContext.jsx";
+
+const requestTypeTranslationKeys = {
+  SWAP: "swap",
+  TRANSFER: "transfer",
+};
+
+const requestStatusTranslationKeys = {
+  PENDING_EMPLOYEE: "pendingEmployee",
+  PENDING_MANAGER: "pendingManager",
+  APPROVED: "approved",
+  REJECTED: "rejected",
+  CANCELLED: "cancelled",
+  INVALIDATED: "invalidated",
+};
+
+function requestTypeLabel(type, t) {
+  return t(requestTypeTranslationKeys[type] ?? type);
 }
 
-function requestStatusLabel(status) {
-  return status
-    .toLowerCase()
-    .split("_")
-    .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
-    .join(" ");
+function requestStatusLabel(status, t) {
+  return t(requestStatusTranslationKeys[status] ?? status);
 }
 
 function employeeOptionLabel(employee) {
   return `${employee.fullName || employee.username} (${employee.username})`;
 }
 
-function assignmentOptionLabel(option, formatDateTime, includeEmployee = false) {
-  const shiftLabel = option.shift.description || `Shift #${option.shift.id}`;
+function assignmentOptionLabel(option, formatDateTime, t, includeEmployee = false) {
+  const shiftLabel = option.shift.description || `${t("shift")} #${option.shift.id}`;
   const employeeLabel = option.assignment.employeeFullName || option.assignment.employeeUsername;
   const owner = includeEmployee ? `${employeeLabel} - ` : "";
 
   return `#${option.assignment.id} - ${owner}${shiftLabel} (${formatDateTime(option.shift.startTime)})`;
 }
 
-function renderRequest(request, formatDateTime, actions = null) {
+function renderRequest(request, formatDateTime, t, actions = null) {
   return (
     <article className="request-row" key={request.id}>
       <div>
         <div className="request-title-row">
           <h3>
-            {requestTypeLabel(request.type)} request #{request.id}
+            {requestTypeLabel(request.type, t)} {t("request")} #{request.id}
           </h3>
           <span className={`status-badge status-${request.status.toLowerCase().replaceAll("_", "-")}`}>
-            {requestStatusLabel(request.status)}
+            {requestStatusLabel(request.status, t)}
           </span>
         </div>
 
         <div className="request-details">
           <div>
-            <p className="eyebrow">From</p>
+            <p className="eyebrow">{t("from")}</p>
             <strong>{request.requesterFullName || request.requesterUsername}</strong>
             <span>{request.requesterUsername}</span>
           </div>
           <div>
-            <p className="eyebrow">To</p>
+            <p className="eyebrow">{t("to")}</p>
             <strong>{request.targetEmployeeFullName || request.targetEmployeeUsername}</strong>
             <span>{request.targetEmployeeUsername}</span>
           </div>
           <div>
-            <p className="eyebrow">Source assignment</p>
+            <p className="eyebrow">{t("sourceAssignment")}</p>
             <strong>#{request.sourceAssignmentId}</strong>
-            <span>Shift #{request.sourceShiftId}</span>
+            <span>{t("shift")} #{request.sourceShiftId}</span>
           </div>
           {request.targetAssignmentId ? (
             <div>
-              <p className="eyebrow">Target assignment</p>
+              <p className="eyebrow">{t("targetAssignment")}</p>
               <strong>#{request.targetAssignmentId}</strong>
-              <span>Shift #{request.targetShiftId}</span>
+              <span>{t("shift")} #{request.targetShiftId}</span>
             </div>
           ) : null}
           <div>
-            <p className="eyebrow">Created</p>
+            <p className="eyebrow">{t("created")}</p>
             <strong>{formatDateTime(request.createdAt)}</strong>
-            <span>Updated {formatDateTime(request.updatedAt)}</span>
+            <span>{t("updated")} {formatDateTime(request.updatedAt)}</span>
           </div>
         </div>
       </div>
@@ -107,6 +119,7 @@ function TransferRequestsSection({
   transferRequestsError,
   transferTargetEmployeeOptions,
 }) {
+  const { t } = useLanguage();
   const isCreatingSwap = transferRequestCreationForm.type === "SWAP";
   const hasSourceAssignments = sourceAssignmentOptions.length > 0;
   const hasTransferTargets = transferTargetEmployeeOptions.length > 0;
@@ -116,7 +129,7 @@ function TransferRequestsSection({
   return (
     <section className="section-block" id="transfer-requests">
       <div className="section-heading">
-        <h2>Transfer and swap requests</h2>
+        <h2>{t("transferAndSwapRequests")}</h2>
         <div className="section-actions">
           <span>{transferRequestCount}</span>
           <button
@@ -125,29 +138,30 @@ function TransferRequestsSection({
             onClick={onRefreshTransferRequests}
             type="button"
           >
-            Refresh
+            {t("refresh")}
           </button>
         </div>
       </div>
 
-      {isLoadingTransferRequests ? <p className="muted">Loading requests...</p> : null}
+      {isLoadingTransferRequests ? <p className="muted">{t("loadingRequests")}</p> : null}
       {transferRequestsError ? <p className="error-message">{transferRequestsError}</p> : null}
       {transferRequestActionError ? <p className="error-message">{transferRequestActionError}</p> : null}
-      {transferRequestActionMessage ? <p className="success-message">{transferRequestActionMessage}</p> : null}
+      {transferRequestActionMessage ? <p className="success-message">{t(transferRequestActionMessage)}</p> : null}
 
       {!isLoadingTransferRequests && !transferRequestsError && transferRequestCount === 0 ? (
-        <p className="muted">No transfer or swap requests are available for this user.</p>
+        <p className="muted">{t("noTransferSwapRequests")}</p>
       ) : null}
 
       {isManager ? (
         <div className="request-section-stack">
           <section className="request-panel">
-            <h3>Pending manager approval</h3>
+            <h3>{t("pendingManagerApproval")}</h3>
             <div className="request-list">
               {pendingManagerTransferRequests.map((request) =>
                 renderRequest(
                   request,
                   formatDateTime,
+                  t,
                   request.status === "PENDING_MANAGER" ? (
                     <button
                       className="compact-button"
@@ -156,8 +170,8 @@ function TransferRequestsSection({
                       type="button"
                     >
                       {isActingOnRequest(actingTransferRequest, request.id, "manager-approve")
-                        ? "Approving..."
-                        : "Approve"}
+                        ? t("approving")
+                        : t("approve")}
                     </button>
                   ) : null,
                 ),
@@ -168,19 +182,19 @@ function TransferRequestsSection({
       ) : (
         <div className="request-section-stack">
           <section className="request-panel">
-            <h3>Create request</h3>
+            <h3>{t("createRequest")}</h3>
 
             {!selectedScheduleDetails ? (
-              <p className="muted">Select a published schedule to create a request.</p>
+              <p className="muted">{t("selectPublishedScheduleForRequest")}</p>
             ) : null}
             {selectedScheduleDetails && !hasSourceAssignments ? (
-              <p className="muted">The selected schedule does not include your assignments.</p>
+              <p className="muted">{t("noOwnAssignments")}</p>
             ) : null}
 
             {selectedScheduleDetails && hasSourceAssignments ? (
               <form className="transfer-request-form" onSubmit={onCreateTransferRequest}>
                 <fieldset className="segmented-field">
-                  <legend>Request type</legend>
+                  <legend>{t("requestType")}</legend>
                   <div className="segmented-control">
                     <label
                       className={
@@ -196,8 +210,8 @@ function TransferRequestsSection({
                         type="radio"
                         value="TRANSFER"
                       />
-                      <strong>Transfer</strong>
-                      <span>Give away my assignment</span>
+                      <strong>{t("transfer")}</strong>
+                      <span>{t("giveAwayAssignment")}</span>
                     </label>
                     <label
                       className={
@@ -213,14 +227,14 @@ function TransferRequestsSection({
                         type="radio"
                         value="SWAP"
                       />
-                      <strong>Swap</strong>
-                      <span>Exchange two assignments</span>
+                      <strong>{t("swap")}</strong>
+                      <span>{t("exchangeAssignments")}</span>
                     </label>
                   </div>
                 </fieldset>
 
                 <label>
-                  My assignment
+                  {t("myAssignment")}
                   <select
                     name="sourceAssignmentId"
                     onChange={onTransferRequestCreationFormChange}
@@ -229,7 +243,7 @@ function TransferRequestsSection({
                   >
                     {sourceAssignmentOptions.map((option) => (
                       <option key={option.assignment.id} value={option.assignment.id}>
-                        {assignmentOptionLabel(option, formatDateTime)}
+                        {assignmentOptionLabel(option, formatDateTime, t)}
                       </option>
                     ))}
                   </select>
@@ -237,7 +251,7 @@ function TransferRequestsSection({
 
                 {isCreatingSwap ? (
                   <label>
-                    Assignment to receive
+                    {t("assignmentToReceive")}
                     <select
                       name="targetAssignmentId"
                       onChange={onTransferRequestCreationFormChange}
@@ -246,14 +260,14 @@ function TransferRequestsSection({
                     >
                       {swapTargetAssignmentOptions.map((option) => (
                         <option key={option.assignment.id} value={option.assignment.id}>
-                          {assignmentOptionLabel(option, formatDateTime, true)}
+                          {assignmentOptionLabel(option, formatDateTime, t, true)}
                         </option>
                       ))}
                     </select>
                   </label>
                 ) : (
                   <label>
-                    Employee receiving it
+                    {t("employeeReceiving")}
                     <select
                       name="targetEmployeeId"
                       onChange={onTransferRequestCreationFormChange}
@@ -270,31 +284,32 @@ function TransferRequestsSection({
                 )}
 
                 <button disabled={!canCreateRequest || isCreatingTransferRequest} type="submit">
-                  {isCreatingTransferRequest ? "Creating..." : "Create request"}
+                  {isCreatingTransferRequest ? t("creating") : t("createRequest")}
                 </button>
               </form>
             ) : null}
 
             {selectedScheduleDetails && hasSourceAssignments && !hasTransferTargets && !isCreatingSwap ? (
-              <p className="muted">No target employees are available in the selected schedule.</p>
+              <p className="muted">{t("noTargetEmployees")}</p>
             ) : null}
             {selectedScheduleDetails && hasSourceAssignments && !hasSwapTargets && isCreatingSwap ? (
-              <p className="muted">No target assignments are available in the selected schedule.</p>
+              <p className="muted">{t("noTargetAssignments")}</p>
             ) : null}
             {transferRequestCreationError ? <p className="error-message">{transferRequestCreationError}</p> : null}
-            {transferRequestCreationMessage ? <p className="success-message">{transferRequestCreationMessage}</p> : null}
+            {transferRequestCreationMessage ? <p className="success-message">{t(transferRequestCreationMessage)}</p> : null}
           </section>
 
           <section className="request-panel">
-            <h3>Incoming requests</h3>
+            <h3>{t("incomingRequests")}</h3>
             {incomingTransferRequests.length === 0 ? (
-              <p className="muted">No incoming requests.</p>
+              <p className="muted">{t("noIncomingRequests")}</p>
             ) : null}
             <div className="request-list">
               {incomingTransferRequests.map((request) =>
                 renderRequest(
                   request,
                   formatDateTime,
+                  t,
                   request.status === "PENDING_EMPLOYEE" ? (
                     <>
                       <button
@@ -304,8 +319,8 @@ function TransferRequestsSection({
                         type="button"
                       >
                         {isActingOnRequest(actingTransferRequest, request.id, "employee-approve")
-                          ? "Approving..."
-                          : "Approve"}
+                          ? t("approving")
+                          : t("approve")}
                       </button>
                       <button
                         className="secondary-button compact-button"
@@ -314,8 +329,8 @@ function TransferRequestsSection({
                         type="button"
                       >
                         {isActingOnRequest(actingTransferRequest, request.id, "employee-reject")
-                          ? "Rejecting..."
-                          : "Reject"}
+                          ? t("rejecting")
+                          : t("reject")}
                       </button>
                     </>
                   ) : null,
@@ -325,15 +340,16 @@ function TransferRequestsSection({
           </section>
 
           <section className="request-panel">
-            <h3>Outgoing requests</h3>
+            <h3>{t("outgoingRequests")}</h3>
             {outgoingTransferRequests.length === 0 ? (
-              <p className="muted">No outgoing requests.</p>
+              <p className="muted">{t("noOutgoingRequests")}</p>
             ) : null}
             <div className="request-list">
               {outgoingTransferRequests.map((request) =>
                 renderRequest(
                   request,
                   formatDateTime,
+                  t,
                   isActiveRequest(request) ? (
                     <button
                       className="secondary-button compact-button"
@@ -342,8 +358,8 @@ function TransferRequestsSection({
                       type="button"
                     >
                       {isActingOnRequest(actingTransferRequest, request.id, "cancel")
-                        ? "Cancelling..."
-                        : "Cancel"}
+                        ? t("cancelling")
+                        : t("cancel")}
                     </button>
                   ) : null,
                 ),
