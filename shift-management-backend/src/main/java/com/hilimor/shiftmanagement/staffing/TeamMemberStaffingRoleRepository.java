@@ -8,6 +8,8 @@ public interface TeamMemberStaffingRoleRepository extends JpaRepository<TeamMemb
 
     List<TeamMemberStaffingRole> findByTeamMember_Id(Long teamMemberId);
 
+    List<TeamMemberStaffingRole> findByTeamMember_User_Id(Long userId);
+
     List<TeamMemberStaffingRole> findByTeamMember_Team_Id(Long teamId);
 
     boolean existsByTeamMember_IdAndStaffingRole_Id(Long teamMemberId, Long staffingRoleId);

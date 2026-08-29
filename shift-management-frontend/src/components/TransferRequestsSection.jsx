@@ -42,7 +42,25 @@ function assignmentOptionLabel(option, formatDateTime, t, includeEmployee = fals
   return `#${option.assignment.id} - ${owner}${shiftLabel} (${formatDateTime(option.shift.startTime)})`;
 }
 
+function requestShiftDetails(request, prefix, formatDateTime, t) {
+  const shiftId = request[`${prefix}ShiftId`];
+  const assignmentId = request[`${prefix}AssignmentId`];
+  const description = request[`${prefix}ShiftDescription`] || `${t("shift")} #${shiftId}`;
+  const startTime = request[`${prefix}ShiftStartTime`];
+  const endTime = request[`${prefix}ShiftEndTime`];
+  const dateTime = startTime && endTime
+    ? `${formatDateTime(startTime)} - ${formatDateTime(endTime)}`
+    : t("notSet");
+
+  return { assignmentId, dateTime, description, shiftId };
+}
+
 function renderRequest(request, formatDateTime, t, actions = null) {
+  const sourceShift = requestShiftDetails(request, "source", formatDateTime, t);
+  const targetShift = request.targetAssignmentId
+    ? requestShiftDetails(request, "target", formatDateTime, t)
+    : null;
+
   return (
     <article className="request-row" key={request.id}>
       <div>
@@ -66,16 +84,20 @@ function renderRequest(request, formatDateTime, t, actions = null) {
             <strong>{request.targetEmployeeFullName || request.targetEmployeeUsername}</strong>
             <span>{request.targetEmployeeUsername}</span>
           </div>
-          <div>
-            <p className="eyebrow">{t("sourceAssignment")}</p>
-            <strong>#{request.sourceAssignmentId}</strong>
-            <span>{t("shift")} #{request.sourceShiftId}</span>
+          <div className="request-shift-summary">
+            <p className="eyebrow">
+              {request.type === "SWAP" ? t("myShift") : t("shiftToTransfer")}
+            </p>
+            <strong>{sourceShift.description}</strong>
+            <span>{sourceShift.dateTime}</span>
+            <span>#{sourceShift.assignmentId} · {t("shift")} #{sourceShift.shiftId}</span>
           </div>
-          {request.targetAssignmentId ? (
-            <div>
-              <p className="eyebrow">{t("targetAssignment")}</p>
-              <strong>#{request.targetAssignmentId}</strong>
-              <span>{t("shift")} #{request.targetShiftId}</span>
+          {targetShift ? (
+            <div className="request-shift-summary">
+              <p className="eyebrow">{t("shiftToReceive")}</p>
+              <strong>{targetShift.description}</strong>
+              <span>{targetShift.dateTime}</span>
+              <span>#{targetShift.assignmentId} · {t("shift")} #{targetShift.shiftId}</span>
             </div>
           ) : null}
           <div>

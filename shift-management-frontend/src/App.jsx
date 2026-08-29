@@ -2,6 +2,7 @@ import { useMemo, useState } from "react";
 import { login } from "./api.js";
 import AppShell from "./components/AppShell.jsx";
 import AvailabilityConstraintsSection from "./components/AvailabilityConstraintsSection.jsx";
+import EmployeeProfileSummary from "./components/EmployeeProfileSummary.jsx";
 import LoginScreen from "./components/LoginScreen.jsx";
 import NotificationsSection from "./components/NotificationsSection.jsx";
 import ManagerActionsSection from "./components/ManagerActionsSection.jsx";
@@ -10,6 +11,7 @@ import ScheduleDetailsSection from "./components/ScheduleDetailsSection.jsx";
 import TransferRequestsSection from "./components/TransferRequestsSection.jsx";
 import useAvailabilityConstraints from "./hooks/useAvailabilityConstraints.js";
 import useAutomaticAssignment from "./hooks/useAutomaticAssignment.js";
+import useEmployeeProfile from "./hooks/useEmployeeProfile.js";
 import useManagerScheduling from "./hooks/useManagerScheduling.js";
 import useNotifications from "./hooks/useNotifications.js";
 import usePublishedSchedules from "./hooks/usePublishedSchedules.js";
@@ -85,6 +87,7 @@ function App() {
     resetPublishedSchedules();
     resetManagerScheduling();
     resetAvailabilityConstraints();
+    resetEmployeeProfile();
     resetNotifications();
     resetTransferRequests();
     resetSchedulePublication();
@@ -114,6 +117,7 @@ function App() {
     isLoadingSchedules,
     publishedSchedules,
     resetPublishedSchedules,
+    refreshSelectedScheduleDetails,
     scheduleError,
     selectedScheduleDetails,
     selectedScheduleId,
@@ -194,6 +198,13 @@ function App() {
   } = useAvailabilityConstraints(session, isEmployee, handleApiError);
 
   const {
+    isLoadingTeamMemberships,
+    resetEmployeeProfile,
+    teamMemberships,
+    teamMembershipsError,
+  } = useEmployeeProfile(session, isEmployee, handleApiError);
+
+  const {
     isLoadingNotifications,
     markingNotificationId,
     markNotificationAsRead,
@@ -229,7 +240,13 @@ function App() {
     transferRequestCount,
     transferRequestsError,
     transferTargetEmployeeOptions,
-  } = useTransferRequests(session, isManager, selectedScheduleDetails, handleApiError);
+  } = useTransferRequests(
+    session,
+    isManager,
+    selectedScheduleDetails,
+    handleApiError,
+    refreshSelectedScheduleDetails,
+  );
 
   const {
     handlePublicationFormChange,
@@ -362,6 +379,15 @@ function App() {
     <AppShell
       availabilityConstraintCount={isEmployee ? availabilityConstraints.length : 0}
       displayName={displayName}
+      employeeProfile={
+        isEmployee ? (
+          <EmployeeProfileSummary
+            error={teamMembershipsError}
+            isLoading={isLoadingTeamMemberships}
+            memberships={teamMemberships}
+          />
+        ) : null
+      }
       isManager={isManager}
       onLogout={handleLogout}
       role={session.user.applicationRole}

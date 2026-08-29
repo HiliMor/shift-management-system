@@ -7,6 +7,7 @@ import java.util.stream.Collectors;
 
 import com.hilimor.shiftmanagement.staffing.TeamMemberStaffingRoleRepository;
 import com.hilimor.shiftmanagement.user.User;
+import com.hilimor.shiftmanagement.user.UserRepository;
 
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
@@ -19,15 +20,18 @@ public class TeamService {
     private final TeamManagerRepository teamManagerRepository;
     private final TeamMemberRepository teamMemberRepository;
     private final TeamMemberStaffingRoleRepository teamMemberStaffingRoleRepository;
+    private final UserRepository userRepository;
 
     public TeamService(
             TeamManagerRepository teamManagerRepository,
             TeamMemberRepository teamMemberRepository,
-            TeamMemberStaffingRoleRepository teamMemberStaffingRoleRepository
+            TeamMemberStaffingRoleRepository teamMemberStaffingRoleRepository,
+            UserRepository userRepository
     ) {
         this.teamManagerRepository = teamManagerRepository;
         this.teamMemberRepository = teamMemberRepository;
         this.teamMemberStaffingRoleRepository = teamMemberStaffingRoleRepository;
+        this.userRepository = userRepository;
     }
 
     @Transactional(readOnly = true)
@@ -37,6 +41,36 @@ public class TeamService {
                 .map(TeamManager::getTeam)
                 .sorted(Comparator.comparing(Team::getName))
                 .map(TeamResponse::from)
+                .toList();
+    }
+
+    @Transactional(readOnly = true)
+    public List<TeamMembershipResponse> listMyMemberships(String username) {
+        User user = userRepository.findByUsername(username)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "User not found"));
+
+        List<TeamMember> activeMembers = teamMemberRepository.findByUser_IdAndActiveTrue(user.getId());
+        Map<Long, List<String>> roleNamesByMemberId = teamMemberStaffingRoleRepository
+                .findByTeamMember_User_Id(user.getId())
+                .stream()
+                .filter(role -> role.getTeamMember().isActive())
+                .collect(Collectors.groupingBy(
+                        role -> role.getTeamMember().getId(),
+                        Collectors.mapping(
+                                role -> role.getStaffingRole().getName(),
+                                Collectors.collectingAndThen(Collectors.toList(), roleNames -> roleNames.stream()
+                                        .sorted()
+                                        .toList())
+                        )
+                ));
+
+        return activeMembers
+                .stream()
+                .sorted(Comparator.comparing(member -> member.getTeam().getName()))
+                .map(member -> TeamMembershipResponse.from(
+                        member,
+                        roleNamesByMemberId.getOrDefault(member.getId(), List.of())
+                ))
                 .toList();
     }
 

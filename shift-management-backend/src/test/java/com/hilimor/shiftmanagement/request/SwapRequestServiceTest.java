@@ -93,8 +93,14 @@ class SwapRequestServiceTest {
         assertThat(response.requesterId()).isEqualTo(2L);
         assertThat(response.sourceAssignmentId()).isEqualTo(30L);
         assertThat(response.sourceShiftId()).isEqualTo(20L);
+        assertThat(response.sourceShiftDescription()).isEqualTo("Morning shift");
+        assertThat(response.sourceShiftStartTime()).isEqualTo(Instant.parse("2026-08-04T06:00:00Z"));
+        assertThat(response.sourceShiftEndTime()).isEqualTo(Instant.parse("2026-08-04T14:00:00Z"));
         assertThat(response.targetEmployeeId()).isEqualTo(3L);
         assertThat(response.targetAssignmentId()).isNull();
+        assertThat(response.targetShiftDescription()).isNull();
+        assertThat(response.targetShiftStartTime()).isNull();
+        assertThat(response.targetShiftEndTime()).isNull();
         assertThat(response.createdAt()).isNotNull();
         assertThat(response.updatedAt()).isNotNull();
 
@@ -257,9 +263,15 @@ class SwapRequestServiceTest {
         assertThat(response.requesterId()).isEqualTo(2L);
         assertThat(response.sourceAssignmentId()).isEqualTo(30L);
         assertThat(response.sourceShiftId()).isEqualTo(20L);
+        assertThat(response.sourceShiftDescription()).isEqualTo("Morning shift");
+        assertThat(response.sourceShiftStartTime()).isEqualTo(Instant.parse("2026-08-04T06:00:00Z"));
+        assertThat(response.sourceShiftEndTime()).isEqualTo(Instant.parse("2026-08-04T14:00:00Z"));
         assertThat(response.targetEmployeeId()).isEqualTo(3L);
         assertThat(response.targetAssignmentId()).isEqualTo(31L);
         assertThat(response.targetShiftId()).isEqualTo(21L);
+        assertThat(response.targetShiftDescription()).isEqualTo("Next morning shift");
+        assertThat(response.targetShiftStartTime()).isEqualTo(Instant.parse("2026-08-05T06:00:00Z"));
+        assertThat(response.targetShiftEndTime()).isEqualTo(Instant.parse("2026-08-05T14:00:00Z"));
 
         ArgumentCaptor<SwapRequest> captor = ArgumentCaptor.forClass(SwapRequest.class);
         verify(swapRequestRepository).save(captor.capture());

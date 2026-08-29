@@ -235,6 +235,27 @@ Expected response:
 
 Users who do not manage teams receive an empty list.
 
+List the authenticated user's active team memberships and staffing roles:
+
+```bash
+curl http://localhost:8080/api/teams/me/memberships \
+  -H "Authorization: Bearer <TOKEN>"
+```
+
+Expected response:
+
+```json
+[
+  {
+    "teamId": 1,
+    "teamName": "צוות פיתוח",
+    "staffingRoleNames": ["פיתוח Backend"]
+  }
+]
+```
+
+The endpoint is self-scoped: it returns only active memberships and staffing roles for the authenticated user.
+
 List active employees in a managed team:
 
 ```bash
@@ -978,11 +999,17 @@ Expected response:
   "requesterFullName": "אלון כהן",
   "sourceAssignmentId": 1,
   "sourceShiftId": 1,
+  "sourceShiftDescription": "Backend service support",
+  "sourceShiftStartTime": "2026-08-04T06:00:00.000000Z",
+  "sourceShiftEndTime": "2026-08-04T14:00:00.000000Z",
   "targetEmployeeId": 3,
   "targetEmployeeUsername": "employee2",
   "targetEmployeeFullName": "נועה לוי",
   "targetAssignmentId": null,
   "targetShiftId": null,
+  "targetShiftDescription": null,
+  "targetShiftStartTime": null,
+  "targetShiftEndTime": null,
   "employeeApprovedAt": null,
   "managerApprovedById": null,
   "managerApprovedAt": null,
@@ -1022,11 +1049,17 @@ Expected response:
   "requesterFullName": "אלון כהן",
   "sourceAssignmentId": 1,
   "sourceShiftId": 1,
+  "sourceShiftDescription": "Backend service support",
+  "sourceShiftStartTime": "2026-08-04T06:00:00.000000Z",
+  "sourceShiftEndTime": "2026-08-04T14:00:00.000000Z",
   "targetEmployeeId": 3,
   "targetEmployeeUsername": "employee2",
   "targetEmployeeFullName": "נועה לוי",
   "targetAssignmentId": 2,
   "targetShiftId": 2,
+  "targetShiftDescription": "Frontend release support",
+  "targetShiftStartTime": "2026-08-05T06:00:00.000000Z",
+  "targetShiftEndTime": "2026-08-05T14:00:00.000000Z",
   "employeeApprovedAt": null,
   "managerApprovedById": null,
   "managerApprovedAt": null,
@@ -1069,6 +1102,8 @@ curl http://localhost:8080/api/requests/manager/pending \
 Request list endpoints return the same response shape as transfer or swap creation.
 Employee list endpoints are limited to the authenticated employee, and the manager
 list endpoint is limited to teams managed by the authenticated manager.
+The response also includes source and, for full swaps, target shift descriptions
+and start/end times so clients can identify the concrete shifts involved.
 
 Approve an incoming transfer or swap request as the target employee:
 
@@ -1089,11 +1124,17 @@ Expected response for a team with `MANAGER` approval policy:
   "requesterFullName": "אלון כהן",
   "sourceAssignmentId": 1,
   "sourceShiftId": 1,
+  "sourceShiftDescription": "Backend service support",
+  "sourceShiftStartTime": "2026-08-04T06:00:00.000000Z",
+  "sourceShiftEndTime": "2026-08-04T14:00:00.000000Z",
   "targetEmployeeId": 3,
   "targetEmployeeUsername": "employee2",
   "targetEmployeeFullName": "נועה לוי",
   "targetAssignmentId": null,
   "targetShiftId": null,
+  "targetShiftDescription": null,
+  "targetShiftStartTime": null,
+  "targetShiftEndTime": null,
   "employeeApprovedAt": "2026-08-05T18:00:00.000000Z",
   "managerApprovedById": null,
   "managerApprovedAt": null,
@@ -1160,11 +1201,17 @@ Expected response when the target employee is still eligible:
   "requesterFullName": "אלון כהן",
   "sourceAssignmentId": 1,
   "sourceShiftId": 1,
+  "sourceShiftDescription": "Backend service support",
+  "sourceShiftStartTime": "2026-08-04T06:00:00.000000Z",
+  "sourceShiftEndTime": "2026-08-04T14:00:00.000000Z",
   "targetEmployeeId": 3,
   "targetEmployeeUsername": "employee2",
   "targetEmployeeFullName": "נועה לוי",
   "targetAssignmentId": null,
   "targetShiftId": null,
+  "targetShiftDescription": null,
+  "targetShiftStartTime": null,
+  "targetShiftEndTime": null,
   "employeeApprovedAt": "2026-08-05T18:00:00.000000Z",
   "managerApprovedById": 1,
   "managerApprovedAt": "2026-08-05T18:30:00.000000Z",

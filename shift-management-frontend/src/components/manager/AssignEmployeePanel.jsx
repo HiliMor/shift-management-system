@@ -1,4 +1,6 @@
+import { useEffect, useMemo, useState } from "react";
 import { useLanguage } from "../../i18n/LanguageContext.jsx";
+import WeeklyScheduleCalendar from "../WeeklyScheduleCalendar.jsx";
 
 function AssignEmployeePanel({
   assignmentForm,
@@ -22,6 +24,7 @@ function AssignEmployeePanel({
   teamEmployeesError,
 }) {
   const { t } = useLanguage();
+  const [assignmentViewMode, setAssignmentViewMode] = useState("calendar");
   const selectedAssignmentShift = assignmentShifts.find(
     (shift) => shift.id.toString() === assignmentForm.shiftId,
   );
@@ -34,6 +37,24 @@ function AssignEmployeePanel({
   )
     ? assignmentForm.employeeId
     : "";
+  const calendarShifts = useMemo(() => {
+    const assignmentsByShiftId = new Map();
+
+    scheduleAssignments.forEach((assignment) => {
+      const assignments = assignmentsByShiftId.get(assignment.shiftId) ?? [];
+      assignments.push(assignment);
+      assignmentsByShiftId.set(assignment.shiftId, assignments);
+    });
+
+    return assignmentShifts.map((shift) => ({
+      ...shift,
+      assignments: assignmentsByShiftId.get(shift.id) ?? [],
+    }));
+  }, [assignmentShifts, scheduleAssignments]);
+
+  useEffect(() => {
+    setAssignmentViewMode("calendar");
+  }, [assignmentForm.scheduleId]);
 
   return (
     <section className="manager-panel" id="manager-assignments">
@@ -142,34 +163,69 @@ function AssignEmployeePanel({
         <p className="muted">{t("noEmployeesWithRequiredRole")}</p>
       ) : null}
 
-      <div className="assignment-panel-list">
-        <h4>{t("currentAssignments")}</h4>
-        {isLoadingScheduleAssignments ? <p className="muted">{t("loadingAssignments")}</p> : null}
-
-        {!isLoadingScheduleAssignments &&
-        !scheduleAssignmentsError &&
-        assignmentForm.scheduleId &&
-        scheduleAssignments.length === 0 ? (
-          <p className="muted">{t("noAssignmentsInDraft")}</p>
-        ) : null}
-
-        {scheduleAssignments.map((assignment) => {
-          const assignedShift = assignmentShiftMap.get(assignment.shiftId);
-
-          return (
-            <div className="assignment-row" key={assignment.id}>
-              <strong>{assignment.employeeFullName || assignment.employeeUsername}</strong>
-              <span>
-                {assignedShift
-                  ? `#${assignedShift.id} - ${assignedShift.description || t("shift")}, ${formatDateTime(
-                      assignedShift.startTime,
-                    )}`
-                  : `${t("shift")} #${assignment.shiftId}`}
-              </span>
+      {assignmentShifts.length > 0 && selectedAssignmentSchedule ? (
+        <>
+          <div className="details-view-toolbar">
+            <div>
+              <p className="eyebrow">{t("shiftDisplay")}</p>
+              <strong>{assignmentViewMode === "calendar" ? t("weeklyCalendar") : t("listView")}</strong>
             </div>
-          );
-        })}
-      </div>
+            <div className="view-toggle" role="group" aria-label={t("shiftDisplay")}>
+              <button
+                aria-pressed={assignmentViewMode === "calendar"}
+                className={assignmentViewMode === "calendar" ? "active-view-button" : "secondary-button"}
+                onClick={() => setAssignmentViewMode("calendar")}
+                type="button"
+              >
+                {t("calendarView")}
+              </button>
+              <button
+                aria-pressed={assignmentViewMode === "list"}
+                className={assignmentViewMode === "list" ? "active-view-button" : "secondary-button"}
+                onClick={() => setAssignmentViewMode("list")}
+                type="button"
+              >
+                {t("listView")}
+              </button>
+            </div>
+          </div>
+
+          {assignmentViewMode === "calendar" ? (
+            <WeeklyScheduleCalendar schedule={selectedAssignmentSchedule} shifts={calendarShifts} />
+          ) : null}
+        </>
+      ) : null}
+
+      {assignmentViewMode === "list" || assignmentShifts.length === 0 ? (
+        <div className="assignment-panel-list">
+          <h4>{t("currentAssignments")}</h4>
+          {isLoadingScheduleAssignments ? <p className="muted">{t("loadingAssignments")}</p> : null}
+
+          {!isLoadingScheduleAssignments &&
+          !scheduleAssignmentsError &&
+          assignmentForm.scheduleId &&
+          scheduleAssignments.length === 0 ? (
+            <p className="muted">{t("noAssignmentsInDraft")}</p>
+          ) : null}
+
+          {scheduleAssignments.map((assignment) => {
+            const assignedShift = assignmentShiftMap.get(assignment.shiftId);
+
+            return (
+              <div className="assignment-row" key={assignment.id}>
+                <strong>{assignment.employeeFullName || assignment.employeeUsername}</strong>
+                <span>
+                  {assignedShift
+                    ? `#${assignedShift.id} - ${assignedShift.description || t("shift")}, ${formatDateTime(
+                        assignedShift.startTime,
+                      )}`
+                    : `${t("shift")} #${assignment.shiftId}`}
+                </span>
+              </div>
+            );
+          })}
+        </div>
+      ) : null}
     </section>
   );
 }

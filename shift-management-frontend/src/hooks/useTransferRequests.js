@@ -28,7 +28,13 @@ function buildPublishedAssignmentOptions(selectedScheduleDetails) {
   ) ?? [];
 }
 
-function useTransferRequests(session, isManager, selectedScheduleDetails, onApiError) {
+function useTransferRequests(
+  session,
+  isManager,
+  selectedScheduleDetails,
+  onApiError,
+  onScheduleContentChanged = () => {},
+) {
   const [incomingTransferRequests, setIncomingTransferRequests] = useState([]);
   const [outgoingTransferRequests, setOutgoingTransferRequests] = useState([]);
   const [pendingManagerTransferRequests, setPendingManagerTransferRequests] = useState([]);
@@ -224,6 +230,9 @@ function useTransferRequests(session, isManager, selectedScheduleDetails, onApiE
       await action(session.accessToken, requestId);
       setTransferRequestActionMessage(successMessage);
       refreshTransferRequests();
+      if (actionName === "employee-approve" || actionName === "manager-approve") {
+        onScheduleContentChanged();
+      }
     } catch (error) {
       onApiError(error, setTransferRequestActionError);
     } finally {

@@ -23,6 +23,11 @@ public class TeamController {
         return teamService.listManagedTeams(authentication.getName());
     }
 
+    @GetMapping("/me/memberships")
+    public List<TeamMembershipResponse> listMyMemberships(Authentication authentication) {
+        return teamService.listMyMemberships(authentication.getName());
+    }
+
     @GetMapping("/{teamId}/employees")
     public List<TeamEmployeeResponse> listTeamEmployees(
             Authentication authentication,

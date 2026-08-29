@@ -7,6 +7,7 @@ import static org.mockito.Mockito.when;
 
 import java.time.Instant;
 import java.util.List;
+import java.util.Optional;
 
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -22,6 +23,7 @@ import com.hilimor.shiftmanagement.user.User;
 import com.hilimor.shiftmanagement.staffing.StaffingRole;
 import com.hilimor.shiftmanagement.staffing.TeamMemberStaffingRole;
 import com.hilimor.shiftmanagement.staffing.TeamMemberStaffingRoleRepository;
+import com.hilimor.shiftmanagement.user.UserRepository;
 
 @ExtendWith(MockitoExtension.class)
 class TeamServiceTest {
@@ -34,6 +36,9 @@ class TeamServiceTest {
 
     @Mock
     private TeamMemberStaffingRoleRepository teamMemberStaffingRoleRepository;
+
+    @Mock
+    private UserRepository userRepository;
 
     @InjectMocks
     private TeamService teamService;
@@ -69,6 +74,38 @@ class TeamServiceTest {
         List<TeamResponse> responses = teamService.listManagedTeams("employee1");
 
         assertThat(responses).isEmpty();
+    }
+
+    @Test
+    void listMyMembershipsReturnsActiveTeamsAndRolesSortedByTeamName() {
+        User employee = employee(10L, "employee1", "Demo Employee");
+        Team warehouse = team(2L, "Warehouse");
+        Team operations = team(1L, "Operations");
+        TeamMember warehouseMember = teamMember(employee, warehouse);
+        TeamMember operationsMember = teamMember(employee, operations);
+        ReflectionTestUtils.setField(warehouseMember, "id", 22L);
+        ReflectionTestUtils.setField(operationsMember, "id", 11L);
+
+        StaffingRole backendRole = new StaffingRole(operations, "Backend Developer", "Backend work");
+        StaffingRole frontendRole = new StaffingRole(operations, "Frontend Developer", "Frontend work");
+
+        when(userRepository.findByUsername("employee1")).thenReturn(Optional.of(employee));
+        when(teamMemberRepository.findByUser_IdAndActiveTrue(10L))
+                .thenReturn(List.of(warehouseMember, operationsMember));
+        when(teamMemberStaffingRoleRepository.findByTeamMember_User_Id(10L))
+                .thenReturn(List.of(
+                        new TeamMemberStaffingRole(operationsMember, frontendRole, Instant.parse("2026-07-01T09:00:00Z")),
+                        new TeamMemberStaffingRole(operationsMember, backendRole, Instant.parse("2026-07-01T09:00:00Z"))
+                ));
+
+        List<TeamMembershipResponse> responses = teamService.listMyMemberships("employee1");
+
+        assertThat(responses).hasSize(2);
+        assertThat(responses).extracting(TeamMembershipResponse::teamName)
+                .containsExactly("Operations", "Warehouse");
+        assertThat(responses.get(0).staffingRoleNames())
+                .containsExactly("Backend Developer", "Frontend Developer");
+        assertThat(responses.get(1).staffingRoleNames()).isEmpty();
     }
 
     @Test

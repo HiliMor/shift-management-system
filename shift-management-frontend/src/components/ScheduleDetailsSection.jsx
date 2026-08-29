@@ -1,4 +1,6 @@
+import { useEffect, useState } from "react";
 import { useLanguage } from "../i18n/LanguageContext.jsx";
+import WeeklyScheduleCalendar from "./WeeklyScheduleCalendar.jsx";
 import { groupShiftsByDate } from "../utils/shiftGroups.js";
 
 function ScheduleDetailsSection({
@@ -10,9 +12,14 @@ function ScheduleDetailsSection({
   selectedScheduleId,
 }) {
   const { t } = useLanguage();
+  const [viewMode, setViewMode] = useState("calendar");
   const shiftGroups = selectedScheduleDetails
     ? groupShiftsByDate(selectedScheduleDetails.shifts, formatDate)
     : [];
+
+  useEffect(() => {
+    setViewMode("calendar");
+  }, [selectedScheduleId]);
 
   return (
     <section className="section-block" id="schedule-details">
@@ -49,49 +56,78 @@ function ScheduleDetailsSection({
             <p className="muted">{t("noShifts")}</p>
           ) : null}
 
-          <div className="shift-day-list">
-            {shiftGroups.map((group) => (
-              <section className="shift-day-group" key={group.dateLabel}>
-                <div className="shift-day-heading">
-                  <h3>{group.dateLabel}</h3>
-                  <span>{group.shifts.length} {t("shifts")}</span>
-                </div>
-                <div className="shift-list">
-                  {group.shifts.map((shift) => (
-                    <article className="shift-row" key={shift.id}>
-                      <div className="shift-main">
-                        <div>
-                          <h3>{shift.description || t("shift")}</h3>
-                          <p>
-                            {formatDateTime(shift.startTime)} {t("dateRangeSeparator")} {formatDateTime(shift.endTime)}
-                          </p>
-                        </div>
-                        <div className="shift-meta">
-                          <span>
-                            {shift.requiredWorkers} {t("required")}
-                          </span>
-                          {shift.requiredStaffingRoleName ? <span>{shift.requiredStaffingRoleName}</span> : null}
-                        </div>
-                      </div>
-
-                      <div className="assignment-list">
-                        {shift.assignments.length === 0 ? (
-                          <p className="muted">{t("noEmployeesAssigned")}</p>
-                        ) : (
-                          shift.assignments.map((assignment) => (
-                            <div className="assignment-row" key={assignment.id}>
-                              <strong>{assignment.employeeFullName || assignment.employeeUsername}</strong>
-                              <span>{assignment.employeeUsername}</span>
-                            </div>
-                          ))
-                        )}
-                      </div>
-                    </article>
-                  ))}
-                </div>
-              </section>
-            ))}
+          <div className="details-view-toolbar">
+            <div>
+              <p className="eyebrow">{t("shiftDisplay")}</p>
+              <strong>{viewMode === "calendar" ? t("weeklyCalendar") : t("listView")}</strong>
+            </div>
+            <div className="view-toggle" role="group" aria-label={t("shiftDisplay")}>
+              <button
+                aria-pressed={viewMode === "calendar"}
+                className={viewMode === "calendar" ? "active-view-button" : "secondary-button"}
+                onClick={() => setViewMode("calendar")}
+                type="button"
+              >
+                {t("calendarView")}
+              </button>
+              <button
+                aria-pressed={viewMode === "list"}
+                className={viewMode === "list" ? "active-view-button" : "secondary-button"}
+                onClick={() => setViewMode("list")}
+                type="button"
+              >
+                {t("listView")}
+              </button>
+            </div>
           </div>
+
+          {viewMode === "calendar" ? (
+            <WeeklyScheduleCalendar schedule={selectedScheduleDetails.schedule} shifts={selectedScheduleDetails.shifts} />
+          ) : (
+            <div className="shift-day-list">
+              {shiftGroups.map((group) => (
+                <section className="shift-day-group" key={group.dateLabel}>
+                  <div className="shift-day-heading">
+                    <h3>{group.dateLabel}</h3>
+                    <span>{group.shifts.length} {t("shifts")}</span>
+                  </div>
+                  <div className="shift-list">
+                    {group.shifts.map((shift) => (
+                      <article className="shift-row" key={shift.id}>
+                        <div className="shift-main">
+                          <div>
+                            <h3>{shift.description || t("shift")}</h3>
+                            <p>
+                              {formatDateTime(shift.startTime)} {t("dateRangeSeparator")} {formatDateTime(shift.endTime)}
+                            </p>
+                          </div>
+                          <div className="shift-meta">
+                            <span>
+                              {shift.requiredWorkers} {t("required")}
+                            </span>
+                            {shift.requiredStaffingRoleName ? <span>{shift.requiredStaffingRoleName}</span> : null}
+                          </div>
+                        </div>
+
+                        <div className="assignment-list">
+                          {shift.assignments.length === 0 ? (
+                            <p className="muted">{t("noEmployeesAssigned")}</p>
+                          ) : (
+                            shift.assignments.map((assignment) => (
+                              <div className="assignment-row" key={assignment.id}>
+                                <strong>{assignment.employeeFullName || assignment.employeeUsername}</strong>
+                                <span>{assignment.employeeUsername}</span>
+                              </div>
+                            ))
+                          )}
+                        </div>
+                      </article>
+                    ))}
+                  </div>
+                </section>
+              ))}
+            </div>
+          )}
         </div>
       ) : null}
     </section>

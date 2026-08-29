@@ -5,6 +5,7 @@ function AppShell({
   availabilityConstraintCount,
   children,
   displayName,
+  employeeProfile,
   isManager,
   onLogout,
   role,
@@ -50,6 +51,7 @@ function AppShell({
           <div>
             <p className="eyebrow">{t("signedIn")}</p>
             <h2>{displayName}</h2>
+            {employeeProfile}
           </div>
           <span className="role-badge">{role === "MANAGER" ? t("manager") : t("employee")}</span>
           <LanguageSelector />

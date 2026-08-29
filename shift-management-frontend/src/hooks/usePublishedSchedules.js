@@ -13,6 +13,7 @@ function usePublishedSchedules(session, onApiError) {
   const [selectedScheduleDetails, setSelectedScheduleDetails] = useState(null);
   const [detailsError, setDetailsError] = useState("");
   const [isLoadingDetails, setIsLoadingDetails] = useState(false);
+  const [detailsRefreshKey, setDetailsRefreshKey] = useState(0);
 
   useEffect(() => {
     if (!session?.accessToken) {
@@ -47,7 +48,11 @@ function usePublishedSchedules(session, onApiError) {
         onApiError(error, setDetailsError);
       })
       .finally(() => setIsLoadingDetails(false));
-  }, [selectedScheduleId, session]);
+  }, [detailsRefreshKey, selectedScheduleId, session]);
+
+  function refreshSelectedScheduleDetails() {
+    setDetailsRefreshKey((current) => current + 1);
+  }
 
   function resetPublishedSchedules() {
     setPublishedSchedules([]);
@@ -57,6 +62,7 @@ function usePublishedSchedules(session, onApiError) {
     setSelectedScheduleDetails(null);
     setDetailsError("");
     setIsLoadingDetails(false);
+    setDetailsRefreshKey(0);
   }
 
   return {
@@ -65,6 +71,7 @@ function usePublishedSchedules(session, onApiError) {
     isLoadingSchedules,
     publishedSchedules,
     resetPublishedSchedules,
+    refreshSelectedScheduleDetails,
     scheduleError,
     selectedScheduleDetails,
     selectedScheduleId,

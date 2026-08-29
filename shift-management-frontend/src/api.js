@@ -58,6 +58,10 @@ export function listMyManagedTeams(token) {
   return request("/api/teams/me/managed", { token });
 }
 
+export function listMyTeamMemberships(token) {
+  return request("/api/teams/me/memberships", { token });
+}
+
 export function createSchedule(token, schedule) {
   return request("/api/schedules", {
     method: "POST",
