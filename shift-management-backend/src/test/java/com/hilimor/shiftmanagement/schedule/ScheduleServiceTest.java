@@ -4,6 +4,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.inOrder;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -16,6 +17,7 @@ import java.util.Optional;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
+import org.mockito.InOrder;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
@@ -134,6 +136,53 @@ class ScheduleServiceTest {
                         assertThat(exception.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST));
 
         verify(scheduleRepository, never()).save(any());
+    }
+
+    @Test
+    void deleteDraftScheduleDeletesAssignmentsShiftsAndScheduleInOrder() {
+        Schedule schedule = schedule(ScheduleStatus.DRAFT);
+
+        when(scheduleRepository.findById(10L)).thenReturn(Optional.of(schedule));
+        when(teamManagerRepository.existsByManager_UsernameAndTeam_Id("manager1", 1L)).thenReturn(true);
+
+        scheduleService.deleteDraftSchedule("manager1", 10L);
+
+        InOrder deletionOrder = inOrder(assignmentRepository, shiftRepository, scheduleRepository);
+        deletionOrder.verify(assignmentRepository).deleteByShift_Schedule_Id(10L);
+        deletionOrder.verify(shiftRepository).deleteBySchedule_Id(10L);
+        deletionOrder.verify(scheduleRepository).delete(schedule);
+    }
+
+    @Test
+    void deleteDraftScheduleRejectsPublishedSchedule() {
+        Schedule schedule = schedule(ScheduleStatus.PUBLISHED);
+
+        when(scheduleRepository.findById(10L)).thenReturn(Optional.of(schedule));
+        when(teamManagerRepository.existsByManager_UsernameAndTeam_Id("manager1", 1L)).thenReturn(true);
+
+        assertThatThrownBy(() -> scheduleService.deleteDraftSchedule("manager1", 10L))
+                .isInstanceOfSatisfying(ResponseStatusException.class, exception ->
+                        assertThat(exception.getStatusCode()).isEqualTo(HttpStatus.CONFLICT));
+
+        verify(assignmentRepository, never()).deleteByShift_Schedule_Id(any());
+        verify(shiftRepository, never()).deleteBySchedule_Id(any());
+        verify(scheduleRepository, never()).delete(any(Schedule.class));
+    }
+
+    @Test
+    void deleteDraftScheduleRejectsUnmanagedSchedule() {
+        Schedule schedule = schedule(ScheduleStatus.DRAFT);
+
+        when(scheduleRepository.findById(10L)).thenReturn(Optional.of(schedule));
+        when(teamManagerRepository.existsByManager_UsernameAndTeam_Id("manager2", 1L)).thenReturn(false);
+
+        assertThatThrownBy(() -> scheduleService.deleteDraftSchedule("manager2", 10L))
+                .isInstanceOfSatisfying(ResponseStatusException.class, exception ->
+                        assertThat(exception.getStatusCode()).isEqualTo(HttpStatus.FORBIDDEN));
+
+        verify(assignmentRepository, never()).deleteByShift_Schedule_Id(any());
+        verify(shiftRepository, never()).deleteBySchedule_Id(any());
+        verify(scheduleRepository, never()).delete(any(Schedule.class));
     }
 
     @Test

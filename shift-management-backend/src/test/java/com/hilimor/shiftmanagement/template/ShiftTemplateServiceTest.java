@@ -171,6 +171,49 @@ class ShiftTemplateServiceTest {
     }
 
     @Test
+    void deleteTemplateDeletesUnusedTemplateForTeamManager() {
+        ShiftTemplate template = shiftTemplate(team(1L, "Operations"), 50L, "Routine Week");
+
+        when(shiftTemplateRepository.findById(50L)).thenReturn(Optional.of(template));
+        when(teamManagerRepository.existsByManager_UsernameAndTeam_Id("manager1", 1L)).thenReturn(true);
+        when(shiftRepository.existsByTemplateSlot_ShiftTemplate_Id(50L)).thenReturn(false);
+
+        shiftTemplateService.deleteTemplate("manager1", 50L);
+
+        verify(shiftTemplateRepository).delete(template);
+    }
+
+    @Test
+    void deleteTemplateRejectsTemplateUsedByExistingShift() {
+        ShiftTemplate template = shiftTemplate(team(1L, "Operations"), 50L, "Routine Week");
+
+        when(shiftTemplateRepository.findById(50L)).thenReturn(Optional.of(template));
+        when(teamManagerRepository.existsByManager_UsernameAndTeam_Id("manager1", 1L)).thenReturn(true);
+        when(shiftRepository.existsByTemplateSlot_ShiftTemplate_Id(50L)).thenReturn(true);
+
+        assertThatThrownBy(() -> shiftTemplateService.deleteTemplate("manager1", 50L))
+                .isInstanceOfSatisfying(ResponseStatusException.class, exception ->
+                        assertThat(exception.getStatusCode()).isEqualTo(HttpStatus.CONFLICT));
+
+        verify(shiftTemplateRepository, never()).delete(any(ShiftTemplate.class));
+    }
+
+    @Test
+    void deleteTemplateRejectsUnmanagedTemplate() {
+        ShiftTemplate template = shiftTemplate(team(1L, "Operations"), 50L, "Routine Week");
+
+        when(shiftTemplateRepository.findById(50L)).thenReturn(Optional.of(template));
+        when(teamManagerRepository.existsByManager_UsernameAndTeam_Id("employee1", 1L)).thenReturn(false);
+
+        assertThatThrownBy(() -> shiftTemplateService.deleteTemplate("employee1", 50L))
+                .isInstanceOfSatisfying(ResponseStatusException.class, exception ->
+                        assertThat(exception.getStatusCode()).isEqualTo(HttpStatus.FORBIDDEN));
+
+        verify(shiftRepository, never()).existsByTemplateSlot_ShiftTemplate_Id(any());
+        verify(shiftTemplateRepository, never()).delete(any(ShiftTemplate.class));
+    }
+
+    @Test
     void createSlotSavesSlotForManagedTemplate() {
         Team team = team(1L, "Operations");
         ShiftTemplate template = shiftTemplate(team, 50L, "Routine Week");

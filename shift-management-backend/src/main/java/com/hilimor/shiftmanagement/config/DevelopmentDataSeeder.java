@@ -133,19 +133,19 @@ public class DevelopmentDataSeeder {
         StaffingRole backendDeveloperRole = findOrCreateStaffingRole(
                 staffingRoleRepository,
                 developmentTeam,
-                "פיתוח Backend",
+                "Backend Developer",
                 "פיתוח ותחזוקה של שירותי Backend."
         );
         StaffingRole frontendDeveloperRole = findOrCreateStaffingRole(
                 staffingRoleRepository,
                 developmentTeam,
-                "פיתוח Frontend",
+                "Frontend Developer",
                 "פיתוח ותחזוקה של יכולות Frontend."
         );
         StaffingRole qaEngineerRole = findOrCreateStaffingRole(
                 staffingRoleRepository,
                 developmentTeam,
-                "בדיקות QA",
+                "QA Engineer",
                 "בדיקת גרסאות ואימות איכות המוצר."
         );
         employeeMemberships.subList(0, 3).forEach(
@@ -194,7 +194,7 @@ public class DevelopmentDataSeeder {
         ShiftTemplate dailyCoverageTemplate = findOrCreateTemplate(
                 shiftTemplateRepository,
                 developmentTeam,
-                "כיסוי פיתוח יומי",
+                "כיסוי פיתוח יומי בחירום",
                 "שלוש משמרות טכניות קבועות של שמונה שעות החוזרות בכל יום.",
                 1,
                 developmentTeam.getDefaultMinRestHours()

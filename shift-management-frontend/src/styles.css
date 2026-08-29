@@ -367,6 +367,11 @@ nav a:hover,
   color: #273449;
 }
 
+.danger-button {
+  background: #fff1f2;
+  color: #a61b3c;
+}
+
 .section-block {
   padding: 20px;
 }
@@ -867,6 +872,23 @@ nav a:hover,
   padding: 10px;
 }
 
+.calendar-shift-selectable {
+  cursor: pointer;
+  font-weight: inherit;
+  text-align: start;
+  width: 100%;
+}
+
+.calendar-shift-selectable:hover {
+  border-color: #206a5d;
+  box-shadow: 0 0 0 2px rgba(32, 106, 93, 0.12);
+}
+
+.calendar-shift-selected {
+  border-color: #206a5d;
+  box-shadow: 0 0 0 3px rgba(32, 106, 93, 0.16);
+}
+
 .calendar-shift-heading {
   display: grid;
   gap: 3px;
@@ -1054,6 +1076,15 @@ nav a:hover,
   min-width: 260px;
 }
 
+.draft-context-actions {
+  align-items: end;
+  display: flex;
+  flex: 0 1 520px;
+  flex-wrap: wrap;
+  gap: 10px;
+  justify-content: end;
+}
+
 .workflow-steps {
   display: grid;
   gap: 10px;
@@ -1160,6 +1191,30 @@ nav a:hover,
   margin-bottom: 0;
 }
 
+.draft-shift-summary {
+  background: #f8fafc;
+  border: 1px solid #dfe7f1;
+  border-radius: 8px;
+  display: grid;
+  gap: 10px;
+  padding: 14px;
+}
+
+.draft-shift-summary-context {
+  display: grid;
+  gap: 4px;
+}
+
+.draft-shift-summary-context strong {
+  color: #172033;
+}
+
+.draft-shift-summary-context p {
+  color: #66758b;
+  font-size: 0.88rem;
+  margin-bottom: 0;
+}
+
 .workflow-subsection {
   border-top: 2px solid #dfe7f1;
   display: grid;
@@ -1203,16 +1258,27 @@ nav a:hover,
 }
 
 .template-grid {
+  align-items: start;
   display: grid;
   gap: 14px;
   grid-template-columns: minmax(0, 0.9fr) minmax(0, 1.4fr);
 }
 
 .template-column {
-  border-top: 1px solid #e1e6ef;
+  align-content: start;
+  align-self: start;
+  background: #fbfcfe;
+  border: 1px solid #e1e6ef;
+  border-radius: 8px;
   display: grid;
   gap: 12px;
-  padding-top: 14px;
+  padding: 14px;
+}
+
+.template-column > .section-heading {
+  border-bottom: 1px solid #e1e6ef;
+  margin-bottom: 0;
+  padding-bottom: 12px;
 }
 
 .template-slot-form {
@@ -1483,6 +1549,16 @@ nav a:hover,
   .draft-context-select,
   .draft-context-select select {
     min-width: 0;
+    width: 100%;
+  }
+
+  .draft-context-actions {
+    align-items: stretch;
+    flex-direction: column;
+    width: 100%;
+  }
+
+  .draft-context-actions .danger-button {
     width: 100%;
   }
 }

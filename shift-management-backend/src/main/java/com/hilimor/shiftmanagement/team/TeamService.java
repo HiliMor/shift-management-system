@@ -5,6 +5,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
 
+import com.hilimor.shiftmanagement.staffing.TeamMemberStaffingRole;
 import com.hilimor.shiftmanagement.staffing.TeamMemberStaffingRoleRepository;
 import com.hilimor.shiftmanagement.user.User;
 import com.hilimor.shiftmanagement.user.UserRepository;
@@ -81,25 +82,29 @@ public class TeamService {
         }
 
         List<TeamMember> activeMembers = teamMemberRepository.findByTeam_IdAndActiveTrue(teamId);
-        Map<Long, List<String>> roleNamesByMemberId = teamMemberStaffingRoleRepository
+        Map<Long, List<TeamMemberStaffingRole>> rolesByMemberId = teamMemberStaffingRoleRepository
                 .findByTeamMember_Team_Id(teamId)
                 .stream()
                 .collect(Collectors.groupingBy(
-                        role -> role.getTeamMember().getId(),
-                        Collectors.mapping(
-                                role -> role.getStaffingRole().getName(),
-                                Collectors.toList()
-                        )
+                        role -> role.getTeamMember().getId()
                 ));
 
         return activeMembers
                 .stream()
                 .sorted(Comparator.comparing((TeamMember member) -> member.getUser().getFullName())
                         .thenComparing(member -> member.getUser().getUsername()))
-                .map(member -> TeamEmployeeResponse.from(
-                        member.getUser(),
-                        roleNamesByMemberId.getOrDefault(member.getId(), List.of())
-                ))
+                .map(member -> {
+                    List<TeamMemberStaffingRole> roles = rolesByMemberId.getOrDefault(member.getId(), List.of())
+                            .stream()
+                            .sorted(Comparator.comparing(role -> role.getStaffingRole().getName()))
+                            .toList();
+
+                    return TeamEmployeeResponse.from(
+                            member.getUser(),
+                            roles.stream().map(role -> role.getStaffingRole().getId()).toList(),
+                            roles.stream().map(role -> role.getStaffingRole().getName()).toList()
+                    );
+                })
                 .toList();
     }
 }

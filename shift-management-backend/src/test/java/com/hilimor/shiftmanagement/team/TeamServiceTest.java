@@ -119,6 +119,8 @@ class TeamServiceTest {
         ReflectionTestUtils.setField(employeeOneMember, "id", 32L);
         StaffingRole backendRole = new StaffingRole(team, "Backend Developer", "Backend work");
         StaffingRole frontendRole = new StaffingRole(team, "Frontend Developer", "Frontend work");
+        ReflectionTestUtils.setField(backendRole, "id", 41L);
+        ReflectionTestUtils.setField(frontendRole, "id", 42L);
 
         when(teamManagerRepository.existsByManager_UsernameAndTeam_Id("manager1", 1L)).thenReturn(true);
         when(teamMemberRepository.findByTeam_IdAndActiveTrue(1L))
@@ -136,6 +138,8 @@ class TeamServiceTest {
         assertThat(responses).extracting(TeamEmployeeResponse::username).containsExactly("employee1", "employee2");
         assertThat(responses).extracting(TeamEmployeeResponse::fullName)
                 .containsExactly("Demo Employee One", "Demo Employee Two");
+        assertThat(responses).extracting(TeamEmployeeResponse::staffingRoleIds)
+                .containsExactly(List.of(backendRole.getId()), List.of(frontendRole.getId()));
         assertThat(responses).extracting(TeamEmployeeResponse::staffingRoleNames)
                 .containsExactly(List.of("Backend Developer"), List.of("Frontend Developer"));
     }

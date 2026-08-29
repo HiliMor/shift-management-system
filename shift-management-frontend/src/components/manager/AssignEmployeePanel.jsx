@@ -17,20 +17,22 @@ function AssignEmployeePanel({
   managedDraftSchedules,
   onAssignmentFormChange,
   onCreateAssignment,
+  onSelectAssignmentShift,
   scheduleAssignments,
   scheduleAssignmentsError,
   selectedAssignmentSchedule,
   teamEmployees,
   teamEmployeesError,
 }) {
-  const { t } = useLanguage();
+  const { t, translateDomainValue } = useLanguage();
   const [assignmentViewMode, setAssignmentViewMode] = useState("calendar");
   const selectedAssignmentShift = assignmentShifts.find(
     (shift) => shift.id.toString() === assignmentForm.shiftId,
   );
+  const requiredRoleId = selectedAssignmentShift?.requiredStaffingRoleId;
   const requiredRoleName = selectedAssignmentShift?.requiredStaffingRoleName;
-  const assignableEmployees = requiredRoleName
-    ? teamEmployees.filter((employee) => employee.staffingRoleNames?.includes(requiredRoleName))
+  const assignableEmployees = requiredRoleId
+    ? teamEmployees.filter((employee) => employee.staffingRoleIds?.includes(requiredRoleId))
     : teamEmployees;
   const selectedEmployeeId = assignableEmployees.some(
     (employee) => employee.id.toString() === assignmentForm.employeeId,
@@ -72,7 +74,7 @@ function AssignEmployeePanel({
           <strong>{t("assignmentGuidance")}</strong>
           <span>
             {requiredRoleName
-              ? `${t("requiredRoleForShift")}: ${requiredRoleName}. ${t("employeesWithRole")}`
+              ? `${t("requiredRoleForShift")}: ${translateDomainValue(requiredRoleName)}. ${t("employeesWithRole")}`
               : t("noSpecificRoleForShift")}
           </span>
         </div>
@@ -165,6 +167,11 @@ function AssignEmployeePanel({
 
       {assignmentShifts.length > 0 && selectedAssignmentSchedule ? (
         <>
+          <div className="assignment-guidance">
+            <strong>{t("assignmentBoardTitle")}</strong>
+            <span>{t("assignmentBoardHint")}</span>
+          </div>
+
           <div className="details-view-toolbar">
             <div>
               <p className="eyebrow">{t("shiftDisplay")}</p>
@@ -191,7 +198,12 @@ function AssignEmployeePanel({
           </div>
 
           {assignmentViewMode === "calendar" ? (
-            <WeeklyScheduleCalendar schedule={selectedAssignmentSchedule} shifts={calendarShifts} />
+            <WeeklyScheduleCalendar
+              onSelectShift={onSelectAssignmentShift}
+              schedule={selectedAssignmentSchedule}
+              selectedShiftId={assignmentForm.shiftId}
+              shifts={calendarShifts}
+            />
           ) : null}
         </>
       ) : null}

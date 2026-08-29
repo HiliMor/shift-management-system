@@ -4,6 +4,7 @@ import {
   createAssignment,
   createSchedule,
   createShift,
+  deleteSchedule,
   listManagedDraftSchedules,
   listMyManagedTeams,
   listScheduleAssignments,
@@ -46,7 +47,10 @@ function useManagerScheduling(
   const [scheduleForm, setScheduleForm] = useState(emptyScheduleForm);
   const [createdSchedule, setCreatedSchedule] = useState(null);
   const [scheduleCreationError, setScheduleCreationError] = useState("");
+  const [scheduleActionError, setScheduleActionError] = useState("");
+  const [scheduleActionMessage, setScheduleActionMessage] = useState("");
   const [isCreatingSchedule, setIsCreatingSchedule] = useState(false);
+  const [isDeletingSchedule, setIsDeletingSchedule] = useState(false);
   const [managedDraftSchedules, setManagedDraftSchedules] = useState([]);
   const [selectedDraftScheduleId, setSelectedDraftScheduleId] = useState("");
   const [isLoadingDraftSchedules, setIsLoadingDraftSchedules] = useState(false);
@@ -297,6 +301,8 @@ function useManagerScheduling(
     event.preventDefault();
     setIsCreatingSchedule(true);
     setScheduleCreationError("");
+    setScheduleActionError("");
+    setScheduleActionMessage("");
     setCreatedSchedule(null);
 
     try {
@@ -324,6 +330,40 @@ function useManagerScheduling(
       onApiError(error, setScheduleCreationError);
     } finally {
       setIsCreatingSchedule(false);
+    }
+  }
+
+  async function handleDeleteDraftSchedule() {
+    if (!selectedDraftScheduleId) {
+      return;
+    }
+
+    setIsDeletingSchedule(true);
+    setScheduleActionError("");
+    setScheduleActionMessage("");
+    setCreatedSchedule(null);
+    setCreatedShift(null);
+    setCreatedAssignment(null);
+
+    try {
+      await deleteSchedule(session.accessToken, selectedDraftScheduleId);
+      setManagedDraftSchedules((current) =>
+        current.filter((schedule) => schedule.id.toString() !== selectedDraftScheduleId),
+      );
+      setSelectedDraftScheduleId("");
+      setShiftForm(emptyShiftForm);
+      setAssignmentForm(emptyAssignmentForm);
+      setAssignmentShifts([]);
+      setAssignmentShiftsError("");
+      setScheduleAssignments([]);
+      setScheduleAssignmentsError("");
+      setScheduleActionMessage("draftScheduleDeleted");
+      refreshDraftSchedules();
+      onScheduleContentChanged();
+    } catch (error) {
+      onApiError(error, setScheduleActionError);
+    } finally {
+      setIsDeletingSchedule(false);
     }
   }
 
@@ -385,6 +425,14 @@ function useManagerScheduling(
     }));
   }
 
+  function selectAssignmentShift(shiftId) {
+    setAssignmentForm((current) => ({
+      ...current,
+      shiftId: shiftId.toString(),
+      employeeId: "",
+    }));
+  }
+
   function clearCreatedAssignment() {
     setCreatedAssignment(null);
   }
@@ -417,7 +465,10 @@ function useManagerScheduling(
     setScheduleForm(emptyScheduleForm);
     setCreatedSchedule(null);
     setScheduleCreationError("");
+    setScheduleActionError("");
+    setScheduleActionMessage("");
     setIsCreatingSchedule(false);
+    setIsDeletingSchedule(false);
     setManagedDraftSchedules([]);
     setSelectedDraftScheduleId("");
     setIsLoadingDraftSchedules(false);
@@ -460,12 +511,14 @@ function useManagerScheduling(
     handleCreateAssignment,
     handleCreateSchedule,
     handleCreateShift,
+    handleDeleteDraftSchedule,
     handleScheduleFormChange,
     handleShiftFormChange,
     clearCreatedAssignment,
     isCreatingAssignment,
     isCreatingSchedule,
     isCreatingShift,
+    isDeletingSchedule,
     isLoadingAssignmentShifts,
     isLoadingDraftSchedules,
     isLoadingManagedTeams,
@@ -480,8 +533,11 @@ function useManagerScheduling(
     resetManagerScheduling,
     scheduleAssignments,
     scheduleAssignmentsError,
+    scheduleActionError,
+    scheduleActionMessage,
     scheduleCreationError,
     scheduleForm,
+    selectAssignmentShift,
     selectDraftSchedule: setSelectedDraftScheduleId,
     selectedDraftSchedule,
     selectedDraftScheduleId,

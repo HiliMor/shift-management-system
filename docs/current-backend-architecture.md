@@ -56,6 +56,7 @@ The current frontend is intentionally small. It is responsible for:
 - Loading a manager's teams from `GET /api/teams/me/managed`.
 - Creating draft schedules through `POST /api/schedules`.
 - Loading managed draft schedules from `GET /api/schedules/me/managed/drafts`.
+- Deleting manager-owned draft schedules through `DELETE /api/schedules/{scheduleId}`.
 - Loading a manager's published schedule details from `GET /api/schedules/me/managed/published/{scheduleId}`.
 - Creating shifts through `POST /api/schedules/{scheduleId}/shifts`.
 - Loading draft schedule shifts from `GET /api/schedules/{scheduleId}/shifts`.
@@ -63,6 +64,8 @@ The current frontend is intentionally small. It is responsible for:
 - Loading draft schedule assignments from `GET /api/schedules/{scheduleId}/assignments`.
 - Creating manual assignments through `POST /api/assignments`.
 - Running basic automatic assignment through `POST /api/schedules/{scheduleId}/auto-assign`.
+- Creating and managing reusable shift templates through the template endpoints.
+- Deleting unused templates through `DELETE /api/templates/{templateId}`.
 - Loading personal notifications from `GET /api/notifications`.
 - Loading unread notification count from `GET /api/notifications/unread-count`.
 - Marking a personal notification as read through `POST /api/notifications/{notificationId}/read`.
@@ -186,9 +189,9 @@ the API, while preserving business codes such as `SHIFT_OVERLAP` and
 The backend uses Spring Boot's default SLF4J logging for focused business events.
 Current logging is intentionally limited to workflow checkpoints:
 
-- Schedule creation, publication, and reopening.
+- Schedule creation, publication, reopening, and manager-only deletion of draft schedules.
 - Assignment creation and deletion.
-- Template, template slot creation, and template-based shift generation.
+- Template and template slot creation, template-based shift generation, and safe deletion of unused templates.
 - Transfer and swap request creation, employee and manager scoped request lists, approval, rejection, cancellation, invalidation, assignment transfer execution, and assignment swap execution.
 - Outbox event dispatch and schedule-published notification creation.
 
@@ -378,12 +381,12 @@ flowchart TD
     healthApi["Health<br/>GET /api/health"]
     authApi["Authentication<br/>POST /api/auth/login<br/>GET /api/auth/me"]
     teamsApi["Teams<br/>GET /api/teams/me/managed"]
-    schedulesApi["Schedules<br/>POST /api/schedules<br/>GET /api/schedules/me/published<br/>GET /api/schedules/me/published/{scheduleId}<br/>GET /api/schedules/me/managed/drafts<br/>GET /api/schedules/me/managed/published/{scheduleId}<br/>GET /api/schedules/{scheduleId}/publication-readiness<br/>POST /api/schedules/{scheduleId}/publish<br/>POST /api/schedules/{scheduleId}/reopen"]
+    schedulesApi["Schedules<br/>POST /api/schedules<br/>GET /api/schedules/me/published<br/>GET /api/schedules/me/published/{scheduleId}<br/>GET /api/schedules/me/managed/drafts<br/>GET /api/schedules/me/managed/published/{scheduleId}<br/>GET /api/schedules/{scheduleId}/publication-readiness<br/>POST /api/schedules/{scheduleId}/publish<br/>POST /api/schedules/{scheduleId}/reopen<br/>DELETE /api/schedules/{scheduleId}"]
     shiftsApi["Shifts<br/>POST /api/schedules/{scheduleId}/shifts<br/>GET /api/schedules/{scheduleId}/shifts<br/>PUT /api/schedules/{scheduleId}/shifts/{shiftId}<br/>DELETE /api/schedules/{scheduleId}/shifts/{shiftId}"]
     assignmentsApi["Assignments<br/>POST /api/assignments<br/>GET /api/schedules/{scheduleId}/assignments<br/>POST /api/schedules/{scheduleId}/auto-assign<br/>DELETE /api/assignments/{assignmentId}"]
     availabilityApi["Availability Constraints<br/>POST /api/availability-constraints<br/>GET /api/availability-constraints/me<br/>DELETE /api/availability-constraints/{constraintId}"]
     staffingApi["Staffing Roles<br/>POST /api/teams/{teamId}/staffing-roles<br/>GET /api/teams/{teamId}/staffing-roles<br/>POST /api/teams/{teamId}/employees/{employeeId}/staffing-roles<br/>GET /api/teams/{teamId}/employees/{employeeId}/staffing-roles"]
-    templatesApi["Templates<br/>POST /api/teams/{teamId}/templates<br/>GET /api/teams/{teamId}/templates<br/>POST /api/templates/{templateId}/slots<br/>GET /api/templates/{templateId}/slots<br/>POST /api/templates/{templateId}/generate"]
+    templatesApi["Templates<br/>POST /api/teams/{teamId}/templates<br/>GET /api/teams/{teamId}/templates<br/>POST /api/templates/{templateId}/slots<br/>GET /api/templates/{templateId}/slots<br/>POST /api/templates/{templateId}/generate<br/>DELETE /api/templates/{templateId}"]
     notificationApi["Notifications<br/>GET /api/notifications<br/>GET /api/notifications/unread-count<br/>POST /api/notifications/{notificationId}/read"]
     requestsApi["Requests<br/>POST /api/requests/transfers<br/>POST /api/requests/swaps<br/>GET /api/requests/me/outgoing<br/>GET /api/requests/me/incoming<br/>GET /api/requests/manager/pending<br/>POST /api/requests/{requestId}/employee-approve<br/>POST /api/requests/{requestId}/employee-reject<br/>POST /api/requests/{requestId}/manager-approve<br/>POST /api/requests/{requestId}/cancel"]
 

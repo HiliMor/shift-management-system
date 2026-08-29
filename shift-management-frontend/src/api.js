@@ -70,6 +70,13 @@ export function createSchedule(token, schedule) {
   });
 }
 
+export function deleteSchedule(token, scheduleId) {
+  return request(`/api/schedules/${scheduleId}`, {
+    method: "DELETE",
+    token,
+  });
+}
+
 export function listManagedDraftSchedules(token) {
   return request("/api/schedules/me/managed/drafts", { token });
 }
@@ -150,6 +157,13 @@ export function createShiftTemplate(token, teamId, template) {
 
 export function listShiftTemplates(token, teamId) {
   return request(`/api/teams/${teamId}/templates`, { token });
+}
+
+export function deleteShiftTemplate(token, templateId) {
+  return request(`/api/templates/${templateId}`, {
+    method: "DELETE",
+    token,
+  });
 }
 
 export function createTemplateSlot(token, templateId, slot) {

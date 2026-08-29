@@ -3,6 +3,7 @@ import { useEffect, useMemo, useState } from "react";
 import {
   createShiftTemplate,
   createTemplateSlot,
+  deleteShiftTemplate,
   generateShiftsFromTemplate,
   listShiftTemplates,
   listStaffingRoles,
@@ -60,6 +61,7 @@ function useShiftTemplates(
   const [isCreatingTemplate, setIsCreatingTemplate] = useState(false);
   const [isCreatingTemplateSlot, setIsCreatingTemplateSlot] = useState(false);
   const [isGeneratingTemplateShifts, setIsGeneratingTemplateShifts] = useState(false);
+  const [isDeletingTemplate, setIsDeletingTemplate] = useState(false);
   const [templateRefreshKey, setTemplateRefreshKey] = useState(0);
   const [templateSlotRefreshKey, setTemplateSlotRefreshKey] = useState(0);
 
@@ -273,6 +275,27 @@ function useShiftTemplates(
     }
   }
 
+  async function submitDeleteTemplate(templateId) {
+    setIsDeletingTemplate(true);
+    setTemplateActionError("");
+    setTemplateActionMessage("");
+
+    try {
+      await deleteShiftTemplate(session.accessToken, templateId);
+      setTemplates((current) => current.filter((template) => template.id !== templateId));
+      setSlotForm(emptySlotForm);
+      setGenerationForm(emptyGenerationForm);
+      setTemplateSlots([]);
+      setTemplateGenerationReport(null);
+      setTemplateActionMessage("templateDeleted");
+      refreshTemplates();
+    } catch (error) {
+      onApiError(error, setTemplateActionError);
+    } finally {
+      setIsDeletingTemplate(false);
+    }
+  }
+
   async function submitCreateTemplateSlot(event) {
     event.preventDefault();
     setIsCreatingTemplateSlot(true);
@@ -353,6 +376,7 @@ function useShiftTemplates(
     setIsCreatingTemplate(false);
     setIsCreatingTemplateSlot(false);
     setIsGeneratingTemplateShifts(false);
+    setIsDeletingTemplate(false);
   }
 
   return {
@@ -363,6 +387,7 @@ function useShiftTemplates(
     isCreatingTemplate,
     isCreatingTemplateSlot,
     isGeneratingTemplateShifts,
+    isDeletingTemplate,
     isLoadingTemplateSlots,
     isLoadingTemplateStaffingRoles,
     isLoadingTemplates,
@@ -372,6 +397,7 @@ function useShiftTemplates(
     selectedGenerationTemplate,
     selectedTemplate,
     submitCreateTemplate,
+    submitDeleteTemplate,
     submitCreateTemplateSlot,
     submitGenerateTemplateShifts,
     templateActionError,

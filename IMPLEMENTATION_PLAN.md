@@ -674,7 +674,7 @@ Goal: build a minimal React interface connected to the backend.
 - [x] Employee availability constraint screen.
 - [x] Manager schedule creation screen.
 - [x] Manager shift creation screen.
-- [x] Simple manual assignment screen.
+- [x] Draft assignment board and manual assignment screen.
 - [x] Manager publication readiness and publish screen.
 - [x] Manager published schedule reopen screen.
 - [x] Transfer request list screen.
@@ -693,6 +693,7 @@ Goal: build a minimal React interface connected to the backend.
 - [x] Employees can create, view, and delete availability constraints in the frontend.
 - [x] Managers can create draft schedules from the frontend.
 - [x] Managers can create shifts.
+- [x] Managers can select a draft shift from the assignment calendar before assigning an employee.
 - [x] Assignment errors are displayed clearly.
 - [x] Managers can check publication readiness before publishing.
 - [x] Managers can publish draft schedules from the frontend.
@@ -1636,3 +1637,21 @@ Still open:
 - Separated template management, template-based shift generation, and single-shift creation with distinct headings and descriptions.
 - Removed duplicate workflow step badges from the child panels to reduce visual ambiguity.
 - Verified the frontend production build and whitespace checks succeed.
+
+### 2026-08-29 - Schedule Cleanup: Draft Deletion
+
+- Added `DELETE /api/schedules/{scheduleId}` for managers to delete their own draft schedules.
+- Restricted deletion to `DRAFT` schedules; published schedules remain protected by the schedule lifecycle.
+- Delete assignments and shifts before deleting the schedule so the database relationships remain valid.
+- Added focused service tests for successful deletion, unmanaged schedules, and published-schedule rejection.
+- Added `DELETE /api/templates/{templateId}` for managers to delete unused templates.
+- Kept templates referenced by existing shifts protected with a `409 Conflict` response.
+- Added frontend confirmation actions and bilingual success/error states for deleting draft schedules and templates.
+- Added focused service tests for successful template deletion, template-in-use rejection, and unmanaged-template rejection.
+- Updated project, backend, frontend, and architecture documentation with the deletion rules and API examples.
+
+### 2026-08-29 - Demo Data: Rename Emergency Coverage Template
+
+- Renamed the seeded development template from `כיסוי פיתוח יומי` to `כיסוי פיתוח יומי בחירום`.
+- Added Flyway migration `V14__rename_daily_coverage_template.sql` so existing local databases receive the same data-label update.
+- Updated the development seeder and backend documentation to use the new name.

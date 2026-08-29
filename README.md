@@ -23,6 +23,7 @@ Implemented:
 - Users, teams, team members, and team managers.
 - Managed team employee listing.
 - Draft schedule creation.
+- Manager-only draft schedule deletion, including its shifts and assignments.
 - Shift create, list, update, and delete operations.
 - Manual assignment create, list, and delete operations.
 - Assignment validations for team membership, duplicate assignments, shift capacity, overlap, and minimum rest.
@@ -31,6 +32,7 @@ Implemented:
 - Automatic assignment returns a report with created assignments and remaining open slots.
 - Shift template and template slot persistence model.
 - Manager template create/list endpoints.
+- Manager safe template deletion for unused templates.
 - Manager template slot create/list endpoints.
 - Manager template shift generation endpoint.
 - Availability constraint persistence model.

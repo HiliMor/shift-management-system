@@ -150,12 +150,14 @@ function App() {
     handleCreateAssignment,
     handleCreateSchedule,
     handleCreateShift,
+    handleDeleteDraftSchedule,
     handleScheduleFormChange,
     handleShiftFormChange,
     clearCreatedAssignment,
     isCreatingAssignment,
     isCreatingSchedule,
     isCreatingShift,
+    isDeletingSchedule,
     isLoadingAssignmentShifts,
     isLoadingDraftSchedules,
     isLoadingManagedTeams,
@@ -170,8 +172,11 @@ function App() {
     resetManagerScheduling,
     scheduleAssignments,
     scheduleAssignmentsError,
+    scheduleActionError,
+    scheduleActionMessage,
     scheduleCreationError,
     scheduleForm,
+    selectAssignmentShift,
     selectDraftSchedule,
     selectedDraftSchedule,
     selectedDraftScheduleId,
@@ -315,6 +320,7 @@ function App() {
     handleTemplateSlotFormChange,
     isCreatingTemplate,
     isCreatingTemplateSlot,
+    isDeletingTemplate,
     isGeneratingTemplateShifts,
     isLoadingTemplateSlots,
     isLoadingTemplateStaffingRoles,
@@ -326,6 +332,7 @@ function App() {
     selectedTemplate,
     submitCreateTemplate,
     submitCreateTemplateSlot,
+    submitDeleteTemplate,
     submitGenerateTemplateShifts,
     templateActionError,
     templateActionMessage,
@@ -504,8 +511,10 @@ function App() {
           isCreatingAssignment={isCreatingAssignment}
           isCreatingSchedule={isCreatingSchedule}
           isCreatingShift={isCreatingShift}
+          isDeletingSchedule={isDeletingSchedule}
           isCreatingTemplate={isCreatingTemplate}
           isCreatingTemplateSlot={isCreatingTemplateSlot}
+          isDeletingTemplate={isDeletingTemplate}
           isGeneratingTemplateShifts={isGeneratingTemplateShifts}
           isLoadingAssignmentShifts={isLoadingAssignmentShifts}
           isLoadingDraftSchedules={isLoadingDraftSchedules}
@@ -529,10 +538,13 @@ function App() {
           onAutomaticAssignmentFormChange={handleAutomaticAssignmentFormChange}
           onAssignmentFormChange={handleAssignmentFormChange}
           onCreateAssignment={handleCreateAssignment}
+          onSelectAssignmentShift={selectAssignmentShift}
           onCreateSchedule={handleCreateSchedule}
           onCreateShift={handleCreateShift}
+          onDeleteDraftSchedule={handleDeleteDraftSchedule}
           onCreateTemplate={submitCreateTemplate}
           onCreateTemplateSlot={submitCreateTemplateSlot}
+          onDeleteTemplate={submitDeleteTemplate}
           onGenerateTemplateShifts={submitGenerateTemplateShifts}
           onPublicationFormChange={handlePublicationFormChange}
           onPublishSchedule={submitPublishSchedule}
@@ -557,6 +569,8 @@ function App() {
           reopeningScheduleId={reopeningScheduleId}
           scheduleAssignments={scheduleAssignments}
           scheduleAssignmentsError={scheduleAssignmentsError}
+          scheduleActionError={scheduleActionError}
+          scheduleActionMessage={scheduleActionMessage}
           scheduleCreationError={scheduleCreationError}
           selectedDraftSchedule={selectedDraftSchedule}
           selectedDraftScheduleId={selectedDraftScheduleId}

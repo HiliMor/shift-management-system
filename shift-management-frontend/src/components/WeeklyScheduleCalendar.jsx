@@ -36,7 +36,7 @@ function utcDateValue(date) {
   return Date.UTC(date.getFullYear(), date.getMonth(), date.getDate());
 }
 
-function WeeklyScheduleCalendar({ schedule, shifts }) {
+function WeeklyScheduleCalendar({ onSelectShift, schedule, selectedShiftId, shifts }) {
   const { language, t, translateDomainValue } = useLanguage();
   const scheduleStart = useMemo(() => parseDateOnly(schedule.startDate), [schedule.startDate]);
   const scheduleEnd = useMemo(() => parseDateOnly(schedule.endDate), [schedule.endDate]);
@@ -106,9 +106,22 @@ function WeeklyScheduleCalendar({ schedule, shifts }) {
   function renderShift(shift) {
     const assignments = shift.assignments ?? [];
     const openSlots = Math.max(shift.requiredWorkers - assignments.length, 0);
+    const isSelected = selectedShiftId?.toString() === shift.id.toString();
+    const shiftClassName = [
+      "calendar-shift",
+      onSelectShift ? "calendar-shift-selectable" : "",
+      isSelected ? "calendar-shift-selected" : "",
+    ].filter(Boolean).join(" ");
+    const ShiftContainer = onSelectShift ? "button" : "article";
 
     return (
-      <article className="calendar-shift" key={shift.id}>
+      <ShiftContainer
+        aria-pressed={onSelectShift ? isSelected : undefined}
+        className={shiftClassName}
+        key={shift.id}
+        onClick={onSelectShift ? () => onSelectShift(shift.id) : undefined}
+        type={onSelectShift ? "button" : undefined}
+      >
         <div className="calendar-shift-heading">
           <strong>{shift.description || t("shift")}</strong>
           <span>{formatTime(shift.startTime)} {t("dateRangeSeparator")} {formatTime(shift.endTime)}</span>
@@ -129,7 +142,7 @@ function WeeklyScheduleCalendar({ schedule, shifts }) {
         ) : (
           <span className="calendar-unassigned">{t("noEmployeesAssigned")}</span>
         )}
-      </article>
+      </ShiftContainer>
     );
   }
 

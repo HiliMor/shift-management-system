@@ -41,7 +41,9 @@ function ManagerActionsSection({
   isCreatingShift,
   isCreatingTemplate,
   isCreatingTemplateSlot,
+  isDeletingTemplate,
   isGeneratingTemplateShifts,
+  isDeletingSchedule,
   isLoadingAssignmentShifts,
   isLoadingDraftSchedules,
   isLoadingManagedTeams,
@@ -63,10 +65,13 @@ function ManagerActionsSection({
   onAutomaticAssignmentFormChange,
   onAssignmentFormChange,
   onCreateAssignment,
+  onSelectAssignmentShift,
   onCreateSchedule,
   onCreateShift,
+  onDeleteDraftSchedule,
   onCreateTemplate,
   onCreateTemplateSlot,
+  onDeleteTemplate,
   onGenerateTemplateShifts,
   onPublicationFormChange,
   onPublishSchedule,
@@ -90,6 +95,8 @@ function ManagerActionsSection({
   reopeningScheduleId,
   scheduleAssignments,
   scheduleAssignmentsError,
+  scheduleActionError,
+  scheduleActionMessage,
   scheduleCreationError,
   scheduleForm,
   selectedDraftSchedule,
@@ -125,6 +132,9 @@ function ManagerActionsSection({
       ? t("ready")
       : `${publicationReadiness.totalOpenSlots} ${t("openSlots")}`
     : t("notChecked");
+  const shiftsStepSummary = isLoadingAssignmentShifts
+    ? t("loadingShifts")
+    : `${assignmentShifts.length} ${t("createdShifts")} · ${templates.length} ${t("templates")}`;
 
   const workflowSteps = [
     {
@@ -138,7 +148,7 @@ function ManagerActionsSection({
       id: "build",
       number: "2",
       label: t("shiftsStep"),
-      summary: `${templates.length} ${t("templates")}`,
+      summary: shiftsStepSummary,
       panelId: "manager-workflow-build",
     },
     {
@@ -190,17 +200,31 @@ function ManagerActionsSection({
             )}
             <small>{t("draftContextDescription")}</small>
           </div>
-          <label className="draft-context-select">
-            <span>{t("changeDraft")}</span>
-            <select value={selectedDraftScheduleId} onChange={(event) => onSelectDraftSchedule(event.target.value)}>
-              {managedDraftSchedules.map((schedule) => (
-                <option key={schedule.id} value={schedule.id}>
-                  #{schedule.id} - {schedule.teamName}, {formatDate(schedule.startDate)} {t("dateRangeSeparator")} {" "}
-                  {formatDate(schedule.endDate)}
-                </option>
-              ))}
-            </select>
-          </label>
+          <div className="draft-context-actions">
+            <label className="draft-context-select">
+              <span>{t("changeDraft")}</span>
+              <select value={selectedDraftScheduleId} onChange={(event) => onSelectDraftSchedule(event.target.value)}>
+                {managedDraftSchedules.map((schedule) => (
+                  <option key={schedule.id} value={schedule.id}>
+                    #{schedule.id} - {schedule.teamName}, {formatDate(schedule.startDate)} {t("dateRangeSeparator")} {" "}
+                    {formatDate(schedule.endDate)}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <button
+              className="danger-button compact-button"
+              disabled={isDeletingSchedule || isLoadingDraftSchedules || !selectedDraftSchedule}
+              onClick={() => {
+                if (window.confirm(t("confirmDeleteDraftSchedule"))) {
+                  onDeleteDraftSchedule();
+                }
+              }}
+              type="button"
+            >
+              {isDeletingSchedule ? t("deletingDraftSchedule") : t("deleteDraftSchedule")}
+            </button>
+          </div>
         </div>
       ) : null}
 
@@ -249,11 +273,16 @@ function ManagerActionsSection({
               <>
                 <ShiftTemplatePanel
                   draftSchedulesError={draftSchedulesError}
+                  assignmentShifts={assignmentShifts}
+                  isLoadingAssignmentShifts={isLoadingAssignmentShifts}
+                  isLoadingScheduleAssignments={isLoadingScheduleAssignments}
+                  scheduleAssignments={scheduleAssignments}
                   formatDate={formatDate}
                   formatDateTime={formatDateTime}
                   generationDraftSchedules={generationDraftSchedules}
                   isCreatingTemplate={isCreatingTemplate}
                   isCreatingTemplateSlot={isCreatingTemplateSlot}
+                  isDeletingTemplate={isDeletingTemplate}
                   isGeneratingTemplateShifts={isGeneratingTemplateShifts}
                   isLoadingTemplateSlots={isLoadingTemplateSlots}
                   isLoadingTemplateStaffingRoles={isLoadingTemplateStaffingRoles}
@@ -261,6 +290,7 @@ function ManagerActionsSection({
                   managedTeams={managedTeams}
                   onCreateTemplate={onCreateTemplate}
                   onCreateTemplateSlot={onCreateTemplateSlot}
+                  onDeleteTemplate={onDeleteTemplate}
                   onGenerateTemplateShifts={onGenerateTemplateShifts}
                   onRefreshTemplateSlots={onRefreshTemplateSlots}
                   onRefreshTemplates={onRefreshTemplates}
@@ -318,6 +348,7 @@ function ManagerActionsSection({
                   managedDraftSchedules={managedDraftSchedules}
                   onAssignmentFormChange={onAssignmentFormChange}
                   onCreateAssignment={onCreateAssignment}
+                  onSelectAssignmentShift={onSelectAssignmentShift}
                   scheduleAssignments={scheduleAssignments}
                   scheduleAssignmentsError={scheduleAssignmentsError}
                   selectedAssignmentSchedule={selectedAssignmentSchedule}
@@ -372,6 +403,7 @@ function ManagerActionsSection({
       ) : null}
 
       {scheduleCreationError ? <p className="error-message">{scheduleCreationError}</p> : null}
+      {scheduleActionError ? <p className="error-message">{scheduleActionError}</p> : null}
       {shiftCreationError ? <p className="error-message">{shiftCreationError}</p> : null}
       {assignmentCreationError ? <p className="error-message">{assignmentCreationError}</p> : null}
       {publicationActionError ? <p className="error-message">{publicationActionError}</p> : null}
@@ -383,6 +415,12 @@ function ManagerActionsSection({
             {createdSchedule.teamName}: {formatDate(createdSchedule.startDate)} {t("dateRangeSeparator")} {" "}
             {formatDate(createdSchedule.endDate)}
           </span>
+        </div>
+      ) : null}
+
+      {scheduleActionMessage ? (
+        <div className="success-message">
+          <strong>{t(scheduleActionMessage)}</strong>
         </div>
       ) : null}
 

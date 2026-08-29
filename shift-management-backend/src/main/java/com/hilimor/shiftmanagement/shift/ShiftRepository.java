@@ -9,6 +9,8 @@ public interface ShiftRepository extends JpaRepository<Shift, Long> {
 
     List<Shift> findBySchedule_IdOrderByStartTime(Long scheduleId);
 
+    long deleteBySchedule_Id(Long scheduleId);
+
     List<Shift> findBySchedule_IdAndStartTimeLessThanAndEndTimeGreaterThan(
             Long scheduleId,
             Instant endTime,
@@ -20,4 +22,6 @@ public interface ShiftRepository extends JpaRepository<Shift, Long> {
             Long templateSlotId,
             Instant startTime
     );
+
+    boolean existsByTemplateSlot_ShiftTemplate_Id(Long templateId);
 }

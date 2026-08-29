@@ -36,19 +36,24 @@ function templateActionMessageLabel(message, t) {
 }
 
 function ShiftTemplatePanel({
+  assignmentShifts,
   draftSchedulesError,
   formatDate,
   formatDateTime,
   generationDraftSchedules,
   isCreatingTemplate,
   isCreatingTemplateSlot,
+  isDeletingTemplate,
   isGeneratingTemplateShifts,
+  isLoadingAssignmentShifts,
+  isLoadingScheduleAssignments,
   isLoadingTemplateSlots,
   isLoadingTemplateStaffingRoles,
   isLoadingTemplates,
   managedTeams,
   onCreateTemplate,
   onCreateTemplateSlot,
+  onDeleteTemplate,
   onGenerateTemplateShifts,
   onRefreshTemplateSlots,
   onRefreshTemplates,
@@ -57,6 +62,7 @@ function ShiftTemplatePanel({
   onTemplateSlotFormChange,
   selectedGenerationTemplate,
   selectedDraftSchedule,
+  scheduleAssignments,
   selectedTemplate,
   templateActionError,
   templateActionMessage,
@@ -75,6 +81,12 @@ function ShiftTemplatePanel({
   const selectedTemplateMaxDayOffset = selectedTemplate ? selectedTemplate.cycleDays - 1 : 0;
   const canCreateSlot = templates.length > 0 && templateSlotForm.templateId;
   const canGenerate = selectedGenerationTemplate && templateGenerationForm.scheduleId;
+  const totalRequiredSlots = assignmentShifts.reduce(
+    (total, shift) => total + shift.requiredWorkers,
+    0,
+  );
+  const openAssignmentSlots = Math.max(0, totalRequiredSlots - scheduleAssignments.length);
+  const isLoadingScheduleSummary = isLoadingAssignmentShifts || isLoadingScheduleAssignments;
   const generatedShiftGroups = templateGenerationReport
     ? groupShiftsByDate(templateGenerationReport.shifts, formatDate)
     : [];
@@ -94,6 +106,32 @@ function ShiftTemplatePanel({
         >
           {t("refresh")}
         </button>
+      </div>
+
+      <div className="draft-shift-summary">
+        <div className="draft-shift-summary-context">
+          <span className="eyebrow">{t("selectedDraftSummary")}</span>
+          <strong>
+            {selectedDraftSchedule
+              ? renderScheduleOption(selectedDraftSchedule, formatDate, t)
+              : t("noDraftSelected")}
+          </strong>
+          <p>{t("draftShiftSummary")}</p>
+        </div>
+        <div className="readiness-summary">
+          <span>
+            {isLoadingScheduleSummary ? "..." : assignmentShifts.length} {t("createdShifts")}
+          </span>
+          <span>
+            {isLoadingScheduleSummary ? "..." : scheduleAssignments.length} {t("assignedSlots")}
+          </span>
+          <span>
+            {isLoadingScheduleSummary ? "..." : openAssignmentSlots} {t("openAssignmentSlots")}
+          </span>
+        </div>
+        {!isLoadingScheduleSummary && assignmentShifts.length === 0 ? (
+          <p className="muted">{t("noShiftsForDraft")}</p>
+        ) : null}
       </div>
 
       {templateActionError ? <p className="error-message">{templateActionError}</p> : null}
@@ -184,6 +222,18 @@ function ShiftTemplatePanel({
                     <strong>{template.name}</strong>
                     <span>{template.cycleDays} {t("days")}</span>
                     <span>{template.defaultMinRestHours} {t("restHours")}</span>
+                    <button
+                      className="danger-button compact-button"
+                      disabled={isDeletingTemplate}
+                      onClick={() => {
+                        if (window.confirm(t("confirmDeleteTemplate"))) {
+                          onDeleteTemplate(template.id);
+                        }
+                      }}
+                      type="button"
+                    >
+                      {isDeletingTemplate ? t("deletingTemplate") : t("deleteTemplate")}
+                    </button>
                   </div>
                 ))}
               </div>

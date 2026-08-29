@@ -6,6 +6,7 @@ import jakarta.validation.Valid;
 
 import org.springframework.http.HttpStatus;
 import org.springframework.security.core.Authentication;
+import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -38,6 +39,15 @@ public class ShiftTemplateController {
             @PathVariable Long teamId
     ) {
         return shiftTemplateService.listTeamTemplates(authentication.getName(), teamId);
+    }
+
+    @DeleteMapping("/api/templates/{templateId}")
+    @ResponseStatus(HttpStatus.NO_CONTENT)
+    public void deleteTemplate(
+            Authentication authentication,
+            @PathVariable Long templateId
+    ) {
+        shiftTemplateService.deleteTemplate(authentication.getName(), templateId);
     }
 
     @PostMapping("/api/templates/{templateId}/slots")

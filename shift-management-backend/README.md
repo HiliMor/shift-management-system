@@ -28,6 +28,7 @@ Implemented:
 - CORS support for the local React development server.
 - Initial schedule domain model.
 - Schedule creation endpoint: `POST /api/schedules`.
+- Draft schedule delete endpoint: `DELETE /api/schedules/{scheduleId}`.
 - Initial shift domain model.
 - Shift creation endpoint: `POST /api/schedules/{scheduleId}/shifts`.
 - Shift list endpoint: `GET /api/schedules/{scheduleId}/shifts`.
@@ -45,6 +46,7 @@ Implemented:
 - Optional source template slot reference on generated shifts.
 - Template create endpoint: `POST /api/teams/{teamId}/templates`.
 - Template list endpoint: `GET /api/teams/{teamId}/templates`.
+- Template delete endpoint: `DELETE /api/templates/{templateId}`.
 - Template slot create endpoint: `POST /api/templates/{templateId}/slots`.
 - Template slot list endpoint: `GET /api/templates/{templateId}/slots`.
 - Template shift generation endpoint: `POST /api/templates/{templateId}/generate`.
@@ -249,7 +251,7 @@ Expected response:
   {
     "teamId": 1,
     "teamName": "צוות פיתוח",
-    "staffingRoleNames": ["פיתוח Backend"]
+    "staffingRoleNames": ["Backend Developer"]
   }
 ]
 ```
@@ -271,13 +273,15 @@ Expected response:
     "id": 2,
     "username": "employee1",
     "fullName": "אלון כהן",
-    "staffingRoleNames": ["פיתוח Backend"]
+    "staffingRoleIds": [10],
+    "staffingRoleNames": ["Backend Developer"]
   },
   {
     "id": 3,
     "username": "employee2",
     "fullName": "נועה לוי",
-    "staffingRoleNames": ["פיתוח Frontend"]
+    "staffingRoleIds": [11],
+    "staffingRoleNames": ["Frontend Developer"]
   }
 ]
 ```
@@ -311,6 +315,17 @@ Expected response:
 ```
 
 Only managers assigned to the requested team can create schedules for that team.
+
+Delete a draft schedule managed by the authenticated manager:
+
+```bash
+curl -X DELETE http://localhost:8080/api/schedules/1 \
+  -H "Authorization: Bearer <TOKEN>"
+```
+
+Only `DRAFT` schedules can be deleted. The operation removes the schedule's
+assignments and shifts before removing the schedule itself. Published schedules
+cannot be deleted through this endpoint.
 
 List draft schedules managed by the authenticated manager:
 
@@ -532,6 +547,17 @@ Template names must be unique inside the same team.
 A slot's `dayOffset` must fit inside the template cycle, and a required staffing role must belong to the template's team.
 Generation is allowed only into draft schedules that belong to the same team as the template.
 Running generation again skips shifts that were already created from the same template slot at the same start time.
+
+Delete a template that has not been used to generate shifts:
+
+```bash
+curl -X DELETE http://localhost:8080/api/templates/1 \
+  -H "Authorization: Bearer <TOKEN>"
+```
+
+Only managers of the template's team can delete it. Deleting a template also
+deletes its template slots. A template that is referenced by existing shifts
+returns `409 Conflict` and is kept.
 
 Publish a draft schedule:
 
@@ -1454,12 +1480,12 @@ Seed team:
 
 Additional demo data:
 
-- Staffing roles: `פיתוח Backend`, `פיתוח Frontend`, and `בדיקות QA`.
+- Staffing roles: `Backend Developer`, `Frontend Developer`, and `QA Engineer`.
 - Active staffing-role assignments for all eight demo employees.
 - One published schedule for the current week with shifts and assignments.
 - One empty seven-day draft schedule for manual assignment practice.
 - One empty 21-day draft schedule for automatic assignment practice.
-- One active `כיסוי פיתוח יומי` template with three eight-hour development coverage slots that repeat every day.
+- One active `כיסוי פיתוח יומי בחירום` template with three eight-hour development coverage slots that repeat every day.
 - Schedule-published notifications for active team members.
 - One active transfer request from `employee1` to `employee2`.
 

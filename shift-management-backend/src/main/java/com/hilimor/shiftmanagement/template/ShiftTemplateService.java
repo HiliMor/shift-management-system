@@ -95,6 +95,21 @@ public class ShiftTemplateService {
     }
 
     @Transactional
+    public void deleteTemplate(String username, Long templateId) {
+        ShiftTemplate shiftTemplate = managedTemplate(username, templateId);
+
+        if (shiftRepository.existsByTemplateSlot_ShiftTemplate_Id(templateId)) {
+            throw new ResponseStatusException(
+                    HttpStatus.CONFLICT,
+                    "Template cannot be deleted because it is used by existing shifts"
+            );
+        }
+
+        shiftTemplateRepository.delete(shiftTemplate);
+        log.info("Shift template {} deleted by manager {}", templateId, username);
+    }
+
+    @Transactional
     public TemplateSlotResponse createSlot(
             String username,
             Long templateId,

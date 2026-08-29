@@ -16,10 +16,12 @@ For end-to-end local run instructions, see:
 - Schedule details - authenticated screen section that shows shifts and assignments for a selected published schedule.
 - Manager published schedule view - manager-only read-only view of a selected published schedule and its assignments.
 - Create schedule - manager-only form for creating a draft schedule for a managed team.
+- Delete draft schedule - manager-only action for removing the selected draft and its shifts and assignments.
 - Create shift - manager-only form for adding shifts to a managed draft schedule.
-- Assign employee - manager-only form for manually assigning an active team employee to a draft shift.
+- Assign employee - manager-only draft assignment board and form for assigning an active team employee to a draft shift.
 - Automatic assignment - manager-only action for filling open draft shifts and reviewing the assignment report.
 - Shift templates - manager-only workflow for creating templates, adding slots, and generating draft shifts.
+- Delete unused template - manager-only action for removing a template that is not referenced by existing shifts.
 - Notifications - authenticated top-bar notification center that lists personal notifications, shows unread count, marks notifications as read, and links schedule-publication notifications to the published schedule.
 - Transfer and swap requests - authenticated screen section for outgoing, incoming, and pending manager approval requests.
 - Transfer and swap request creation - employee-only form based on the selected published schedule.

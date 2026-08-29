@@ -84,6 +84,25 @@ public class ScheduleService {
     }
 
     @Transactional
+    public void deleteDraftSchedule(String username, Long scheduleId) {
+        Schedule schedule = managedSchedule(
+                username,
+                scheduleId,
+                "Only a team manager can delete this schedule"
+        );
+
+        if (schedule.getStatus() != ScheduleStatus.DRAFT) {
+            throw new ResponseStatusException(HttpStatus.CONFLICT, "Only draft schedules can be deleted");
+        }
+
+        assignmentRepository.deleteByShift_Schedule_Id(scheduleId);
+        shiftRepository.deleteBySchedule_Id(scheduleId);
+        scheduleRepository.delete(schedule);
+
+        log.info("Draft schedule {} deleted by manager {}", scheduleId, username);
+    }
+
+    @Transactional
     public ScheduleResponse publishSchedule(String username, Long scheduleId, boolean confirmUnfilled) {
         Schedule schedule = managedSchedule(
                 username,
