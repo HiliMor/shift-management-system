@@ -76,6 +76,15 @@ function useSchedulePublication(
   }, [enabled, managedDraftSchedules, selectedDraftScheduleId]);
 
   useEffect(() => {
+    if (!enabled) {
+      return;
+    }
+
+    setPublicationReadiness(null);
+    setPublicationError("");
+  }, [enabled, selectedDraftScheduleId]);
+
+  useEffect(() => {
     if (!session?.accessToken || !enabled || !publicationForm.scheduleId) {
       setPublicationReadiness(null);
       setPublicationError("");
@@ -150,6 +159,8 @@ function useSchedulePublication(
   }
 
   function refreshPublicationReadiness() {
+    setPublicationReadiness(null);
+    setPublicationError("");
     setPublicationReadinessRefreshKey((current) => current + 1);
   }
 

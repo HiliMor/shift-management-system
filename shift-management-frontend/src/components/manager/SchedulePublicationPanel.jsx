@@ -70,6 +70,8 @@ function SchedulePublicationPanel({
         </form>
       ) : null}
 
+      {isLoadingPublicationReadiness ? <p className="muted" aria-live="polite">{t("checkingReadinessDetails")}</p> : null}
+
       {publicationReadiness ? (
         <div className="readiness-panel">
           <div className="readiness-summary">

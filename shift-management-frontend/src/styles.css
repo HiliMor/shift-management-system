@@ -581,6 +581,43 @@ nav a:hover,
   gap: 12px;
 }
 
+.shift-day-list {
+  display: grid;
+  gap: 18px;
+}
+
+.shift-day-group {
+  background: #f8fafc;
+  border: 1px solid #dce4ef;
+  border-radius: 8px;
+  display: grid;
+  gap: 12px;
+  padding: 14px;
+}
+
+.shift-day-heading {
+  align-items: center;
+  border-bottom: 1px solid #dce4ef;
+  display: flex;
+  gap: 10px;
+  justify-content: space-between;
+  padding-bottom: 10px;
+}
+
+.shift-day-heading h3,
+.shift-day-heading h5 {
+  margin: 0;
+}
+
+.shift-day-heading span {
+  background: #e6f3ef;
+  border-radius: 999px;
+  color: #1f7165;
+  font-size: 0.78rem;
+  font-weight: 800;
+  padding: 5px 10px;
+}
+
 .details-summary {
   border-bottom: 1px solid #e1e6ef;
   display: grid;
@@ -642,6 +679,22 @@ nav a:hover,
 
 .assignment-row span {
   color: #66758b;
+  font-size: 0.9rem;
+}
+
+.assignment-guidance {
+  background: #f0f7f5;
+  border: 1px solid #cde5df;
+  border-radius: 8px;
+  color: #245f56;
+  display: grid;
+  gap: 4px;
+  margin-bottom: 14px;
+  padding: 12px 14px;
+}
+
+.assignment-guidance span {
+  color: #4d6f69;
   font-size: 0.9rem;
 }
 

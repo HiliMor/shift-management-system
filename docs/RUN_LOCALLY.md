@@ -95,15 +95,44 @@ http://127.0.0.1:5173
 | `manager1` | `password` | `MANAGER` |
 | `employee1` | `password` | `EMPLOYEE` |
 | `employee2` | `password` | `EMPLOYEE` |
+| `employee3` | `password` | `EMPLOYEE` |
+| `employee4` | `password` | `EMPLOYEE` |
+| `employee5` | `password` | `EMPLOYEE` |
+| `employee6` | `password` | `EMPLOYEE` |
+| `employee7` | `password` | `EMPLOYEE` |
+| `employee8` | `password` | `EMPLOYEE` |
 
 When `app.seed.enabled=true`, the backend also creates a presentation scenario:
 
-- An `Operations` team managed by `manager1`.
-- Staffing roles for the team.
+- A `צוות פיתוח` managed by `manager1`.
+- Eight active employees with three staffing roles.
 - A published schedule with shifts and assignments for employees.
-- A draft schedule for manager editing screens.
+- An empty seven-day draft schedule for manual assignment practice.
+- An empty 21-day draft schedule for automatic assignment practice.
+- An active daily template with three eight-hour development coverage slots.
 - Schedule-published notifications for active employees.
 - An active transfer request from `employee1` to `employee2`.
+
+The manager can generate 21 shifts from the daily template into the seven-day
+draft for manual assignment practice, or generate 63 shifts into the 21-day draft
+for automatic assignment.
+
+## Reset Local Demo Data
+
+The development seeder is idempotent, so it does not remove shifts or templates
+created during previous experiments. To start again with the current clean demo,
+stop the backend and run the following commands from the backend directory:
+
+```bash
+cd "/Users/hilimor/Java project/shift-management-backend"
+docker compose down -v
+docker compose up -d
+```
+
+The `-v` option deletes the local PostgreSQL data volume. It does not delete
+project files, Git history, or anything on GitHub. Start the backend again after
+these commands so Flyway recreates the schema and the development seeder inserts
+the demo data.
 
 ## If Port 8080 Is Busy
 

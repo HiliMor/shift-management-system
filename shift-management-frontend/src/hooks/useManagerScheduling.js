@@ -385,6 +385,10 @@ function useManagerScheduling(
     }));
   }
 
+  function clearCreatedAssignment() {
+    setCreatedAssignment(null);
+  }
+
   async function handleCreateAssignment(event) {
     event.preventDefault();
     setIsCreatingAssignment(true);
@@ -458,6 +462,7 @@ function useManagerScheduling(
     handleCreateShift,
     handleScheduleFormChange,
     handleShiftFormChange,
+    clearCreatedAssignment,
     isCreatingAssignment,
     isCreatingSchedule,
     isCreatingShift,

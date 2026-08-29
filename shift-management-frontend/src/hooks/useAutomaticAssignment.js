@@ -13,6 +13,7 @@ function useAutomaticAssignment(
   selectedDraftScheduleId,
   onAssignmentsChanged,
   onPublicationReadinessChanged,
+  onManualAssignmentMessageCleared,
   onApiError,
 ) {
   const [automaticAssignmentForm, setAutomaticAssignmentForm] = useState(emptyAutomaticAssignmentForm);
@@ -66,6 +67,7 @@ function useAutomaticAssignment(
     try {
       const report = await autoAssignSchedule(session.accessToken, automaticAssignmentForm.scheduleId);
 
+      onManualAssignmentMessageCleared();
       setAutomaticAssignmentReport(report);
       setAutomaticAssignmentMessage({
         key: "automaticAssignmentCreated",

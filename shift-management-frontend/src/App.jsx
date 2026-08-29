@@ -140,6 +140,7 @@ function App() {
     handleCreateShift,
     handleScheduleFormChange,
     handleShiftFormChange,
+    clearCreatedAssignment,
     isCreatingAssignment,
     isCreatingSchedule,
     isCreatingShift,
@@ -273,6 +274,7 @@ function App() {
     selectedDraftScheduleId,
     refreshAssignmentData,
     refreshPublicationReadiness,
+    clearCreatedAssignment,
     handleApiError,
   );
 

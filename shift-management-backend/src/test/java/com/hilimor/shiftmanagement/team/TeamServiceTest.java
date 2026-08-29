@@ -19,6 +19,9 @@ import org.springframework.web.server.ResponseStatusException;
 
 import com.hilimor.shiftmanagement.user.ApplicationRole;
 import com.hilimor.shiftmanagement.user.User;
+import com.hilimor.shiftmanagement.staffing.StaffingRole;
+import com.hilimor.shiftmanagement.staffing.TeamMemberStaffingRole;
+import com.hilimor.shiftmanagement.staffing.TeamMemberStaffingRoleRepository;
 
 @ExtendWith(MockitoExtension.class)
 class TeamServiceTest {
@@ -28,6 +31,9 @@ class TeamServiceTest {
 
     @Mock
     private TeamMemberRepository teamMemberRepository;
+
+    @Mock
+    private TeamMemberStaffingRoleRepository teamMemberStaffingRoleRepository;
 
     @InjectMocks
     private TeamService teamService;
@@ -70,10 +76,21 @@ class TeamServiceTest {
         Team team = team(1L, "Operations");
         User employeeTwo = employee(3L, "employee2", "Demo Employee Two");
         User employeeOne = employee(2L, "employee1", "Demo Employee One");
+        TeamMember employeeTwoMember = teamMember(employeeTwo, team);
+        TeamMember employeeOneMember = teamMember(employeeOne, team);
+        ReflectionTestUtils.setField(employeeTwoMember, "id", 31L);
+        ReflectionTestUtils.setField(employeeOneMember, "id", 32L);
+        StaffingRole backendRole = new StaffingRole(team, "Backend Developer", "Backend work");
+        StaffingRole frontendRole = new StaffingRole(team, "Frontend Developer", "Frontend work");
 
         when(teamManagerRepository.existsByManager_UsernameAndTeam_Id("manager1", 1L)).thenReturn(true);
         when(teamMemberRepository.findByTeam_IdAndActiveTrue(1L))
-                .thenReturn(List.of(teamMember(employeeTwo, team), teamMember(employeeOne, team)));
+                .thenReturn(List.of(employeeTwoMember, employeeOneMember));
+        when(teamMemberStaffingRoleRepository.findByTeamMember_Team_Id(1L))
+                .thenReturn(List.of(
+                        new TeamMemberStaffingRole(employeeOneMember, backendRole, Instant.parse("2026-07-01T09:00:00Z")),
+                        new TeamMemberStaffingRole(employeeTwoMember, frontendRole, Instant.parse("2026-07-01T09:00:00Z"))
+                ));
 
         List<TeamEmployeeResponse> responses = teamService.listTeamEmployees("manager1", 1L);
 
@@ -82,6 +99,8 @@ class TeamServiceTest {
         assertThat(responses).extracting(TeamEmployeeResponse::username).containsExactly("employee1", "employee2");
         assertThat(responses).extracting(TeamEmployeeResponse::fullName)
                 .containsExactly("Demo Employee One", "Demo Employee Two");
+        assertThat(responses).extracting(TeamEmployeeResponse::staffingRoleNames)
+                .containsExactly(List.of("Backend Developer"), List.of("Frontend Developer"));
     }
 
     @Test
@@ -94,7 +113,7 @@ class TeamServiceTest {
                     assertThat(exception.getReason()).isEqualTo("Only a team manager can view team employees");
                 });
 
-        verifyNoInteractions(teamMemberRepository);
+        verifyNoInteractions(teamMemberRepository, teamMemberStaffingRoleRepository);
     }
 
     private Team team(Long id, String name) {

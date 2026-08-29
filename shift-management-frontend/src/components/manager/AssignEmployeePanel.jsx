@@ -22,6 +22,18 @@ function AssignEmployeePanel({
   teamEmployeesError,
 }) {
   const { t } = useLanguage();
+  const selectedAssignmentShift = assignmentShifts.find(
+    (shift) => shift.id.toString() === assignmentForm.shiftId,
+  );
+  const requiredRoleName = selectedAssignmentShift?.requiredStaffingRoleName;
+  const assignableEmployees = requiredRoleName
+    ? teamEmployees.filter((employee) => employee.staffingRoleNames?.includes(requiredRoleName))
+    : teamEmployees;
+  const selectedEmployeeId = assignableEmployees.some(
+    (employee) => employee.id.toString() === assignmentForm.employeeId,
+  )
+    ? assignmentForm.employeeId
+    : "";
 
   return (
     <section className="manager-panel" id="manager-assignments">
@@ -33,6 +45,17 @@ function AssignEmployeePanel({
       {assignmentShiftsError ? <p className="error-message">{assignmentShiftsError}</p> : null}
       {teamEmployeesError ? <p className="error-message">{teamEmployeesError}</p> : null}
       {scheduleAssignmentsError ? <p className="error-message">{scheduleAssignmentsError}</p> : null}
+
+      {selectedAssignmentShift ? (
+        <div className="assignment-guidance">
+          <strong>{t("assignmentGuidance")}</strong>
+          <span>
+            {requiredRoleName
+              ? `${t("requiredRoleForShift")}: ${requiredRoleName}. ${t("employeesWithRole")}`
+              : t("noSpecificRoleForShift")}
+          </span>
+        </div>
+      ) : null}
 
       {!isLoadingDraftSchedules && !draftSchedulesError && managedDraftSchedules.length === 0 ? (
         <p className="muted">{t("createDraftBeforeAssignment")}</p>
@@ -52,6 +75,7 @@ function AssignEmployeePanel({
               {assignmentShifts.map((shift) => (
                 <option key={shift.id} value={shift.id}>
                   #{shift.id} - {shift.description || t("shift")}, {formatDateTime(shift.startTime)}
+                  {shift.requiredStaffingRoleName ? ` - ${shift.requiredStaffingRoleName}` : ""}
                 </option>
               ))}
             </select>
@@ -60,15 +84,21 @@ function AssignEmployeePanel({
           <label>
             {t("employee")}
             <select
-              disabled={isLoadingTeamEmployees || teamEmployees.length === 0}
+              disabled={isLoadingTeamEmployees || assignableEmployees.length === 0}
               name="employeeId"
               onChange={onAssignmentFormChange}
               required
-              value={assignmentForm.employeeId}
+              value={selectedEmployeeId}
             >
-              {teamEmployees.map((employee) => (
+              <option disabled value="">
+                {t("selectEmployee")}
+              </option>
+              {assignableEmployees.map((employee) => (
                 <option key={employee.id} value={employee.id}>
                   {employee.fullName || employee.username}
+                  {employee.staffingRoleNames?.length
+                    ? ` - ${employee.staffingRoleNames.join(", ")}`
+                    : ` - ${t("noStaffingRoles")}`}
                 </option>
               ))}
             </select>
@@ -80,7 +110,8 @@ function AssignEmployeePanel({
               isLoadingAssignmentShifts ||
               isLoadingTeamEmployees ||
               assignmentShifts.length === 0 ||
-              teamEmployees.length === 0
+              assignableEmployees.length === 0 ||
+              !selectedEmployeeId
             }
             type="submit"
           >
@@ -101,6 +132,14 @@ function AssignEmployeePanel({
 
       {!isLoadingTeamEmployees && !teamEmployeesError && selectedAssignmentSchedule && teamEmployees.length === 0 ? (
         <p className="muted">{t("noActiveEmployees")}</p>
+      ) : null}
+
+      {!isLoadingTeamEmployees &&
+      !teamEmployeesError &&
+      requiredRoleName &&
+      teamEmployees.length > 0 &&
+      assignableEmployees.length === 0 ? (
+        <p className="muted">{t("noEmployeesWithRequiredRole")}</p>
       ) : null}
 
       <div className="assignment-panel-list">

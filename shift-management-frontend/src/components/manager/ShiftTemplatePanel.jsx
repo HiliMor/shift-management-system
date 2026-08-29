@@ -1,4 +1,5 @@
 import { useLanguage } from "../../i18n/LanguageContext.jsx";
+import { groupShiftsByDate } from "../../utils/shiftGroups.js";
 
 function renderScheduleOption(schedule, formatDate, t) {
   return `#${schedule.id} - ${schedule.teamName}, ${formatDate(schedule.startDate)} ${t("dateRangeSeparator")} ${formatDate(
@@ -74,6 +75,9 @@ function ShiftTemplatePanel({
   const selectedTemplateMaxDayOffset = selectedTemplate ? selectedTemplate.cycleDays - 1 : 0;
   const canCreateSlot = templates.length > 0 && templateSlotForm.templateId;
   const canGenerate = selectedGenerationTemplate && templateGenerationForm.scheduleId;
+  const generatedShiftGroups = templateGenerationReport
+    ? groupShiftsByDate(templateGenerationReport.shifts, formatDate)
+    : [];
 
   return (
     <section className="manager-panel" id="manager-templates">
@@ -377,20 +381,30 @@ function ShiftTemplatePanel({
             </div>
 
             {templateGenerationReport.shifts.length > 0 ? (
-              <div className="auto-assignment-report-list">
-                {templateGenerationReport.shifts.map((shift) => (
-                  <div className="assignment-row auto-assignment-row" key={shift.id}>
-                    <div className="auto-assignment-main">
-                      <strong>{t("shift")} #{shift.id}</strong>
-                      <span>
-                        {shift.description || t("shift")}, {formatDateTime(shift.startTime)} {t("dateRangeSeparator")} {" "}
-                        {formatDateTime(shift.endTime)}
-                      </span>
-                      <span>
-                        {shift.requiredWorkers} {t("workers")}, {t("templateSlot")} #{shift.templateSlotId}
-                      </span>
+              <div className="shift-day-list">
+                {generatedShiftGroups.map((group) => (
+                  <section className="shift-day-group" key={group.dateLabel}>
+                    <div className="shift-day-heading">
+                      <h5>{group.dateLabel}</h5>
+                      <span>{group.shifts.length} {t("shifts")}</span>
                     </div>
-                  </div>
+                    <div className="auto-assignment-report-list">
+                      {group.shifts.map((shift) => (
+                        <div className="assignment-row auto-assignment-row" key={shift.id}>
+                          <div className="auto-assignment-main">
+                            <strong>{t("shift")} #{shift.id}</strong>
+                            <span>
+                              {shift.description || t("shift")}, {formatDateTime(shift.startTime)} {t("dateRangeSeparator")} {" "}
+                              {formatDateTime(shift.endTime)}
+                            </span>
+                            <span>
+                              {shift.requiredWorkers} {t("workers")}, {t("templateSlot")} #{shift.templateSlotId}
+                            </span>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </section>
                 ))}
               </div>
             ) : null}

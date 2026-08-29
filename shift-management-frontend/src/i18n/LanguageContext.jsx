@@ -1,5 +1,5 @@
 import { createContext, useContext, useEffect, useState } from "react";
-import { translations } from "./translations.js";
+import { translateDomainValue as translateDomainValueForLanguage, translations } from "./translations.js";
 
 const LANGUAGE_STORAGE_KEY = "shift-management-language";
 const LanguageContext = createContext(null);
@@ -23,7 +23,15 @@ export function LanguageProvider({ children }) {
     return translations[language][key] ?? translations.en[key] ?? key;
   }
 
-  return <LanguageContext.Provider value={{ language, setLanguage, t }}>{children}</LanguageContext.Provider>;
+  function translateDomainValue(value) {
+    return translateDomainValueForLanguage(value, language);
+  }
+
+  return (
+    <LanguageContext.Provider value={{ language, setLanguage, t, translateDomainValue }}>
+      {children}
+    </LanguageContext.Provider>
+  );
 }
 
 export function useLanguage() {
@@ -35,4 +43,3 @@ export function useLanguage() {
 
   return context;
 }
-

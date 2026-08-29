@@ -225,7 +225,7 @@ Expected response:
 [
   {
     "id": 1,
-    "name": "Operations",
+    "name": "צוות פיתוח",
     "swapApprovalPolicy": "MANAGER",
     "defaultMinRestHours": 8,
     "timeZone": "Asia/Jerusalem"
@@ -249,12 +249,14 @@ Expected response:
   {
     "id": 2,
     "username": "employee1",
-    "fullName": "Demo Employee One"
+    "fullName": "אלון כהן",
+    "staffingRoleNames": ["פיתוח Backend"]
   },
   {
     "id": 3,
     "username": "employee2",
-    "fullName": "Demo Employee Two"
+    "fullName": "נועה לוי",
+    "staffingRoleNames": ["פיתוח Frontend"]
   }
 ]
 ```
@@ -278,7 +280,7 @@ Expected response:
 {
   "id": 1,
   "teamId": 1,
-  "teamName": "Operations",
+  "teamName": "צוות פיתוח",
   "startDate": "2026-07-05",
   "endDate": "2026-07-11",
   "status": "DRAFT",
@@ -303,7 +305,7 @@ Expected response:
   {
     "id": 1,
     "teamId": 1,
-    "teamName": "Operations",
+  "teamName": "צוות פיתוח",
     "startDate": "2026-07-05",
     "endDate": "2026-07-11",
     "status": "DRAFT",
@@ -329,7 +331,7 @@ Expected response:
   {
     "id": 2,
     "teamId": 1,
-    "teamName": "Operations",
+  "teamName": "צוות פיתוח",
     "startDate": "2026-07-12",
     "endDate": "2026-07-18",
     "status": "PUBLISHED",
@@ -412,7 +414,7 @@ Expected response:
 {
   "id": 1,
   "teamId": 1,
-  "teamName": "Operations",
+  "teamName": "צוות פיתוח",
   "name": "Routine Week",
   "description": "Three standard shifts per day",
   "cycleDays": 7,
@@ -523,7 +525,7 @@ Expected response:
 {
   "id": 1,
   "teamId": 1,
-  "teamName": "Operations",
+    "teamName": "צוות פיתוח",
   "startDate": "2026-07-05",
   "endDate": "2026-07-11",
   "status": "PUBLISHED",
@@ -565,7 +567,7 @@ Expected response:
 {
   "id": 1,
   "teamId": 1,
-  "teamName": "Operations",
+    "teamName": "צוות פיתוח",
   "startDate": "2026-07-05",
   "endDate": "2026-07-11",
   "status": "DRAFT",
@@ -594,7 +596,7 @@ Expected response for a schedule that is not fully assigned:
   "schedule": {
     "id": 1,
     "teamId": 1,
-    "teamName": "Operations",
+    "teamName": "צוות פיתוח",
     "startDate": "2026-07-05",
     "endDate": "2026-07-11",
     "status": "DRAFT",
@@ -639,7 +641,7 @@ Expected response:
   {
     "id": 1,
     "teamId": 1,
-    "teamName": "Operations",
+    "teamName": "צוות פיתוח",
     "startDate": "2026-07-05",
     "endDate": "2026-07-11",
     "status": "PUBLISHED",
@@ -667,7 +669,7 @@ Expected response:
   "schedule": {
     "id": 1,
     "teamId": 1,
-    "teamName": "Operations",
+    "teamName": "צוות פיתוח",
     "startDate": "2026-07-05",
     "endDate": "2026-07-11",
     "status": "PUBLISHED",
@@ -727,7 +729,7 @@ Expected response shape after notifications exist:
     "eventId": "6f22d2a9-2e22-4d38-a2f8-bf820ae2a6d1",
     "type": "SCHEDULE_PUBLISHED",
     "title": "Schedule published",
-    "message": "The Operations schedule was published.",
+    "message": "לוח צוות הפיתוח פורסם.",
     "relatedEntityType": "SCHEDULE",
     "relatedEntityId": 1,
     "createdAt": "2026-07-31T18:00:00Z",
@@ -973,12 +975,12 @@ Expected response:
   "status": "PENDING_EMPLOYEE",
   "requesterId": 2,
   "requesterUsername": "employee1",
-  "requesterFullName": "Demo Employee One",
+  "requesterFullName": "אלון כהן",
   "sourceAssignmentId": 1,
   "sourceShiftId": 1,
   "targetEmployeeId": 3,
   "targetEmployeeUsername": "employee2",
-  "targetEmployeeFullName": "Demo Employee Two",
+  "targetEmployeeFullName": "נועה לוי",
   "targetAssignmentId": null,
   "targetShiftId": null,
   "employeeApprovedAt": null,
@@ -1017,12 +1019,12 @@ Expected response:
   "status": "PENDING_EMPLOYEE",
   "requesterId": 2,
   "requesterUsername": "employee1",
-  "requesterFullName": "Demo Employee One",
+  "requesterFullName": "אלון כהן",
   "sourceAssignmentId": 1,
   "sourceShiftId": 1,
   "targetEmployeeId": 3,
   "targetEmployeeUsername": "employee2",
-  "targetEmployeeFullName": "Demo Employee Two",
+  "targetEmployeeFullName": "נועה לוי",
   "targetAssignmentId": 2,
   "targetShiftId": 2,
   "employeeApprovedAt": null,
@@ -1084,12 +1086,12 @@ Expected response for a team with `MANAGER` approval policy:
   "status": "PENDING_MANAGER",
   "requesterId": 2,
   "requesterUsername": "employee1",
-  "requesterFullName": "Demo Employee One",
+  "requesterFullName": "אלון כהן",
   "sourceAssignmentId": 1,
   "sourceShiftId": 1,
   "targetEmployeeId": 3,
   "targetEmployeeUsername": "employee2",
-  "targetEmployeeFullName": "Demo Employee Two",
+  "targetEmployeeFullName": "נועה לוי",
   "targetAssignmentId": null,
   "targetShiftId": null,
   "employeeApprovedAt": "2026-08-05T18:00:00.000000Z",
@@ -1155,12 +1157,12 @@ Expected response when the target employee is still eligible:
   "status": "APPROVED",
   "requesterId": 2,
   "requesterUsername": "employee1",
-  "requesterFullName": "Demo Employee One",
+  "requesterFullName": "אלון כהן",
   "sourceAssignmentId": 1,
   "sourceShiftId": 1,
   "targetEmployeeId": 3,
   "targetEmployeeUsername": "employee2",
-  "targetEmployeeFullName": "Demo Employee Two",
+  "targetEmployeeFullName": "נועה לוי",
   "targetAssignmentId": null,
   "targetShiftId": null,
   "employeeApprovedAt": "2026-08-05T18:00:00.000000Z",
@@ -1388,6 +1390,12 @@ Seed users:
 | manager1 | MANAGER  | password |
 | employee1 | EMPLOYEE | password |
 | employee2 | EMPLOYEE | password |
+| employee3 | EMPLOYEE | password |
+| employee4 | EMPLOYEE | password |
+| employee5 | EMPLOYEE | password |
+| employee6 | EMPLOYEE | password |
+| employee7 | EMPLOYEE | password |
+| employee8 | EMPLOYEE | password |
 
 These users can be used with `POST /api/auth/login`.
 
@@ -1395,18 +1403,24 @@ Seed team:
 
 | Team | Swap approval policy | Default rest hours | Time zone |
 | ---- | -------------------- | ------------------ | --------- |
-| Operations | MANAGER | 8 | Asia/Jerusalem |
+| צוות פיתוח | MANAGER | 8 | Asia/Jerusalem |
 
 Additional demo data:
 
-- Staffing roles: `Cashier` and `Shift Lead`.
-- Active staffing-role assignments for the demo employees.
+- Staffing roles: `פיתוח Backend`, `פיתוח Frontend`, and `בדיקות QA`.
+- Active staffing-role assignments for all eight demo employees.
 - One published schedule for the current week with shifts and assignments.
-- One draft schedule for the next week so the manager screens have editable data.
+- One empty seven-day draft schedule for manual assignment practice.
+- One empty 21-day draft schedule for automatic assignment practice.
+- One active `כיסוי פיתוח יומי` template with three eight-hour development coverage slots that repeat every day.
 - Schedule-published notifications for active team members.
 - One active transfer request from `employee1` to `employee2`.
 
-This gives the React UI and Postman collection useful data immediately after local startup.
+The manager can generate 21 shifts from the seeded template into the seven-day
+draft for manual assignment practice, or generate 63 shifts into the 21-day draft
+for automatic assignment. This gives the React UI and Postman collection both a
+small workflow and a realistic three-week scheduling scenario immediately after
+local startup.
 
 ## Local Frontend Access
 

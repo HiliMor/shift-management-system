@@ -36,6 +36,10 @@ import com.hilimor.shiftmanagement.team.TeamRepository;
 import com.hilimor.shiftmanagement.user.ApplicationRole;
 import com.hilimor.shiftmanagement.user.User;
 import com.hilimor.shiftmanagement.user.UserRepository;
+import com.hilimor.shiftmanagement.template.ShiftTemplate;
+import com.hilimor.shiftmanagement.template.ShiftTemplateRepository;
+import com.hilimor.shiftmanagement.template.TemplateSlot;
+import com.hilimor.shiftmanagement.template.TemplateSlotRepository;
 
 import org.springframework.boot.CommandLineRunner;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
@@ -60,6 +64,8 @@ public class DevelopmentDataSeeder {
             ShiftRepository shiftRepository,
             AssignmentRepository assignmentRepository,
             SwapRequestRepository swapRequestRepository,
+            ShiftTemplateRepository shiftTemplateRepository,
+            TemplateSlotRepository templateSlotRepository,
             SchedulePublishedNotificationService schedulePublishedNotificationService,
             PasswordEncoder passwordEncoder,
             TransactionTemplate transactionTemplate
@@ -75,6 +81,8 @@ public class DevelopmentDataSeeder {
                 shiftRepository,
                 assignmentRepository,
                 swapRequestRepository,
+                shiftTemplateRepository,
+                templateSlotRepository,
                 schedulePublishedNotificationService,
                 passwordEncoder
         ));
@@ -91,6 +99,8 @@ public class DevelopmentDataSeeder {
             ShiftRepository shiftRepository,
             AssignmentRepository assignmentRepository,
             SwapRequestRepository swapRequestRepository,
+            ShiftTemplateRepository shiftTemplateRepository,
+            TemplateSlotRepository templateSlotRepository,
             SchedulePublishedNotificationService schedulePublishedNotificationService,
             PasswordEncoder passwordEncoder
     ) {
@@ -98,80 +108,125 @@ public class DevelopmentDataSeeder {
                 userRepository,
                 passwordEncoder,
                 "manager1",
-                "Demo Manager",
+                "מנהל הדמו",
                 "manager1@example.com",
                 ApplicationRole.MANAGER
         );
-        User employeeOne = findOrCreateUser(
-                userRepository,
-                passwordEncoder,
-                "employee1",
-                "Demo Employee One",
-                "employee1@example.com",
-                ApplicationRole.EMPLOYEE
-        );
-        User employeeTwo = findOrCreateUser(
-                userRepository,
-                passwordEncoder,
-                "employee2",
-                "Demo Employee Two",
-                "employee2@example.com",
-                ApplicationRole.EMPLOYEE
+        List<User> employees = List.of(
+                findOrCreateUser(userRepository, passwordEncoder, "employee1", "אלון כהן", "employee1@example.com", ApplicationRole.EMPLOYEE),
+                findOrCreateUser(userRepository, passwordEncoder, "employee2", "נועה לוי", "employee2@example.com", ApplicationRole.EMPLOYEE),
+                findOrCreateUser(userRepository, passwordEncoder, "employee3", "יובל מזרחי", "employee3@example.com", ApplicationRole.EMPLOYEE),
+                findOrCreateUser(userRepository, passwordEncoder, "employee4", "מאיה אברהם", "employee4@example.com", ApplicationRole.EMPLOYEE),
+                findOrCreateUser(userRepository, passwordEncoder, "employee5", "דניאל פרץ", "employee5@example.com", ApplicationRole.EMPLOYEE),
+                findOrCreateUser(userRepository, passwordEncoder, "employee6", "שירה בן דוד", "employee6@example.com", ApplicationRole.EMPLOYEE),
+                findOrCreateUser(userRepository, passwordEncoder, "employee7", "עומר ישראלי", "employee7@example.com", ApplicationRole.EMPLOYEE),
+                findOrCreateUser(userRepository, passwordEncoder, "employee8", "תמר רון", "employee8@example.com", ApplicationRole.EMPLOYEE)
         );
 
-        Team operationsTeam = findOrCreateTeam(teamRepository);
+        Team developmentTeam = findOrCreateTeam(teamRepository);
         Instant seededAt = Instant.now();
-        TeamMember employeeOneMembership = findOrCreateTeamMember(
-                teamMemberRepository,
-                employeeOne,
-                operationsTeam,
-                seededAt
-        );
-        TeamMember employeeTwoMembership = findOrCreateTeamMember(
-                teamMemberRepository,
-                employeeTwo,
-                operationsTeam,
-                seededAt
-        );
-        ensureTeamManager(teamManagerRepository, manager, operationsTeam);
+        List<TeamMember> employeeMemberships = employees.stream()
+                .map(employee -> findOrCreateTeamMember(teamMemberRepository, employee, developmentTeam, seededAt))
+                .toList();
+        ensureTeamManager(teamManagerRepository, manager, developmentTeam);
 
-        StaffingRole cashierRole = findOrCreateStaffingRole(
+        StaffingRole backendDeveloperRole = findOrCreateStaffingRole(
                 staffingRoleRepository,
-                operationsTeam,
-                "Cashier",
-                "Handles customer-facing counter work."
+                developmentTeam,
+                "פיתוח Backend",
+                "פיתוח ותחזוקה של שירותי Backend."
         );
-        StaffingRole shiftLeadRole = findOrCreateStaffingRole(
+        StaffingRole frontendDeveloperRole = findOrCreateStaffingRole(
                 staffingRoleRepository,
-                operationsTeam,
-                "Shift Lead",
-                "Responsible for opening, closing, and shift coordination."
+                developmentTeam,
+                "פיתוח Frontend",
+                "פיתוח ותחזוקה של יכולות Frontend."
         );
-        ensureTeamMemberRole(teamMemberStaffingRoleRepository, employeeOneMembership, cashierRole, seededAt);
-        ensureTeamMemberRole(teamMemberStaffingRoleRepository, employeeTwoMembership, cashierRole, seededAt);
-        ensureTeamMemberRole(teamMemberStaffingRoleRepository, employeeTwoMembership, shiftLeadRole, seededAt);
+        StaffingRole qaEngineerRole = findOrCreateStaffingRole(
+                staffingRoleRepository,
+                developmentTeam,
+                "בדיקות QA",
+                "בדיקת גרסאות ואימות איכות המוצר."
+        );
+        employeeMemberships.subList(0, 3).forEach(
+                membership -> ensureTeamMemberRole(teamMemberStaffingRoleRepository, membership, backendDeveloperRole, seededAt)
+        );
+        employeeMemberships.subList(3, 6).forEach(
+                membership -> ensureTeamMemberRole(teamMemberStaffingRoleRepository, membership, frontendDeveloperRole, seededAt)
+        );
+        employeeMemberships.subList(6, 8).forEach(
+                membership -> ensureTeamMemberRole(teamMemberStaffingRoleRepository, membership, qaEngineerRole, seededAt)
+        );
 
-        ZoneId teamZone = ZoneId.of(operationsTeam.getTimeZone());
+        ZoneId teamZone = ZoneId.of(developmentTeam.getTimeZone());
         LocalDate currentWeekStart = LocalDate.now(teamZone).with(TemporalAdjusters.previousOrSame(DayOfWeek.MONDAY));
         LocalDate currentWeekEnd = currentWeekStart.plusDays(6);
         LocalDate nextWeekStart = currentWeekStart.plusWeeks(1);
-        LocalDate nextWeekEnd = nextWeekStart.plusDays(6);
+        LocalDate manualAssignmentDraftEnd = nextWeekStart.plusDays(6);
+        LocalDate automaticAssignmentDraftStart = nextWeekStart.plusWeeks(1);
+        LocalDate automaticAssignmentDraftEnd = automaticAssignmentDraftStart.plusDays(20);
 
         Schedule publishedSchedule = findOrCreateSchedule(
                 scheduleRepository,
-                operationsTeam,
+                developmentTeam,
                 currentWeekStart,
                 currentWeekEnd,
                 ScheduleStatus.PUBLISHED,
                 seededAt.minusSeconds(86_400)
         );
-        Schedule draftSchedule = findOrCreateSchedule(
+        findOrCreateSchedule(
                 scheduleRepository,
-                operationsTeam,
+                developmentTeam,
                 nextWeekStart,
-                nextWeekEnd,
+                manualAssignmentDraftEnd,
                 ScheduleStatus.DRAFT,
                 seededAt
+        );
+        findOrCreateSchedule(
+                scheduleRepository,
+                developmentTeam,
+                automaticAssignmentDraftStart,
+                automaticAssignmentDraftEnd,
+                ScheduleStatus.DRAFT,
+                seededAt
+        );
+
+        ShiftTemplate dailyCoverageTemplate = findOrCreateTemplate(
+                shiftTemplateRepository,
+                developmentTeam,
+                "כיסוי פיתוח יומי",
+                "שלוש משמרות טכניות קבועות של שמונה שעות החוזרות בכל יום.",
+                1,
+                developmentTeam.getDefaultMinRestHours()
+        );
+        dailyCoverageTemplate.activate();
+        shiftTemplateRepository.save(dailyCoverageTemplate);
+        ensureTemplateSlot(
+                templateSlotRepository,
+                dailyCoverageTemplate,
+                LocalTime.MIDNIGHT,
+                480,
+                "תמיכת Backend בלילה",
+                1,
+                backendDeveloperRole
+        );
+        ensureTemplateSlot(
+                templateSlotRepository,
+                dailyCoverageTemplate,
+                LocalTime.of(8, 0),
+                480,
+                "פיתוח Frontend ביום",
+                1,
+                frontendDeveloperRole
+        );
+        ensureTemplateSlot(
+                templateSlotRepository,
+                dailyCoverageTemplate,
+                LocalTime.of(16, 0),
+                480,
+                "תמיכת QA ושחרור גרסאות בערב",
+                1,
+                qaEngineerRole
         );
 
         Shift publishedMorningShift = findOrCreateShift(
@@ -179,32 +234,34 @@ public class DevelopmentDataSeeder {
                 publishedSchedule,
                 at(teamZone, currentWeekStart.plusDays(1), 9),
                 at(teamZone, currentWeekStart.plusDays(1), 17),
-                "Morning counter",
+                "תמיכת שירותי Backend",
                 1,
-                operationsTeam.getDefaultMinRestHours(),
-                cashierRole
+                developmentTeam.getDefaultMinRestHours(),
+                backendDeveloperRole
         );
         Shift publishedEveningShift = findOrCreateShift(
                 shiftRepository,
                 publishedSchedule,
                 at(teamZone, currentWeekStart.plusDays(2), 14),
                 at(teamZone, currentWeekStart.plusDays(2), 22),
-                "Evening operations",
+                "תמיכה בשחרור גרסת Frontend",
                 1,
-                operationsTeam.getDefaultMinRestHours(),
-                shiftLeadRole
+                developmentTeam.getDefaultMinRestHours(),
+                frontendDeveloperRole
         );
         Shift transferSourceShift = findOrCreateShift(
                 shiftRepository,
                 publishedSchedule,
                 at(teamZone, currentWeekStart.plusDays(3), 9),
                 at(teamZone, currentWeekStart.plusDays(3), 17),
-                "Inventory coverage",
+                "חקירת תקלה",
                 1,
-                operationsTeam.getDefaultMinRestHours(),
+                developmentTeam.getDefaultMinRestHours(),
                 null
         );
 
+        User employeeOne = employees.get(0);
+        User employeeTwo = employees.get(1);
         findOrCreateAssignment(assignmentRepository, publishedMorningShift, employeeOne, seededAt);
         findOrCreateAssignment(assignmentRepository, publishedEveningShift, employeeTwo, seededAt);
         Assignment transferSourceAssignment = findOrCreateAssignment(
@@ -214,28 +271,6 @@ public class DevelopmentDataSeeder {
                 seededAt
         );
 
-        findOrCreateShift(
-                shiftRepository,
-                draftSchedule,
-                at(teamZone, nextWeekStart.plusDays(1), 9),
-                at(teamZone, nextWeekStart.plusDays(1), 17),
-                "Draft morning counter",
-                1,
-                operationsTeam.getDefaultMinRestHours(),
-                cashierRole
-        );
-        Shift draftEveningShift = findOrCreateShift(
-                shiftRepository,
-                draftSchedule,
-                at(teamZone, nextWeekStart.plusDays(2), 14),
-                at(teamZone, nextWeekStart.plusDays(2), 22),
-                "Draft evening lead",
-                1,
-                operationsTeam.getDefaultMinRestHours(),
-                shiftLeadRole
-        );
-        findOrCreateAssignment(assignmentRepository, draftEveningShift, employeeTwo, seededAt);
-
         ensurePendingTransferRequest(
                 swapRequestRepository,
                 employeeOne,
@@ -244,6 +279,55 @@ public class DevelopmentDataSeeder {
                 seededAt.minusSeconds(3_600)
         );
         ensureSchedulePublishedNotifications(schedulePublishedNotificationService, publishedSchedule);
+    }
+
+    private ShiftTemplate findOrCreateTemplate(
+            ShiftTemplateRepository shiftTemplateRepository,
+            Team team,
+            String name,
+            String description,
+            int cycleDays,
+            int defaultMinRestHours
+    ) {
+        return shiftTemplateRepository.findByTeam_IdAndName(team.getId(), name)
+                .map(existingTemplate -> {
+                    existingTemplate.updateDetails(name, description, cycleDays, defaultMinRestHours);
+                    return existingTemplate;
+                })
+                .orElseGet(() -> shiftTemplateRepository.save(new ShiftTemplate(
+                        team,
+                        name,
+                        description,
+                        cycleDays,
+                        defaultMinRestHours
+                )));
+    }
+
+    private void ensureTemplateSlot(
+            TemplateSlotRepository templateSlotRepository,
+            ShiftTemplate shiftTemplate,
+            LocalTime startTime,
+            int durationMinutes,
+            String description,
+            int requiredWorkers,
+            StaffingRole requiredStaffingRole
+    ) {
+        boolean slotExists = templateSlotRepository
+                .findByShiftTemplate_IdOrderByDayOffsetAscStartTimeAsc(shiftTemplate.getId())
+                .stream()
+                .anyMatch(slot -> slot.getDayOffset() == 0 && slot.getStartTime().equals(startTime));
+
+        if (!slotExists) {
+            templateSlotRepository.save(new TemplateSlot(
+                    shiftTemplate,
+                    0,
+                    startTime,
+                    durationMinutes,
+                    description,
+                    requiredWorkers,
+                    requiredStaffingRole
+            ));
+        }
     }
 
     private User findOrCreateUser(
@@ -265,9 +349,9 @@ public class DevelopmentDataSeeder {
     }
 
     private Team findOrCreateTeam(TeamRepository teamRepository) {
-        return teamRepository.findFirstByNameOrderByIdAsc("Operations")
+        return teamRepository.findFirstByNameOrderByIdAsc("צוות פיתוח")
                 .orElseGet(() -> teamRepository.save(new Team(
-                        "Operations",
+                        "צוות פיתוח",
                         SwapApprovalPolicy.MANAGER,
                         8,
                         "Asia/Jerusalem"
