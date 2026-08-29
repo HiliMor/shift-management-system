@@ -566,6 +566,7 @@ Goal: turn a draft schedule into an official schedule visible to employees.
 - [x] Block direct shift and assignment edits after publication.
 - [x] Allow employees to list published schedules for active teams.
 - [x] Allow employees to view published schedule details with shifts and assignments.
+- [x] Allow managers to view published schedule details for teams they manage.
 - [x] Return a report before publication.
 - [x] Allow publication with unfilled shifts only after explicit confirmation.
 
@@ -576,6 +577,7 @@ Goal: turn a draft schedule into an official schedule visible to employees.
 - [x] Reopening changes a schedule from `PUBLISHED` to `DRAFT`.
 - [x] After publication, employees can list the schedule.
 - [x] Employees can view published schedule details and shifts.
+- [x] Managers can view published schedule details and assignments for managed teams.
 - [x] After publication, managers cannot edit shifts or assignments until reopening.
 - [x] Republishing increments `publicationNumber`.
 
@@ -586,7 +588,7 @@ Goal: turn a draft schedule into an official schedule visible to employees.
 
 ### Phase 7 Design Decisions
 
-Phase 7 currently supports the basic schedule lifecycle, publication readiness, explicit unfilled-publication confirmation, and employee-facing published schedule viewing.
+Phase 7 currently supports the basic schedule lifecycle, publication readiness, explicit unfilled-publication confirmation, and employee/manager published schedule viewing.
 
 Current endpoints:
 
@@ -594,6 +596,7 @@ Current endpoints:
 - `POST /api/schedules/{scheduleId}/reopen`
 - `GET /api/schedules/me/published`
 - `GET /api/schedules/me/published/{scheduleId}`
+- `GET /api/schedules/me/managed/published/{scheduleId}`
 - `GET /api/schedules/{scheduleId}/publication-readiness`
 
 Rules for publication:
@@ -641,6 +644,14 @@ Rules for the employee published schedule details:
 - Draft schedules and schedules from unrelated teams return `404 Not Found`.
 - The details response includes the schedule header, shifts, and published assignment information for each shift.
 
+Rules for the manager published schedule details:
+
+- The authenticated user can open only schedules with status `PUBLISHED`.
+- The authenticated user must be a manager of the schedule's team.
+- Draft schedules return `404 Not Found`.
+- A manager who does not manage the schedule's team receives `403 Forbidden`.
+- The details response includes the schedule header, shifts, and published assignment information for each shift.
+
 No remaining items are deferred from the first Phase 7 scope.
 
 ## Phase 8 - Basic Frontend
@@ -659,6 +670,7 @@ Goal: build a minimal React interface connected to the backend.
 - [x] Role-based navigation.
 - [x] Initial published schedule view.
 - [x] Employee published schedule details view.
+- [x] Manager published schedule details view.
 - [x] Employee availability constraint screen.
 - [x] Manager schedule creation screen.
 - [x] Manager shift creation screen.
@@ -677,6 +689,7 @@ Goal: build a minimal React interface connected to the backend.
 - [x] Successful login navigates to the correct area.
 - [x] Frontend can call the published schedules backend endpoint.
 - [x] Employees can view published schedule details in the frontend.
+- [x] Managers can view published schedule details and assignments in the frontend.
 - [x] Employees can create, view, and delete availability constraints in the frontend.
 - [x] Managers can create draft schedules from the frontend.
 - [x] Managers can create shifts.

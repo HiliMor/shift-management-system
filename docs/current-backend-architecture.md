@@ -56,6 +56,7 @@ The current frontend is intentionally small. It is responsible for:
 - Loading a manager's teams from `GET /api/teams/me/managed`.
 - Creating draft schedules through `POST /api/schedules`.
 - Loading managed draft schedules from `GET /api/schedules/me/managed/drafts`.
+- Loading a manager's published schedule details from `GET /api/schedules/me/managed/published/{scheduleId}`.
 - Creating shifts through `POST /api/schedules/{scheduleId}/shifts`.
 - Loading draft schedule shifts from `GET /api/schedules/{scheduleId}/shifts`.
 - Loading active team employees from `GET /api/teams/{teamId}/employees`.
@@ -159,7 +160,7 @@ flowchart TD
 ```
 
 Not every package has every layer yet.
-For example, the basic schedule lifecycle, publication readiness report, explicit unfilled-publication confirmation, and employee published schedule views are already implemented.
+For example, the basic schedule lifecycle, publication readiness report, explicit unfilled-publication confirmation, and employee/manager published schedule views are already implemented.
 
 ## Error Handling
 
@@ -377,7 +378,7 @@ flowchart TD
     healthApi["Health<br/>GET /api/health"]
     authApi["Authentication<br/>POST /api/auth/login<br/>GET /api/auth/me"]
     teamsApi["Teams<br/>GET /api/teams/me/managed"]
-    schedulesApi["Schedules<br/>POST /api/schedules<br/>GET /api/schedules/me/published<br/>GET /api/schedules/me/published/{scheduleId}<br/>GET /api/schedules/me/managed/drafts<br/>GET /api/schedules/{scheduleId}/publication-readiness<br/>POST /api/schedules/{scheduleId}/publish<br/>POST /api/schedules/{scheduleId}/reopen"]
+    schedulesApi["Schedules<br/>POST /api/schedules<br/>GET /api/schedules/me/published<br/>GET /api/schedules/me/published/{scheduleId}<br/>GET /api/schedules/me/managed/drafts<br/>GET /api/schedules/me/managed/published/{scheduleId}<br/>GET /api/schedules/{scheduleId}/publication-readiness<br/>POST /api/schedules/{scheduleId}/publish<br/>POST /api/schedules/{scheduleId}/reopen"]
     shiftsApi["Shifts<br/>POST /api/schedules/{scheduleId}/shifts<br/>GET /api/schedules/{scheduleId}/shifts<br/>PUT /api/schedules/{scheduleId}/shifts/{shiftId}<br/>DELETE /api/schedules/{scheduleId}/shifts/{shiftId}"]
     assignmentsApi["Assignments<br/>POST /api/assignments<br/>GET /api/schedules/{scheduleId}/assignments<br/>POST /api/schedules/{scheduleId}/auto-assign<br/>DELETE /api/assignments/{assignmentId}"]
     availabilityApi["Availability Constraints<br/>POST /api/availability-constraints<br/>GET /api/availability-constraints/me<br/>DELETE /api/availability-constraints/{constraintId}"]
@@ -786,7 +787,7 @@ flowchart LR
 | `health` | Public health check endpoint. |
 | `user` | User entity and broad application role such as `MANAGER` or `EMPLOYEE`. |
 | `team` | Teams, active team membership, team managers, and managed team listing for manager UI. |
-| `schedule` | Draft schedule creation, managed draft schedule listing, schedule publication, explicit unfilled-publication confirmation, schedule reopening, publication readiness, employee published schedule list/details, and schedule lifecycle state fields. |
+| `schedule` | Draft schedule creation, managed draft schedule listing, schedule publication, explicit unfilled-publication confirmation, schedule reopening, publication readiness, employee and manager published schedule list/details, and schedule lifecycle state fields. |
 | `shift` | Shift creation, listing, update, deletion, schedule-range validation, optional required staffing role storage, and optional source template slot storage for generated shifts. |
 | `assignment` | Manual assignment creation/list/delete, basic automatic assignment, and shared assignment validation through `AssignmentValidator`, including capacity, availability, overlap, rest, and required staffing roles. |
 | `request` | Transfer and swap request model, request statuses, transfer/swap creation, employee and manager scoped request lists, target employee approval/rejection, manager approval, requester cancellation, and approved request execution through `SwapRequestExecutor`. |

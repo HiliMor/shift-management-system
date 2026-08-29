@@ -13,6 +13,7 @@ function SchedulePublicationPanel({
   isLoadingDraftSchedules,
   isLoadingManagedPublishedSchedules,
   isLoadingPublicationReadiness,
+  onSelectPublishedSchedule,
   isPublishingSchedule,
   managedDraftSchedules,
   managedPublishedSchedules,
@@ -26,6 +27,7 @@ function SchedulePublicationPanel({
   publicationReadiness,
   publicationError,
   reopeningScheduleId,
+  selectedPublishedScheduleId,
 }) {
   const { t } = useLanguage();
 
@@ -131,14 +133,23 @@ function SchedulePublicationPanel({
               {t("published")} #{schedule.publicationNumber}
               {schedule.publishedAt ? ` ${t("onDate")} ${formatDateTime(schedule.publishedAt)}` : ""}
             </span>
-            <button
-              className="secondary-button compact-button"
-              disabled={reopeningScheduleId !== null}
-              onClick={() => onReopenSchedule(schedule.id)}
-              type="button"
-            >
-              {reopeningScheduleId === schedule.id ? t("reopening") : t("reopen")}
-            </button>
+            <div className="row-actions">
+              <button
+                className={schedule.id.toString() === selectedPublishedScheduleId ? "active-view-button compact-button" : "secondary-button compact-button"}
+                onClick={() => onSelectPublishedSchedule(schedule.id)}
+                type="button"
+              >
+                {t("viewPublishedSchedule")}
+              </button>
+              <button
+                className="secondary-button compact-button"
+                disabled={reopeningScheduleId !== null}
+                onClick={() => onReopenSchedule(schedule.id)}
+                type="button"
+              >
+                {reopeningScheduleId === schedule.id ? t("reopening") : t("reopen")}
+              </button>
+            </div>
           </div>
         ))}
       </div>

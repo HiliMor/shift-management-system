@@ -1,4 +1,5 @@
 import LanguageSelector from "./LanguageSelector.jsx";
+import NotificationCenter from "./NotificationCenter.jsx";
 import { useLanguage } from "../i18n/LanguageContext.jsx";
 
 function AppShell({
@@ -6,11 +7,19 @@ function AppShell({
   children,
   displayName,
   employeeProfile,
+  formatDateTime,
   isManager,
+  isLoadingNotifications,
+  markingNotificationId,
+  notifications,
+  notificationsError,
   onLogout,
+  onMarkNotificationRead,
+  onOpenNotificationRelatedEntity,
+  onRefreshNotifications,
   role,
-  transferRequestCount,
   unreadNotificationCount,
+  transferRequestCount,
 }) {
   const { t } = useLanguage();
 
@@ -23,9 +32,15 @@ function AppShell({
         </div>
 
         <nav aria-label={t("mainNavigation")}>
-          <a className="active-link" href="#schedules">
-            {t("publishedSchedules")}
-          </a>
+          {isManager ? (
+            <a className="active-link" href="#manager">
+              {t("scheduleWorkflow")}
+            </a>
+          ) : (
+            <a className="active-link" href="#schedules">
+              {t("publishedSchedules")}
+            </a>
+          )}
           {!isManager ? (
             <a href="#availability">
               {t("myAvailability")}
@@ -42,7 +57,6 @@ function AppShell({
             {t("notifications")}
             {unreadNotificationCount > 0 ? <span className="nav-count">{unreadNotificationCount}</span> : null}
           </a>
-          {isManager ? <a href="#manager">{t("scheduleWorkflow")}</a> : null}
         </nav>
       </aside>
 
@@ -53,6 +67,17 @@ function AppShell({
             <h2>{displayName}</h2>
             {employeeProfile}
           </div>
+          <NotificationCenter
+            formatDateTime={formatDateTime}
+            isLoadingNotifications={isLoadingNotifications}
+            markingNotificationId={markingNotificationId}
+            notifications={notifications}
+            notificationsError={notificationsError}
+            onMarkNotificationRead={onMarkNotificationRead}
+            onOpenRelatedEntity={onOpenNotificationRelatedEntity}
+            onRefreshNotifications={onRefreshNotifications}
+            unreadNotificationCount={unreadNotificationCount}
+          />
           <span className="role-badge">{role === "MANAGER" ? t("manager") : t("employee")}</span>
           <LanguageSelector />
           <button className="secondary-button" onClick={onLogout} type="button">

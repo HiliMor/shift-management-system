@@ -48,6 +48,14 @@ public class ScheduleController {
         return scheduleService.listManagedPublishedSchedules(authentication.getName());
     }
 
+    @GetMapping("/me/managed/published/{scheduleId}")
+    public PublishedScheduleDetailsResponse getMyManagedPublishedScheduleDetails(
+            Authentication authentication,
+            @PathVariable Long scheduleId
+    ) {
+        return scheduleService.getManagedPublishedScheduleDetails(authentication.getName(), scheduleId);
+    }
+
     @GetMapping("/me/published/{scheduleId}")
     public PublishedScheduleDetailsResponse getMyPublishedScheduleDetails(
             Authentication authentication,

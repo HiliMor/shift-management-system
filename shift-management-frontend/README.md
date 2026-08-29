@@ -14,12 +14,13 @@ For end-to-end local run instructions, see:
 - Expired session handling - expired JWT sessions are cleared and return to the login screen.
 - Published schedules - authenticated screen that lists published schedules visible to the signed-in user.
 - Schedule details - authenticated screen section that shows shifts and assignments for a selected published schedule.
+- Manager published schedule view - manager-only read-only view of a selected published schedule and its assignments.
 - Create schedule - manager-only form for creating a draft schedule for a managed team.
 - Create shift - manager-only form for adding shifts to a managed draft schedule.
 - Assign employee - manager-only form for manually assigning an active team employee to a draft shift.
 - Automatic assignment - manager-only action for filling open draft shifts and reviewing the assignment report.
 - Shift templates - manager-only workflow for creating templates, adding slots, and generating draft shifts.
-- Notifications - authenticated screen section that lists personal notifications, shows unread count, and marks notifications as read.
+- Notifications - authenticated top-bar notification center that lists personal notifications, shows unread count, marks notifications as read, and links schedule-publication notifications to the published schedule.
 - Transfer and swap requests - authenticated screen section for outgoing, incoming, and pending manager approval requests.
 - Transfer and swap request creation - employee-only form based on the selected published schedule.
 - Transfer and swap request creation uses an explicit request-type control for choosing transfer or swap.

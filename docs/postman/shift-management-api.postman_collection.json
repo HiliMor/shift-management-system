@@ -462,6 +462,28 @@
           "response": []
         },
         {
+          "name": "Get Managed Published Schedule Details",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/schedules/me/managed/published/{{scheduleId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "schedules",
+                "me",
+                "managed",
+                "published",
+                "{{scheduleId}}"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
           "name": "Publish Schedule",
           "request": {
             "method": "POST",

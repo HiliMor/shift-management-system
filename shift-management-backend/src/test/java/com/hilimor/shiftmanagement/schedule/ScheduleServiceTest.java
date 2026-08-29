@@ -493,6 +493,68 @@ class ScheduleServiceTest {
     }
 
     @Test
+    void getManagedPublishedScheduleDetailsReturnsShiftsAndAssignmentsForTeamManager() {
+        Schedule schedule = schedule(ScheduleStatus.PUBLISHED);
+        User employee = employee();
+        Shift morningShift = shift(
+                schedule,
+                101L,
+                Instant.parse("2026-07-05T06:00:00Z"),
+                Instant.parse("2026-07-05T14:00:00Z"),
+                "Morning shift"
+        );
+        Assignment assignment = assignment(morningShift, employee, 201L);
+
+        when(scheduleRepository.findById(10L)).thenReturn(Optional.of(schedule));
+        when(teamManagerRepository.existsByManager_UsernameAndTeam_Id("manager1", 1L)).thenReturn(true);
+        when(assignmentRepository.findByShift_Schedule_IdOrderByShift_StartTimeAscEmployee_FullNameAsc(10L))
+                .thenReturn(List.of(assignment));
+        when(shiftRepository.findBySchedule_IdOrderByStartTime(10L)).thenReturn(List.of(morningShift));
+
+        PublishedScheduleDetailsResponse response = scheduleService.getManagedPublishedScheduleDetails(
+                "manager1",
+                10L
+        );
+
+        assertThat(response.schedule().id()).isEqualTo(10L);
+        assertThat(response.schedule().status()).isEqualTo(ScheduleStatus.PUBLISHED);
+        assertThat(response.shifts()).hasSize(1);
+        assertThat(response.shifts().get(0).assignments()).hasSize(1);
+        assertThat(response.shifts().get(0).assignments().get(0).employeeFullName())
+                .isEqualTo("Demo Employee");
+    }
+
+    @Test
+    void getManagedPublishedScheduleDetailsRejectsDraftSchedule() {
+        Schedule schedule = schedule(ScheduleStatus.DRAFT);
+
+        when(scheduleRepository.findById(10L)).thenReturn(Optional.of(schedule));
+        when(teamManagerRepository.existsByManager_UsernameAndTeam_Id("manager1", 1L)).thenReturn(true);
+
+        assertThatThrownBy(() -> scheduleService.getManagedPublishedScheduleDetails("manager1", 10L))
+                .isInstanceOfSatisfying(ResponseStatusException.class, exception ->
+                        assertThat(exception.getStatusCode()).isEqualTo(HttpStatus.NOT_FOUND));
+
+        verify(shiftRepository, never()).findBySchedule_IdOrderByStartTime(any());
+        verify(assignmentRepository, never()).findByShift_Schedule_IdOrderByShift_StartTimeAscEmployee_FullNameAsc(any());
+    }
+
+    @Test
+    void getManagedPublishedScheduleDetailsRejectsUnmanagedSchedule() {
+        Schedule schedule = schedule(ScheduleStatus.PUBLISHED);
+
+        when(scheduleRepository.findById(10L)).thenReturn(Optional.of(schedule));
+        when(teamManagerRepository.existsByManager_UsernameAndTeam_Id("manager2", 1L)).thenReturn(false);
+
+        assertThatThrownBy(() -> scheduleService.getManagedPublishedScheduleDetails("manager2", 10L))
+                .isInstanceOfSatisfying(ResponseStatusException.class, exception ->
+                        assertThat(exception.getStatusCode()).isEqualTo(HttpStatus.FORBIDDEN));
+
+        verify(shiftRepository, never()).findBySchedule_IdOrderByStartTime(any());
+        verify(assignmentRepository, never()).findByShift_Schedule_IdOrderByShift_StartTimeAscEmployee_FullNameAsc(any());
+    }
+
+    @Test
     void getPublicationReadinessReportsUnfilledShiftsForManagedSchedule() {
         Schedule schedule = schedule(ScheduleStatus.DRAFT);
         Shift morningShift = shift(

@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 
 import {
+  getManagedPublishedScheduleDetails,
   getPublicationReadiness,
   listManagedPublishedSchedules,
   publishSchedule,
@@ -33,6 +34,10 @@ function useSchedulePublication(
   const [reopeningScheduleId, setReopeningScheduleId] = useState(null);
   const [publishedScheduleRefreshKey, setPublishedScheduleRefreshKey] = useState(0);
   const [publicationReadinessRefreshKey, setPublicationReadinessRefreshKey] = useState(0);
+  const [selectedManagedPublishedScheduleId, setSelectedManagedPublishedScheduleId] = useState(null);
+  const [selectedManagedPublishedScheduleDetails, setSelectedManagedPublishedScheduleDetails] = useState(null);
+  const [isLoadingManagedPublishedScheduleDetails, setIsLoadingManagedPublishedScheduleDetails] = useState(false);
+  const [managedPublishedScheduleDetailsError, setManagedPublishedScheduleDetailsError] = useState("");
 
   useEffect(() => {
     if (!session?.accessToken || !enabled) {
@@ -48,6 +53,29 @@ function useSchedulePublication(
       .catch((error) => onApiError(error, setManagedPublishedSchedulesError))
       .finally(() => setIsLoadingManagedPublishedSchedules(false));
   }, [enabled, publishedScheduleRefreshKey, session]);
+
+  useEffect(() => {
+    if (!session?.accessToken || !enabled || !selectedManagedPublishedScheduleId) {
+      setSelectedManagedPublishedScheduleDetails(null);
+      setManagedPublishedScheduleDetailsError("");
+      setIsLoadingManagedPublishedScheduleDetails(false);
+      return;
+    }
+
+    setIsLoadingManagedPublishedScheduleDetails(true);
+    setManagedPublishedScheduleDetailsError("");
+
+    getManagedPublishedScheduleDetails(
+      session.accessToken,
+      selectedManagedPublishedScheduleId,
+    )
+      .then(setSelectedManagedPublishedScheduleDetails)
+      .catch((error) => {
+        setSelectedManagedPublishedScheduleDetails(null);
+        onApiError(error, setManagedPublishedScheduleDetailsError);
+      })
+      .finally(() => setIsLoadingManagedPublishedScheduleDetails(false));
+  }, [enabled, selectedManagedPublishedScheduleId, session]);
 
   useEffect(() => {
     if (!enabled) {
@@ -145,6 +173,8 @@ function useSchedulePublication(
     try {
       const reopenedSchedule = await reopenSchedule(session.accessToken, scheduleId);
       setPublicationActionMessage({ key: "scheduleReopenedMessage", id: reopenedSchedule.id });
+      setSelectedManagedPublishedScheduleId(null);
+      setSelectedManagedPublishedScheduleDetails(null);
       onDraftSchedulesChanged();
       refreshManagedPublishedSchedules();
     } catch (error) {
@@ -164,6 +194,11 @@ function useSchedulePublication(
     setPublicationReadinessRefreshKey((current) => current + 1);
   }
 
+  function selectManagedPublishedSchedule(scheduleId) {
+    setSelectedManagedPublishedScheduleId(scheduleId?.toString() ?? null);
+    setManagedPublishedScheduleDetailsError("");
+  }
+
   function resetSchedulePublication() {
     setManagedPublishedSchedules([]);
     setPublicationForm(emptyPublicationForm);
@@ -176,6 +211,10 @@ function useSchedulePublication(
     setIsLoadingManagedPublishedSchedules(false);
     setManagedPublishedSchedulesError("");
     setReopeningScheduleId(null);
+    setSelectedManagedPublishedScheduleId(null);
+    setSelectedManagedPublishedScheduleDetails(null);
+    setIsLoadingManagedPublishedScheduleDetails(false);
+    setManagedPublishedScheduleDetailsError("");
     setPublishedScheduleRefreshKey(0);
     setPublicationReadinessRefreshKey(0);
   }
@@ -183,9 +222,11 @@ function useSchedulePublication(
   return {
     handlePublicationFormChange,
     isLoadingManagedPublishedSchedules,
+    isLoadingManagedPublishedScheduleDetails,
     isLoadingPublicationReadiness,
     isPublishingSchedule,
     managedPublishedSchedules,
+    managedPublishedScheduleDetailsError,
     managedPublishedSchedulesError,
     publicationActionError,
     publicationActionMessage,
@@ -196,6 +237,9 @@ function useSchedulePublication(
     refreshPublicationReadiness,
     reopeningScheduleId,
     resetSchedulePublication,
+    selectManagedPublishedSchedule,
+    selectedManagedPublishedScheduleDetails,
+    selectedManagedPublishedScheduleId,
     submitPublishSchedule,
     submitReopenSchedule,
   };

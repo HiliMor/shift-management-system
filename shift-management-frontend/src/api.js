@@ -78,6 +78,10 @@ export function listManagedPublishedSchedules(token) {
   return request("/api/schedules/me/managed/published", { token });
 }
 
+export function getManagedPublishedScheduleDetails(token, scheduleId) {
+  return request(`/api/schedules/me/managed/published/${scheduleId}`, { token });
+}
+
 export function getPublicationReadiness(token, scheduleId) {
   return request(`/api/schedules/${scheduleId}/publication-readiness`, { token });
 }

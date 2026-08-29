@@ -203,6 +203,25 @@ public class ScheduleService {
             throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Schedule not found");
         }
 
+        return publishedScheduleDetails(schedule, scheduleId);
+    }
+
+    @Transactional(readOnly = true)
+    public PublishedScheduleDetailsResponse getManagedPublishedScheduleDetails(String username, Long scheduleId) {
+        Schedule schedule = managedSchedule(
+                username,
+                scheduleId,
+                "Only a team manager can view this published schedule"
+        );
+
+        if (schedule.getStatus() != ScheduleStatus.PUBLISHED) {
+            throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Published schedule not found");
+        }
+
+        return publishedScheduleDetails(schedule, scheduleId);
+    }
+
+    private PublishedScheduleDetailsResponse publishedScheduleDetails(Schedule schedule, Long scheduleId) {
         Map<Long, List<Assignment>> assignmentsByShiftId = assignmentsByShiftId(scheduleId);
 
         List<PublishedShiftResponse> shifts = shiftRepository.findBySchedule_IdOrderByStartTime(scheduleId)

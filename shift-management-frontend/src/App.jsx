@@ -4,7 +4,6 @@ import AppShell from "./components/AppShell.jsx";
 import AvailabilityConstraintsSection from "./components/AvailabilityConstraintsSection.jsx";
 import EmployeeProfileSummary from "./components/EmployeeProfileSummary.jsx";
 import LoginScreen from "./components/LoginScreen.jsx";
-import NotificationsSection from "./components/NotificationsSection.jsx";
 import ManagerActionsSection from "./components/ManagerActionsSection.jsx";
 import PublishedSchedulesSection from "./components/PublishedSchedulesSection.jsx";
 import ScheduleDetailsSection from "./components/ScheduleDetailsSection.jsx";
@@ -100,6 +99,15 @@ function App() {
     setSession(null);
     clearAuthenticatedState();
     setLoginError(t("sessionExpired"));
+  }
+
+  function openNotificationRelatedEntity(notification) {
+    if (notification.relatedEntityType !== "SCHEDULE" || !notification.relatedEntityId) {
+      return;
+    }
+
+    setSelectedScheduleId(notification.relatedEntityId);
+    document.getElementById("schedules")?.scrollIntoView({ behavior: "smooth", block: "start" });
   }
 
   function handleApiError(error, setError) {
@@ -251,9 +259,11 @@ function App() {
   const {
     handlePublicationFormChange,
     isLoadingManagedPublishedSchedules,
+    isLoadingManagedPublishedScheduleDetails,
     isLoadingPublicationReadiness,
     isPublishingSchedule,
     managedPublishedSchedules,
+    managedPublishedScheduleDetailsError,
     managedPublishedSchedulesError,
     publicationActionError,
     publicationActionMessage,
@@ -264,6 +274,9 @@ function App() {
     refreshPublicationReadiness,
     reopeningScheduleId,
     resetSchedulePublication,
+    selectManagedPublishedSchedule,
+    selectedManagedPublishedScheduleDetails,
+    selectedManagedPublishedScheduleId,
     submitPublishSchedule,
     submitReopenSchedule,
   } = useSchedulePublication(
@@ -388,29 +401,41 @@ function App() {
           />
         ) : null
       }
+      formatDateTime={formatDateTime}
       isManager={isManager}
+      isLoadingNotifications={isLoadingNotifications}
+      markingNotificationId={markingNotificationId}
+      notifications={notifications}
+      notificationsError={notificationsError}
       onLogout={handleLogout}
+      onMarkNotificationRead={markNotificationAsRead}
+      onOpenNotificationRelatedEntity={openNotificationRelatedEntity}
+      onRefreshNotifications={refreshNotifications}
       role={session.user.applicationRole}
       transferRequestCount={transferRequestCount}
       unreadNotificationCount={unreadNotificationCount}
     >
-      <PublishedSchedulesSection
-        formatDate={formatDate}
-        isLoadingSchedules={isLoadingSchedules}
-        onSelectSchedule={setSelectedScheduleId}
-        publishedSchedules={publishedSchedules}
-        scheduleError={scheduleError}
-        selectedScheduleId={selectedScheduleId}
-      />
+      {isEmployee ? (
+        <>
+          <PublishedSchedulesSection
+            formatDate={formatDate}
+            isLoadingSchedules={isLoadingSchedules}
+            onSelectSchedule={setSelectedScheduleId}
+            publishedSchedules={publishedSchedules}
+            scheduleError={scheduleError}
+            selectedScheduleId={selectedScheduleId}
+          />
 
-      <ScheduleDetailsSection
-        detailsError={detailsError}
-        formatDate={formatDate}
-        formatDateTime={formatDateTime}
-        isLoadingDetails={isLoadingDetails}
-        selectedScheduleDetails={selectedScheduleDetails}
-        selectedScheduleId={selectedScheduleId}
-      />
+          <ScheduleDetailsSection
+            detailsError={detailsError}
+            formatDate={formatDate}
+            formatDateTime={formatDateTime}
+            isLoadingDetails={isLoadingDetails}
+            selectedScheduleDetails={selectedScheduleDetails}
+            selectedScheduleId={selectedScheduleId}
+          />
+        </>
+      ) : null}
 
       {isEmployee ? (
         <AvailabilityConstraintsSection
@@ -457,17 +482,6 @@ function App() {
         transferRequestCount={transferRequestCount}
         transferRequestsError={transferRequestsError}
         transferTargetEmployeeOptions={transferTargetEmployeeOptions}
-      />
-
-      <NotificationsSection
-        formatDateTime={formatDateTime}
-        isLoadingNotifications={isLoadingNotifications}
-        markingNotificationId={markingNotificationId}
-        notifications={notifications}
-        notificationsError={notificationsError}
-        onMarkNotificationRead={markNotificationAsRead}
-        onRefreshNotifications={refreshNotifications}
-        unreadNotificationCount={unreadNotificationCount}
       />
 
       {isManager ? (
@@ -524,6 +538,7 @@ function App() {
           onPublishSchedule={submitPublishSchedule}
           onRefreshPublishedSchedules={refreshManagedPublishedSchedules}
           onRefreshPublicationReadiness={refreshPublicationReadiness}
+          onSelectManagedPublishedSchedule={selectManagedPublishedSchedule}
           onRefreshTemplateSlots={refreshTemplateSlots}
           onRefreshTemplates={refreshTemplates}
           onReopenSchedule={submitReopenSchedule}
@@ -567,6 +582,17 @@ function App() {
           templateStaffingRolesError={templateStaffingRolesError}
           teamEmployees={teamEmployees}
           teamEmployeesError={teamEmployeesError}
+        />
+      ) : null}
+
+      {isManager ? (
+        <ScheduleDetailsSection
+          detailsError={managedPublishedScheduleDetailsError}
+          formatDate={formatDate}
+          formatDateTime={formatDateTime}
+          isLoadingDetails={isLoadingManagedPublishedScheduleDetails}
+          selectedScheduleDetails={selectedManagedPublishedScheduleDetails}
+          selectedScheduleId={selectedManagedPublishedScheduleId}
         />
       ) : null}
     </AppShell>

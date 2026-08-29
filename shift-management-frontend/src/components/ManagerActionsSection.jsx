@@ -72,6 +72,7 @@ function ManagerActionsSection({
   onPublishSchedule,
   onRefreshPublishedSchedules,
   onRefreshPublicationReadiness,
+  onSelectManagedPublishedSchedule,
   onRefreshTemplateSlots,
   onRefreshTemplates,
   onReopenSchedule,
@@ -93,6 +94,7 @@ function ManagerActionsSection({
   scheduleForm,
   selectedDraftSchedule,
   selectedDraftScheduleId,
+  selectedManagedPublishedScheduleId,
   selectedGenerationTemplate,
   selectedAssignmentSchedule,
   selectedTemplate,
@@ -357,10 +359,12 @@ function ManagerActionsSection({
                 onRefreshPublishedSchedules={onRefreshPublishedSchedules}
                 onRefreshPublicationReadiness={onRefreshPublicationReadiness}
                 onReopenSchedule={onReopenSchedule}
+                onSelectPublishedSchedule={onSelectManagedPublishedSchedule}
                 publicationError={publicationError}
                 publicationForm={publicationForm}
                 publicationReadiness={publicationReadiness}
                 reopeningScheduleId={reopeningScheduleId}
+                selectedPublishedScheduleId={selectedManagedPublishedScheduleId}
               />
             ) : null}
           </div>

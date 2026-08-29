@@ -236,10 +236,72 @@ nav a:hover,
 }
 
 .topbar {
+  position: relative;
+}
+
+.notification-center {
+  justify-self: end;
+  position: relative;
+}
+
+.notification-trigger {
+  align-items: center;
+  background: #edf1f7;
+  color: #273449;
+  display: flex;
+  gap: 8px;
+  justify-content: center;
+  min-width: 132px;
+}
+
+.notification-panel {
+  background: #ffffff;
+  border: 1px solid #c7d0df;
+  border-radius: 8px;
+  box-shadow: 0 14px 30px rgba(23, 32, 51, 0.16);
+  inset-inline-end: 0;
+  max-height: min(560px, calc(100vh - 110px));
+  overflow: auto;
+  padding: 16px;
+  position: absolute;
+  top: calc(100% + 8px);
+  width: min(430px, calc(100vw - 56px));
+  z-index: 20;
+}
+
+.notification-panel-heading {
+  align-items: center;
+  border-bottom: 1px solid #e1e6ef;
+  display: flex;
+  gap: 12px;
+  justify-content: space-between;
+  margin-bottom: 12px;
+  padding-bottom: 12px;
+}
+
+.notification-panel-heading h3,
+.notification-panel-heading p {
+  margin-bottom: 0;
+}
+
+.notification-panel-heading p {
+  color: #66758b;
+  font-size: 0.85rem;
+}
+
+.notification-card-actions {
+  align-items: center;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  justify-content: flex-end;
+}
+
+.topbar {
   align-items: center;
   display: grid;
   gap: 16px;
-  grid-template-columns: minmax(0, 1fr) auto auto auto;
+  grid-template-columns: minmax(0, 1fr) auto auto auto auto;
   padding: 20px;
 }
 
@@ -899,6 +961,7 @@ nav a:hover,
   border: 1px solid #e7ecf4;
   border-radius: 6px;
   display: flex;
+  flex-wrap: wrap;
   gap: 10px;
   justify-content: space-between;
   padding: 10px 12px;
@@ -907,6 +970,14 @@ nav a:hover,
 .assignment-row span {
   color: #66758b;
   font-size: 0.9rem;
+}
+
+.row-actions {
+  align-items: center;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-inline-start: auto;
 }
 
 .assignment-guidance {
