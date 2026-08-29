@@ -657,6 +657,52 @@ nav a:hover,
   gap: 18px;
 }
 
+.draft-context-bar {
+  align-items: end;
+  background: #f8fafc;
+  border: 1px solid #dfe7f1;
+  border-radius: 8px;
+  display: flex;
+  gap: 18px;
+  justify-content: space-between;
+  padding: 14px 16px;
+}
+
+.draft-context-copy {
+  display: grid;
+  gap: 4px;
+  min-width: 0;
+}
+
+.draft-context-copy strong {
+  color: #172033;
+  font-size: 1rem;
+}
+
+.draft-context-copy > span {
+  color: #53627a;
+}
+
+.draft-context-copy small {
+  color: #66758b;
+}
+
+.draft-context-select {
+  flex: 0 1 360px;
+}
+
+.draft-context-select span {
+  color: #53627a;
+  display: block;
+  font-size: 0.82rem;
+  font-weight: 800;
+  margin-bottom: 6px;
+}
+
+.draft-context-select select {
+  min-width: 260px;
+}
+
 .workflow-steps {
   display: grid;
   gap: 10px;
@@ -756,14 +802,12 @@ nav a:hover,
   align-items: end;
   display: grid;
   gap: 14px;
-  grid-template-columns: minmax(220px, 1.4fr) minmax(220px, 1.6fr) minmax(180px, 1fr) auto;
+  grid-template-columns: minmax(220px, 1.6fr) minmax(180px, 1fr) auto;
 }
 
 .automatic-assignment-form {
-  align-items: end;
-  display: grid;
-  gap: 14px;
-  grid-template-columns: minmax(220px, 1fr) auto;
+  display: flex;
+  justify-content: flex-start;
 }
 
 .template-form {
@@ -811,6 +855,24 @@ nav a:hover,
   padding-top: 14px;
 }
 
+.template-generation-context {
+  align-self: stretch;
+  background: #f8fafc;
+  border: 1px solid #e1e6ef;
+  border-radius: 6px;
+  display: grid;
+  gap: 4px;
+  padding: 10px 12px;
+}
+
+.template-generation-context strong {
+  color: #172033;
+}
+
+.template-generation-context small {
+  color: #66758b;
+}
+
 .template-list {
   display: grid;
   gap: 10px;
@@ -850,11 +912,10 @@ nav a:hover,
   align-items: end;
   display: grid;
   gap: 14px;
-  grid-template-columns: minmax(220px, 1.5fr) minmax(170px, 0.8fr) auto auto;
+  grid-template-columns: minmax(170px, 1fr) auto auto;
 }
 
-.shift-form label:first-child,
-.shift-form label:nth-child(4) {
+.shift-form label:nth-child(3) {
   grid-column: 1 / -1;
 }
 
@@ -987,8 +1048,7 @@ nav a:hover,
     text-align: left;
   }
 
-  .shift-form label:first-child,
-  .shift-form label:nth-child(4),
+  .shift-form label:nth-child(3),
   .template-form label:nth-child(5),
   .template-slot-form label:first-child,
   .template-slot-form label:nth-child(7) {
@@ -1005,6 +1065,17 @@ nav a:hover,
 
   .action-grid {
     grid-template-columns: 1fr;
+  }
+
+  .draft-context-bar {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .draft-context-select,
+  .draft-context-select select {
+    min-width: 0;
+    width: 100%;
   }
 }
 

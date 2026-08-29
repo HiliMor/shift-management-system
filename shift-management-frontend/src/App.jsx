@@ -159,6 +159,9 @@ function App() {
     scheduleAssignmentsError,
     scheduleCreationError,
     scheduleForm,
+    selectDraftSchedule,
+    selectedDraftSchedule,
+    selectedDraftScheduleId,
     selectedAssignmentSchedule,
     shiftCreationError,
     shiftForm,
@@ -245,7 +248,14 @@ function App() {
     resetSchedulePublication,
     submitPublishSchedule,
     submitReopenSchedule,
-  } = useSchedulePublication(session, isManager, managedDraftSchedules, refreshDraftSchedules, handleApiError);
+  } = useSchedulePublication(
+    session,
+    isManager,
+    managedDraftSchedules,
+    selectedDraftScheduleId,
+    refreshDraftSchedules,
+    handleApiError,
+  );
 
   const {
     automaticAssignmentError,
@@ -260,6 +270,7 @@ function App() {
     session,
     isManager,
     managedDraftSchedules,
+    selectedDraftScheduleId,
     refreshAssignmentData,
     refreshPublicationReadiness,
     handleApiError,
@@ -301,6 +312,7 @@ function App() {
     isManager,
     managedTeams,
     managedDraftSchedules,
+    selectedDraftScheduleId,
     refreshAssignmentData,
     refreshPublicationReadiness,
     handleApiError,
@@ -488,6 +500,7 @@ function App() {
           onRefreshTemplates={refreshTemplates}
           onReopenSchedule={submitReopenSchedule}
           onRunAutomaticAssignment={submitAutomaticAssignment}
+          onSelectDraftSchedule={selectDraftSchedule}
           onScheduleFormChange={handleScheduleFormChange}
           onShiftFormChange={handleShiftFormChange}
           onTemplateFormChange={handleTemplateFormChange}
@@ -502,6 +515,8 @@ function App() {
           scheduleAssignments={scheduleAssignments}
           scheduleAssignmentsError={scheduleAssignmentsError}
           scheduleCreationError={scheduleCreationError}
+          selectedDraftSchedule={selectedDraftSchedule}
+          selectedDraftScheduleId={selectedDraftScheduleId}
           selectedGenerationTemplate={selectedGenerationTemplate}
           scheduleForm={scheduleForm}
           selectedAssignmentSchedule={selectedAssignmentSchedule}

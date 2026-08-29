@@ -1,18 +1,11 @@
 import { useLanguage } from "../../i18n/LanguageContext.jsx";
 
-function renderScheduleOption(schedule, formatDate, t) {
-  return `#${schedule.id} - ${schedule.teamName}, ${formatDate(schedule.startDate)} ${t("dateRangeSeparator")} ${formatDate(
-    schedule.endDate,
-  )}`;
-}
-
 function AssignEmployeePanel({
   assignmentForm,
   assignmentShiftMap,
   assignmentShifts,
   assignmentShiftsError,
   draftSchedulesError,
-  formatDate,
   formatDateTime,
   isCreatingAssignment,
   isLoadingAssignmentShifts,
@@ -47,22 +40,6 @@ function AssignEmployeePanel({
 
       {managedDraftSchedules.length > 0 ? (
         <form className="assignment-form" onSubmit={onCreateAssignment}>
-          <label>
-            {t("draftSchedule")}
-            <select
-              name="scheduleId"
-              onChange={onAssignmentFormChange}
-              required
-              value={assignmentForm.scheduleId}
-            >
-              {managedDraftSchedules.map((schedule) => (
-                <option key={schedule.id} value={schedule.id}>
-                  {renderScheduleOption(schedule, formatDate, t)}
-                </option>
-              ))}
-            </select>
-          </label>
-
           <label>
             {t("shift")}
             <select

@@ -1613,3 +1613,11 @@ Still open:
 - Replaced the transfer/swap request type dropdown with a clearer segmented control.
 - Improved transfer/swap labels and request status display text.
 - Verified the frontend production build succeeds.
+
+### 2026-08-29 - Frontend UX: Central Draft Context
+
+- Added one central draft schedule selector to the manager workflow.
+- Removed repeated draft schedule selectors from shift creation, manual assignment, automatic assignment, and publication panels.
+- Kept template generation connected to the central draft when the selected template belongs to the same team.
+- Added bilingual context text explaining which draft schedule the manager is currently editing.
+- Verified the frontend production build and whitespace checks succeed.

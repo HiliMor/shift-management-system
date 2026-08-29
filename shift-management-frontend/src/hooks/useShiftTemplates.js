@@ -37,6 +37,7 @@ function useShiftTemplates(
   enabled,
   managedTeams,
   managedDraftSchedules,
+  selectedDraftScheduleId,
   onShiftsChanged,
   onPublicationReadinessChanged,
   onApiError,
@@ -187,16 +188,16 @@ function useShiftTemplates(
     }
 
     setGenerationForm((current) => {
-      const currentDraftExists = generationDraftSchedules.some(
-        (schedule) => schedule.id.toString() === current.scheduleId,
+      const selectedDraftExists = generationDraftSchedules.some(
+        (schedule) => schedule.id.toString() === selectedDraftScheduleId,
       );
 
       return {
         ...current,
-        scheduleId: currentDraftExists ? current.scheduleId : generationDraftSchedules[0]?.id?.toString() || "",
+        scheduleId: selectedDraftExists ? selectedDraftScheduleId : "",
       };
     });
-  }, [enabled, generationDraftSchedules, selectedGenerationTemplate]);
+  }, [enabled, generationDraftSchedules, selectedDraftScheduleId, selectedGenerationTemplate]);
 
   function handleTemplateFormChange(event) {
     const { name, value } = event.target;

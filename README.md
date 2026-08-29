@@ -96,6 +96,7 @@ Frontend:
 - Transfer and swap request screen supports employee request creation from a selected published schedule.
 - Transfer and swap request screen supports employee approve/reject, requester cancel, and manager approve actions.
 - Manager screens use focused step-based navigation for draft, build, assign, and publish workflows.
+- Manager workflow uses one central selected draft schedule as the context for creating shifts, assigning employees, automatic assignment, template generation, and publication.
 - Manager template screen supports template creation, slot creation, and shift generation.
 
 Planned next:

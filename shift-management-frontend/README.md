@@ -25,6 +25,7 @@ For end-to-end local run instructions, see:
 - Transfer and swap request creation uses an explicit request-type control for choosing transfer or swap.
 - Transfer and swap request actions - employee approve/reject, requester cancel, and manager approve.
 - Manager schedule workflow - manager-only focused step navigation for draft, build, assign, and publish work.
+- Manager workflow keeps one selected draft schedule as the shared context across its steps, so the same draft is used for shift creation, assignment, automatic assignment, template generation, and publication.
 
 ## Run Locally
 
@@ -63,3 +64,4 @@ VITE_API_BASE_URL=http://localhost:8082 pnpm dev
 - `src/hooks/` contains stateful workflow logic, such as published schedule loading,
   manager scheduling, notifications, templates, availability, and transfer/swap requests.
 - `src/components/` contains presentational screen sections and manager workflow panels.
+- The manager workflow displays the selected draft schedule once and passes that context to the relevant panels.

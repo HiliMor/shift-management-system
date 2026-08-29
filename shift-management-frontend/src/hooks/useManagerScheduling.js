@@ -48,6 +48,7 @@ function useManagerScheduling(
   const [scheduleCreationError, setScheduleCreationError] = useState("");
   const [isCreatingSchedule, setIsCreatingSchedule] = useState(false);
   const [managedDraftSchedules, setManagedDraftSchedules] = useState([]);
+  const [selectedDraftScheduleId, setSelectedDraftScheduleId] = useState("");
   const [isLoadingDraftSchedules, setIsLoadingDraftSchedules] = useState(false);
   const [draftSchedulesError, setDraftSchedulesError] = useState("");
   const [draftScheduleRefreshKey, setDraftScheduleRefreshKey] = useState(0);
@@ -74,8 +75,8 @@ function useManagerScheduling(
   const [isCreatingAssignment, setIsCreatingAssignment] = useState(false);
 
   const selectedDraftSchedule = useMemo(
-    () => managedDraftSchedules.find((schedule) => schedule.id.toString() === shiftForm.scheduleId) ?? null,
-    [managedDraftSchedules, shiftForm.scheduleId],
+    () => managedDraftSchedules.find((schedule) => schedule.id.toString() === selectedDraftScheduleId) ?? null,
+    [managedDraftSchedules, selectedDraftScheduleId],
   );
 
   const selectedAssignmentSchedule = useMemo(
@@ -87,6 +88,35 @@ function useManagerScheduling(
     () => new Map(assignmentShifts.map((shift) => [shift.id, shift])),
     [assignmentShifts],
   );
+
+  useEffect(() => {
+    const selectedScheduleExists = managedDraftSchedules.some(
+      (schedule) => schedule.id.toString() === selectedDraftScheduleId,
+    );
+    const nextScheduleId = selectedScheduleExists
+      ? selectedDraftScheduleId
+      : managedDraftSchedules[0]?.id?.toString() || "";
+
+    if (nextScheduleId !== selectedDraftScheduleId) {
+      setSelectedDraftScheduleId(nextScheduleId);
+      return;
+    }
+
+    if (!nextScheduleId) {
+      return;
+    }
+
+    setShiftForm((current) =>
+      current.scheduleId === nextScheduleId
+        ? current
+        : { ...current, scheduleId: nextScheduleId, requiredStaffingRoleId: "" },
+    );
+    setAssignmentForm((current) =>
+      current.scheduleId === nextScheduleId
+        ? current
+        : { ...current, scheduleId: nextScheduleId, shiftId: "", employeeId: "" },
+    );
+  }, [managedDraftSchedules, selectedDraftScheduleId]);
 
   useEffect(() => {
     if (!session?.accessToken || !enabled) {
@@ -235,9 +265,9 @@ function useManagerScheduling(
 
   function refreshAssignmentData(scheduleId) {
     if (scheduleId) {
+      const nextScheduleId = scheduleId.toString();
+      setSelectedDraftScheduleId(nextScheduleId);
       setAssignmentForm((current) => {
-        const nextScheduleId = scheduleId.toString();
-
         if (current.scheduleId === nextScheduleId) {
           return current;
         }
@@ -276,6 +306,7 @@ function useManagerScheduling(
         endDate: scheduleForm.endDate,
       });
       setCreatedSchedule(response);
+      setSelectedDraftScheduleId(response.id.toString());
       setShiftForm((current) => ({
         ...current,
         scheduleId: response.id.toString(),
@@ -384,6 +415,7 @@ function useManagerScheduling(
     setScheduleCreationError("");
     setIsCreatingSchedule(false);
     setManagedDraftSchedules([]);
+    setSelectedDraftScheduleId("");
     setIsLoadingDraftSchedules(false);
     setDraftSchedulesError("");
     setDraftScheduleRefreshKey(0);
@@ -445,6 +477,9 @@ function useManagerScheduling(
     scheduleAssignmentsError,
     scheduleCreationError,
     scheduleForm,
+    selectDraftSchedule: setSelectedDraftScheduleId,
+    selectedDraftSchedule,
+    selectedDraftScheduleId,
     selectedAssignmentSchedule,
     shiftCreationError,
     shiftForm,

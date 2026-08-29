@@ -207,6 +207,15 @@ export const translations = {
     assignedToShift: "assigned to shift",
     schedulePublishedMessage: "Schedule published",
     scheduleReopenedMessage: "Schedule reopened as draft",
+    shiftsStep: "Shifts",
+    currentDraft: "Current draft schedule",
+    changeDraft: "Change draft",
+    noDraftSelected: "No draft schedule selected",
+    draftContextDescription:
+      "This draft is used for shift creation, assignment, automatic assignment, and publication. Templates belong to a team and can be reused.",
+    selectDraftToBegin: "Create or select a draft schedule to begin.",
+    generateIntoDraft: "Generate shifts into",
+    selectDraftForTemplateTeam: "Select a draft for the same team as the selected template.",
   },
   he: {
     appName: "ניהול משמרות",
@@ -416,5 +425,14 @@ export const translations = {
     assignedToShift: "שובץ/ה למשמרת",
     schedulePublishedMessage: "הלוח פורסם",
     scheduleReopenedMessage: "הלוח נפתח מחדש כטיוטה",
+    shiftsStep: "משמרות",
+    currentDraft: "טיוטת הלוח הנוכחית",
+    changeDraft: "החלפת טיוטה",
+    noDraftSelected: "לא נבחרה טיוטת לוח",
+    draftContextDescription:
+      "טיוטה זו משמשת ליצירת משמרות, שיבוץ, שיבוץ אוטומטי ופרסום. תבניות שייכות לצוות וניתן להשתמש בהן שוב.",
+    selectDraftToBegin: "יש ליצור או לבחור טיוטת לוח כדי להתחיל.",
+    generateIntoDraft: "יצירת משמרות בתוך",
+    selectDraftForTemplateTeam: "יש לבחור טיוטה של אותו צוות כמו התבנית שנבחרה.",
   },
 };

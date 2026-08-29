@@ -1,11 +1,5 @@
 import { useLanguage } from "../../i18n/LanguageContext.jsx";
 
-function renderScheduleOption(schedule, formatDate, t) {
-  return `#${schedule.id} - ${schedule.teamName}, ${formatDate(schedule.startDate)} ${t("dateRangeSeparator")} ${formatDate(
-    schedule.endDate,
-  )}`;
-}
-
 function renderAssignedEmployees(assignments, t) {
   if (assignments.length === 0) {
     return <span>{t("noNewAssignments")}</span>;
@@ -34,7 +28,6 @@ function AutomaticAssignmentPanel({
   automaticAssignmentMessage,
   automaticAssignmentReport,
   draftSchedulesError,
-  formatDate,
   formatDateTime,
   isLoadingDraftSchedules,
   isRunningAutomaticAssignment,
@@ -60,22 +53,6 @@ function AutomaticAssignmentPanel({
 
       {managedDraftSchedules.length > 0 ? (
         <form className="automatic-assignment-form" onSubmit={onRunAutomaticAssignment}>
-          <label>
-            {t("draftSchedule")}
-            <select
-              name="scheduleId"
-              onChange={onAutomaticAssignmentFormChange}
-              required
-              value={automaticAssignmentForm.scheduleId}
-            >
-              {managedDraftSchedules.map((schedule) => (
-                <option key={schedule.id} value={schedule.id}>
-                  {renderScheduleOption(schedule, formatDate, t)}
-                </option>
-              ))}
-            </select>
-          </label>
-
           <button
             disabled={
               isRunningAutomaticAssignment || isLoadingDraftSchedules || !automaticAssignmentForm.scheduleId

@@ -45,22 +45,6 @@ function SchedulePublicationPanel({
 
       {managedDraftSchedules.length > 0 ? (
         <form className="publication-form" onSubmit={onPublishSchedule}>
-          <label>
-            {t("draftSchedule")}
-            <select
-              name="scheduleId"
-              onChange={onPublicationFormChange}
-              required
-              value={publicationForm.scheduleId}
-            >
-              {managedDraftSchedules.map((schedule) => (
-                <option key={schedule.id} value={schedule.id}>
-                  {renderScheduleOption(schedule, formatDate, t)}
-                </option>
-              ))}
-            </select>
-          </label>
-
           <label className="checkbox-field">
             <input
               checked={publicationForm.confirmUnfilled}

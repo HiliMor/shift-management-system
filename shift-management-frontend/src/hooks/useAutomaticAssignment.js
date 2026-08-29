@@ -10,6 +10,7 @@ function useAutomaticAssignment(
   session,
   enabled,
   managedDraftSchedules,
+  selectedDraftScheduleId,
   onAssignmentsChanged,
   onPublicationReadinessChanged,
   onApiError,
@@ -30,12 +31,19 @@ function useAutomaticAssignment(
       const currentDraftExists = managedDraftSchedules.some(
         (schedule) => schedule.id.toString() === current.scheduleId,
       );
+      const selectedDraftExists = managedDraftSchedules.some(
+        (schedule) => schedule.id.toString() === selectedDraftScheduleId,
+      );
 
       return {
-        scheduleId: currentDraftExists ? current.scheduleId : managedDraftSchedules[0]?.id?.toString() || "",
+        scheduleId: selectedDraftExists
+          ? selectedDraftScheduleId
+          : currentDraftExists
+            ? current.scheduleId
+            : managedDraftSchedules[0]?.id?.toString() || "",
       };
     });
-  }, [enabled, managedDraftSchedules]);
+  }, [enabled, managedDraftSchedules, selectedDraftScheduleId]);
 
   function handleAutomaticAssignmentFormChange(event) {
     const { name, value } = event.target;

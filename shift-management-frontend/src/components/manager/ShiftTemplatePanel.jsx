@@ -55,6 +55,7 @@ function ShiftTemplatePanel({
   onTemplateGenerationFormChange,
   onTemplateSlotFormChange,
   selectedGenerationTemplate,
+  selectedDraftSchedule,
   selectedTemplate,
   templateActionError,
   templateActionMessage,
@@ -325,21 +326,19 @@ function ShiftTemplatePanel({
             </select>
           </label>
 
-          <label>
-            {t("draftSchedule")}
-            <select
-              name="scheduleId"
-              onChange={onTemplateGenerationFormChange}
-              required
-              value={templateGenerationForm.scheduleId}
-            >
-              {generationDraftSchedules.map((schedule) => (
-                <option key={schedule.id} value={schedule.id}>
-                  {renderScheduleOption(schedule, formatDate, t)}
-                </option>
-              ))}
-            </select>
-          </label>
+          <div className="template-generation-context">
+            <span className="eyebrow">{t("generateIntoDraft")}</span>
+            <strong>
+              {selectedDraftSchedule
+                ? renderScheduleOption(selectedDraftSchedule, formatDate, t)
+                : t("noDraftSelected")}
+            </strong>
+            {selectedGenerationTemplate &&
+            generationDraftSchedules.length > 0 &&
+            !templateGenerationForm.scheduleId ? (
+              <small>{t("selectDraftForTemplateTeam")}</small>
+            ) : null}
+          </div>
 
           <button disabled={isGeneratingTemplateShifts || !canGenerate || Boolean(draftSchedulesError)} type="submit">
             {isGeneratingTemplateShifts ? t("generating") : t("generateShifts")}

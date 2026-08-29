@@ -2,7 +2,6 @@ import { useLanguage } from "../../i18n/LanguageContext.jsx";
 
 function CreateShiftPanel({
   draftSchedulesError,
-  formatDate,
   isCreatingShift,
   isLoadingDraftSchedules,
   isLoadingStaffingRoles,
@@ -32,18 +31,6 @@ function CreateShiftPanel({
 
       {managedDraftSchedules.length > 0 ? (
         <form className="shift-form" onSubmit={onCreateShift}>
-          <label>
-            {t("draftSchedule")}
-            <select name="scheduleId" onChange={onShiftFormChange} required value={shiftForm.scheduleId}>
-              {managedDraftSchedules.map((schedule) => (
-                <option key={schedule.id} value={schedule.id}>
-                  #{schedule.id} - {schedule.teamName}, {formatDate(schedule.startDate)} {t("dateRangeSeparator")} {" "}
-                  {formatDate(schedule.endDate)}
-                </option>
-              ))}
-            </select>
-          </label>
-
           <label>
             {t("startTime")}
             <input

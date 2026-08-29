@@ -16,6 +16,7 @@ function useSchedulePublication(
   session,
   enabled,
   managedDraftSchedules,
+  selectedDraftScheduleId,
   onDraftSchedulesChanged,
   onApiError,
 ) {
@@ -58,14 +59,21 @@ function useSchedulePublication(
       const currentDraftExists = managedDraftSchedules.some(
         (schedule) => schedule.id.toString() === current.scheduleId,
       );
+      const selectedDraftExists = managedDraftSchedules.some(
+        (schedule) => schedule.id.toString() === selectedDraftScheduleId,
+      );
 
       return {
         ...current,
-        scheduleId: currentDraftExists ? current.scheduleId : managedDraftSchedules[0]?.id?.toString() || "",
-        confirmUnfilled: currentDraftExists ? current.confirmUnfilled : false,
+        scheduleId: selectedDraftExists
+          ? selectedDraftScheduleId
+          : currentDraftExists
+            ? current.scheduleId
+            : managedDraftSchedules[0]?.id?.toString() || "",
+        confirmUnfilled: selectedDraftExists || currentDraftExists ? current.confirmUnfilled : false,
       };
     });
-  }, [enabled, managedDraftSchedules]);
+  }, [enabled, managedDraftSchedules, selectedDraftScheduleId]);
 
   useEffect(() => {
     if (!session?.accessToken || !enabled || !publicationForm.scheduleId) {

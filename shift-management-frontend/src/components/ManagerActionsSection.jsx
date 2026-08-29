@@ -91,6 +91,8 @@ function ManagerActionsSection({
   scheduleAssignmentsError,
   scheduleCreationError,
   scheduleForm,
+  selectedDraftSchedule,
+  selectedDraftScheduleId,
   selectedGenerationTemplate,
   selectedAssignmentSchedule,
   selectedTemplate,
@@ -112,6 +114,7 @@ function ManagerActionsSection({
   templateStaffingRolesError,
   teamEmployees,
   teamEmployeesError,
+  onSelectDraftSchedule,
 }) {
   const { t } = useLanguage();
   const [activeWorkflowStep, setActiveWorkflowStep] = useState("draft");
@@ -132,7 +135,7 @@ function ManagerActionsSection({
     {
       id: "build",
       number: "2",
-      label: t("buildShifts"),
+      label: t("shiftsStep"),
       summary: `${templates.length} ${t("templates")}`,
       panelId: "manager-workflow-build",
     },
@@ -164,6 +167,43 @@ function ManagerActionsSection({
 
       {!isLoadingManagedTeams && !managedTeamsError && managedTeams.length === 0 ? (
         <p className="muted">{t("noManagedTeams")}</p>
+      ) : null}
+
+      {managedDraftSchedules.length > 0 ? (
+        <div className="draft-context-bar">
+          <div className="draft-context-copy">
+            <span className="eyebrow">{t("currentDraft")}</span>
+            {selectedDraftSchedule ? (
+              <>
+                <strong>
+                  #{selectedDraftSchedule.id} - {selectedDraftSchedule.teamName}
+                </strong>
+                <span>
+                  {formatDate(selectedDraftSchedule.startDate)} {t("dateRangeSeparator")} {" "}
+                  {formatDate(selectedDraftSchedule.endDate)} · {t("draft")}
+                </span>
+              </>
+            ) : (
+              <strong>{t("noDraftSelected")}</strong>
+            )}
+            <small>{t("draftContextDescription")}</small>
+          </div>
+          <label className="draft-context-select">
+            <span>{t("changeDraft")}</span>
+            <select value={selectedDraftScheduleId} onChange={(event) => onSelectDraftSchedule(event.target.value)}>
+              {managedDraftSchedules.map((schedule) => (
+                <option key={schedule.id} value={schedule.id}>
+                  #{schedule.id} - {schedule.teamName}, {formatDate(schedule.startDate)} {t("dateRangeSeparator")} {" "}
+                  {formatDate(schedule.endDate)}
+                </option>
+              ))}
+            </select>
+          </label>
+        </div>
+      ) : null}
+
+      {!isLoadingManagedTeams && managedTeams.length > 0 && managedDraftSchedules.length === 0 ? (
+        <p className="muted">{t("selectDraftToBegin")}</p>
       ) : null}
 
       {managedTeams.length > 0 ? (
@@ -226,6 +266,7 @@ function ManagerActionsSection({
                   onTemplateGenerationFormChange={onTemplateGenerationFormChange}
                   onTemplateSlotFormChange={onTemplateSlotFormChange}
                   selectedGenerationTemplate={selectedGenerationTemplate}
+                  selectedDraftSchedule={selectedDraftSchedule}
                   selectedTemplate={selectedTemplate}
                   templateActionError={templateActionError}
                   templateActionMessage={templateActionMessage}
