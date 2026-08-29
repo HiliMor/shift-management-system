@@ -16,9 +16,9 @@ function CreateShiftPanel({
 
   return (
     <section className="manager-panel" id="manager-shifts">
-      <div className="manager-panel-heading">
-        <span>2</span>
+      <div className="panel-title-group">
         <h3>{t("manualShifts")}</h3>
+        <p className="panel-description">{t("singleShiftDescription")}</p>
       </div>
 
       {isLoadingDraftSchedules ? <p className="muted">{t("loadingDraftSchedules")}</p> : null}

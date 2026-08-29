@@ -1620,4 +1620,6 @@ Still open:
 - Removed repeated draft schedule selectors from shift creation, manual assignment, automatic assignment, and publication panels.
 - Kept template generation connected to the central draft when the selected template belongs to the same team.
 - Added bilingual context text explaining which draft schedule the manager is currently editing.
+- Separated template management, template-based shift generation, and single-shift creation with distinct headings and descriptions.
+- Removed duplicate workflow step badges from the child panels to reduce visual ambiguity.
 - Verified the frontend production build and whitespace checks succeed.

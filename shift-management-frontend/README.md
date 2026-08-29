@@ -26,6 +26,7 @@ For end-to-end local run instructions, see:
 - Transfer and swap request actions - employee approve/reject, requester cancel, and manager approve.
 - Manager schedule workflow - manager-only focused step navigation for draft, build, assign, and publish work.
 - Manager workflow keeps one selected draft schedule as the shared context across its steps, so the same draft is used for shift creation, assignment, automatic assignment, template generation, and publication.
+- The build step separates template management, template-based shift generation, and single-shift creation.
 
 ## Run Locally
 
