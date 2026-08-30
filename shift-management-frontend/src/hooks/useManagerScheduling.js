@@ -4,6 +4,7 @@ import {
   createAssignment,
   createSchedule,
   createShift,
+  deleteAssignment,
   deleteSchedule,
   listManagedDraftSchedules,
   listMyManagedTeams,
@@ -76,6 +77,9 @@ function useManagerScheduling(
   const [assignmentRefreshKey, setAssignmentRefreshKey] = useState(0);
   const [createdAssignment, setCreatedAssignment] = useState(null);
   const [assignmentCreationError, setAssignmentCreationError] = useState("");
+  const [assignmentActionError, setAssignmentActionError] = useState("");
+  const [assignmentActionMessage, setAssignmentActionMessage] = useState("");
+  const [deletingAssignmentId, setDeletingAssignmentId] = useState(null);
   const [isCreatingAssignment, setIsCreatingAssignment] = useState(false);
 
   const selectedDraftSchedule = useMemo(
@@ -418,6 +422,9 @@ function useManagerScheduling(
   function handleAssignmentFormChange(event) {
     const { name, value } = event.target;
 
+    setAssignmentCreationError("");
+    setAssignmentActionError("");
+    setAssignmentActionMessage("");
     setAssignmentForm((current) => ({
       ...current,
       [name]: value,
@@ -426,6 +433,10 @@ function useManagerScheduling(
   }
 
   function selectAssignmentShift(shiftId) {
+    setAssignmentCreationError("");
+    setAssignmentActionError("");
+    setAssignmentActionMessage("");
+    setCreatedAssignment(null);
     setAssignmentForm((current) => ({
       ...current,
       shiftId: shiftId.toString(),
@@ -441,6 +452,8 @@ function useManagerScheduling(
     event.preventDefault();
     setIsCreatingAssignment(true);
     setAssignmentCreationError("");
+    setAssignmentActionError("");
+    setAssignmentActionMessage("");
     setCreatedAssignment(null);
 
     try {
@@ -455,6 +468,24 @@ function useManagerScheduling(
       onApiError(error, setAssignmentCreationError);
     } finally {
       setIsCreatingAssignment(false);
+    }
+  }
+
+  async function handleDeleteAssignment(assignmentId) {
+    setDeletingAssignmentId(assignmentId);
+    setAssignmentActionError("");
+    setAssignmentActionMessage("");
+    setCreatedAssignment(null);
+
+    try {
+      await deleteAssignment(session.accessToken, assignmentId);
+      setAssignmentActionMessage("assignmentDeleted");
+      refreshAssignmentData();
+      onScheduleContentChanged();
+    } catch (error) {
+      onApiError(error, setAssignmentActionError);
+    } finally {
+      setDeletingAssignmentId(null);
     }
   }
 
@@ -494,10 +525,15 @@ function useManagerScheduling(
     setAssignmentRefreshKey(0);
     setCreatedAssignment(null);
     setAssignmentCreationError("");
+    setAssignmentActionError("");
+    setAssignmentActionMessage("");
+    setDeletingAssignmentId(null);
     setIsCreatingAssignment(false);
   }
 
   return {
+    assignmentActionError,
+    assignmentActionMessage,
     assignmentCreationError,
     assignmentForm,
     assignmentShiftMap,
@@ -511,6 +547,7 @@ function useManagerScheduling(
     handleCreateAssignment,
     handleCreateSchedule,
     handleCreateShift,
+    handleDeleteAssignment,
     handleDeleteDraftSchedule,
     handleScheduleFormChange,
     handleShiftFormChange,
@@ -518,6 +555,7 @@ function useManagerScheduling(
     isCreatingAssignment,
     isCreatingSchedule,
     isCreatingShift,
+    deletingAssignmentId,
     isDeletingSchedule,
     isLoadingAssignmentShifts,
     isLoadingDraftSchedules,

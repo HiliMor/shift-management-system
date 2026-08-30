@@ -20,7 +20,10 @@ function AvailabilityConstraintsSection({
   return (
     <section className="section-block" id="availability">
       <div className="section-heading">
-        <h2>{t("myAvailability")}</h2>
+        <div>
+          <h2>{t("myAvailability")}</h2>
+          <p className="section-description">{t("availabilityDescription")}</p>
+        </div>
         <div className="section-actions">
           <span>{availabilityConstraints.length}</span>
           <button

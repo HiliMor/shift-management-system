@@ -24,6 +24,8 @@ function ManagerActionsSection({
   automaticAssignmentForm,
   automaticAssignmentMessage,
   automaticAssignmentReport,
+  assignmentActionError,
+  assignmentActionMessage,
   assignmentCreationError,
   assignmentForm,
   assignmentShiftMap,
@@ -32,6 +34,7 @@ function ManagerActionsSection({
   createdAssignment,
   createdSchedule,
   createdShift,
+  deletingAssignmentId,
   draftSchedulesError,
   formatDate,
   formatDateTime,
@@ -65,6 +68,7 @@ function ManagerActionsSection({
   onAutomaticAssignmentFormChange,
   onAssignmentFormChange,
   onCreateAssignment,
+  onDeleteAssignment,
   onSelectAssignmentShift,
   onCreateSchedule,
   onCreateShift,
@@ -333,6 +337,9 @@ function ManagerActionsSection({
             {activeWorkflowStep === "assign" ? (
               <>
                 <AssignEmployeePanel
+                  assignmentActionError={assignmentActionError}
+                  assignmentActionMessage={assignmentActionMessage}
+                  assignmentCreationError={assignmentCreationError}
                   assignmentForm={assignmentForm}
                   assignmentShiftMap={assignmentShiftMap}
                   assignmentShifts={assignmentShifts}
@@ -341,6 +348,7 @@ function ManagerActionsSection({
                   formatDate={formatDate}
                   formatDateTime={formatDateTime}
                   isCreatingAssignment={isCreatingAssignment}
+                  deletingAssignmentId={deletingAssignmentId}
                   isLoadingAssignmentShifts={isLoadingAssignmentShifts}
                   isLoadingDraftSchedules={isLoadingDraftSchedules}
                   isLoadingScheduleAssignments={isLoadingScheduleAssignments}
@@ -348,6 +356,7 @@ function ManagerActionsSection({
                   managedDraftSchedules={managedDraftSchedules}
                   onAssignmentFormChange={onAssignmentFormChange}
                   onCreateAssignment={onCreateAssignment}
+                  onDeleteAssignment={onDeleteAssignment}
                   onSelectAssignmentShift={onSelectAssignmentShift}
                   scheduleAssignments={scheduleAssignments}
                   scheduleAssignmentsError={scheduleAssignmentsError}
@@ -405,7 +414,6 @@ function ManagerActionsSection({
       {scheduleCreationError ? <p className="error-message">{scheduleCreationError}</p> : null}
       {scheduleActionError ? <p className="error-message">{scheduleActionError}</p> : null}
       {shiftCreationError ? <p className="error-message">{shiftCreationError}</p> : null}
-      {assignmentCreationError ? <p className="error-message">{assignmentCreationError}</p> : null}
       {publicationActionError ? <p className="error-message">{publicationActionError}</p> : null}
 
       {createdSchedule ? (

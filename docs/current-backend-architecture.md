@@ -63,6 +63,7 @@ The current frontend is intentionally small. It is responsible for:
 - Loading active team employees from `GET /api/teams/{teamId}/employees`.
 - Loading draft schedule assignments from `GET /api/schedules/{scheduleId}/assignments`.
 - Creating manual assignments through `POST /api/assignments`.
+- Removing draft assignments through `DELETE /api/assignments/{assignmentId}`.
 - Running basic automatic assignment through `POST /api/schedules/{scheduleId}/auto-assign`.
 - Creating and managing reusable shift templates through the template endpoints.
 - Deleting unused templates through `DELETE /api/templates/{templateId}`.

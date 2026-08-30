@@ -20,9 +20,8 @@ function shiftDateKey(value) {
 function startOfWeek(date) {
   const result = new Date(date);
   const day = result.getDay();
-  const daysFromMonday = day === 0 ? 6 : day - 1;
 
-  result.setDate(result.getDate() - daysFromMonday);
+  result.setDate(result.getDate() - day);
   return result;
 }
 

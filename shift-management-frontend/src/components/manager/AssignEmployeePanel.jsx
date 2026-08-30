@@ -3,6 +3,9 @@ import { useLanguage } from "../../i18n/LanguageContext.jsx";
 import WeeklyScheduleCalendar from "../WeeklyScheduleCalendar.jsx";
 
 function AssignEmployeePanel({
+  assignmentActionError,
+  assignmentActionMessage,
+  assignmentCreationError,
   assignmentForm,
   assignmentShiftMap,
   assignmentShifts,
@@ -10,6 +13,7 @@ function AssignEmployeePanel({
   draftSchedulesError,
   formatDateTime,
   isCreatingAssignment,
+  deletingAssignmentId,
   isLoadingAssignmentShifts,
   isLoadingDraftSchedules,
   isLoadingScheduleAssignments,
@@ -17,6 +21,7 @@ function AssignEmployeePanel({
   managedDraftSchedules,
   onAssignmentFormChange,
   onCreateAssignment,
+  onDeleteAssignment,
   onSelectAssignmentShift,
   scheduleAssignments,
   scheduleAssignmentsError,
@@ -68,6 +73,9 @@ function AssignEmployeePanel({
       {assignmentShiftsError ? <p className="error-message">{assignmentShiftsError}</p> : null}
       {teamEmployeesError ? <p className="error-message">{teamEmployeesError}</p> : null}
       {scheduleAssignmentsError ? <p className="error-message">{scheduleAssignmentsError}</p> : null}
+      {assignmentCreationError ? <p className="error-message">{assignmentCreationError}</p> : null}
+      {assignmentActionError ? <p className="error-message">{assignmentActionError}</p> : null}
+      {assignmentActionMessage ? <p className="success-message">{t(assignmentActionMessage)}</p> : null}
 
       {selectedAssignmentShift ? (
         <div className="assignment-guidance">
@@ -233,6 +241,22 @@ function AssignEmployeePanel({
                       )}`
                     : `${t("shift")} #${assignment.shiftId}`}
                 </span>
+                <div className="row-actions">
+                  <button
+                    className="danger-button compact-button"
+                    disabled={deletingAssignmentId !== null}
+                    onClick={() => {
+                      if (window.confirm(t("confirmRemoveAssignment"))) {
+                        onDeleteAssignment(assignment.id);
+                      }
+                    }}
+                    type="button"
+                  >
+                    {deletingAssignmentId === assignment.id
+                      ? t("removingAssignment")
+                      : t("removeAssignment")}
+                  </button>
+                </div>
               </div>
             );
           })}

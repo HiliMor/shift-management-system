@@ -140,6 +140,13 @@ export function createAssignment(token, assignment) {
   });
 }
 
+export function deleteAssignment(token, assignmentId) {
+  return request(`/api/assignments/${assignmentId}`, {
+    method: "DELETE",
+    token,
+  });
+}
+
 export function autoAssignSchedule(token, scheduleId) {
   return request(`/api/schedules/${scheduleId}/auto-assign`, {
     method: "POST",

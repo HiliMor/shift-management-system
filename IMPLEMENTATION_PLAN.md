@@ -1655,3 +1655,20 @@ Still open:
 - Renamed the seeded development template from `כיסוי פיתוח יומי` to `כיסוי פיתוח יומי בחירום`.
 - Added Flyway migration `V14__rename_daily_coverage_template.sql` so existing local databases receive the same data-label update.
 - Updated the development seeder and backend documentation to use the new name.
+
+### 2026-08-30 - Assignment UI: Remove Draft Assignment
+
+- Connected the existing `DELETE /api/assignments/{assignmentId}` backend endpoint to the manager assignment screen.
+- Added a confirmation action for removing an employee from a draft shift.
+- Refreshed assignments and shift capacity after a successful removal so the open slot is immediately visible.
+- Added bilingual success and error messages for the removal action.
+
+### 2026-08-30 - Calendar UX: Start Weeks On Sunday
+
+- Updated the weekly schedule calendar so Sunday is displayed as the first day of the week.
+- Kept weekly navigation and schedule-boundary highlighting unchanged.
+
+### 2026-08-30 - Assignment UX: Clear Stale Validation Errors
+
+- Clear manual-assignment validation messages when the manager selects a different shift in the calendar.
+- Keep the message visible for the current failed attempt so the manager can understand why it was rejected.

@@ -19,6 +19,7 @@ For end-to-end local run instructions, see:
 - Delete draft schedule - manager-only action for removing the selected draft and its shifts and assignments.
 - Create shift - manager-only form for adding shifts to a managed draft schedule.
 - Assign employee - manager-only draft assignment board and form for assigning an active team employee to a draft shift.
+- Remove assignment - manager-only action for removing an employee from a draft shift and refreshing the open slot count.
 - Automatic assignment - manager-only action for filling open draft shifts and reviewing the assignment report.
 - Shift templates - manager-only workflow for creating templates, adding slots, and generating draft shifts.
 - Delete unused template - manager-only action for removing a template that is not referenced by existing shifts.

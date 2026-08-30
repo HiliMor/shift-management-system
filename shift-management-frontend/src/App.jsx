@@ -137,6 +137,8 @@ function App() {
   }
 
   const {
+    assignmentActionError,
+    assignmentActionMessage,
     assignmentCreationError,
     assignmentForm,
     assignmentShiftMap,
@@ -150,6 +152,7 @@ function App() {
     handleCreateAssignment,
     handleCreateSchedule,
     handleCreateShift,
+    handleDeleteAssignment,
     handleDeleteDraftSchedule,
     handleScheduleFormChange,
     handleShiftFormChange,
@@ -157,6 +160,7 @@ function App() {
     isCreatingAssignment,
     isCreatingSchedule,
     isCreatingShift,
+    deletingAssignmentId,
     isDeletingSchedule,
     isLoadingAssignmentShifts,
     isLoadingDraftSchedules,
@@ -497,6 +501,8 @@ function App() {
           automaticAssignmentForm={automaticAssignmentForm}
           automaticAssignmentMessage={automaticAssignmentMessage}
           automaticAssignmentReport={automaticAssignmentReport}
+          assignmentActionError={assignmentActionError}
+          assignmentActionMessage={assignmentActionMessage}
           assignmentCreationError={assignmentCreationError}
           assignmentForm={assignmentForm}
           assignmentShiftMap={assignmentShiftMap}
@@ -505,6 +511,7 @@ function App() {
           createdAssignment={createdAssignment}
           createdSchedule={createdSchedule}
           createdShift={createdShift}
+          deletingAssignmentId={deletingAssignmentId}
           draftSchedulesError={draftSchedulesError}
           formatDate={formatDate}
           formatDateTime={formatDateTime}
@@ -538,6 +545,7 @@ function App() {
           onAutomaticAssignmentFormChange={handleAutomaticAssignmentFormChange}
           onAssignmentFormChange={handleAssignmentFormChange}
           onCreateAssignment={handleCreateAssignment}
+          onDeleteAssignment={handleDeleteAssignment}
           onSelectAssignmentShift={selectAssignmentShift}
           onCreateSchedule={handleCreateSchedule}
           onCreateShift={handleCreateShift}
