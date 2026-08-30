@@ -3,6 +3,7 @@ import { useLanguage } from "../i18n/LanguageContext.jsx";
 
 const notificationTypeTranslationKeys = {
   SCHEDULE_PUBLISHED: "schedulePublished",
+  REQUEST_CREATED: "requestCreatedNotification",
 };
 
 function NotificationCenter({
@@ -100,6 +101,15 @@ function NotificationCenter({
                         type="button"
                       >
                         {t("viewPublishedSchedule")}
+                      </button>
+                    ) : null}
+                    {notification.relatedEntityType === "REQUEST" && notification.relatedEntityId ? (
+                      <button
+                        className="secondary-button compact-button"
+                        onClick={() => handleOpenRelatedEntity(notification)}
+                        type="button"
+                      >
+                        {t("viewTransferRequests")}
                       </button>
                     ) : null}
                     {!notification.read ? (

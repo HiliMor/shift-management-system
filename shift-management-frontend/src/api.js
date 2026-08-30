@@ -255,6 +255,10 @@ export function listPendingManagerTransferRequests(token) {
   return request("/api/requests/manager/pending", { token });
 }
 
+export function listManagerTransferRequests(token) {
+  return request("/api/requests/manager", { token });
+}
+
 export function approveTransferAsTargetEmployee(token, requestId) {
   return request(`/api/requests/${requestId}/employee-approve`, {
     method: "POST",

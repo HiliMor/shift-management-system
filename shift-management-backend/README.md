@@ -39,6 +39,7 @@ Implemented:
 - Assignment list endpoint: `GET /api/schedules/{scheduleId}/assignments`.
 - Assignment delete endpoint: `DELETE /api/assignments/{assignmentId}`.
 - Assignment validation for team membership, duplicate assignment, shift capacity, availability constraints, overlap, and minimum rest.
+- Manual and automatic assignment capacity checks use a PostgreSQL row-level write lock so concurrent requests cannot overfill the same shift.
 - Basic automatic assignment endpoint: `POST /api/schedules/{scheduleId}/auto-assign`.
 - Automatic assignment ranks eligible employees by fewer assigned minutes in the schedule.
 - Automatic assignment returns a report with created assignments and remaining open slots.
@@ -81,12 +82,14 @@ Implemented:
 - Spring JMS configuration with ActiveMQ Artemis.
 - Scheduled outbox dispatcher that sends pending events to JMS queue `notification.events`.
 - JMS consumer that creates schedule-published notifications for active team members.
+- Request-created events that notify the target employee and team managers through JMS.
 - Notification creation is idempotent by `eventId` and recipient.
 - Transfer and swap request persistence model.
 - Transfer request creation endpoint: `POST /api/requests/transfers`.
 - Swap request creation endpoint: `POST /api/requests/swaps`.
 - Outgoing request list endpoint: `GET /api/requests/me/outgoing`.
 - Incoming request list endpoint: `GET /api/requests/me/incoming`.
+- Manager team request list endpoint: `GET /api/requests/manager` (active requests from the manager's teams, including requests waiting for target employee approval).
 - Pending manager approval request list endpoint: `GET /api/requests/manager/pending`.
 - Target employee approval endpoint for transfer and swap requests: `POST /api/requests/{requestId}/employee-approve`.
 - Target employee rejection endpoint for transfer and swap requests: `POST /api/requests/{requestId}/employee-reject`.
@@ -1127,7 +1130,10 @@ curl http://localhost:8080/api/requests/manager/pending \
 
 Request list endpoints return the same response shape as transfer or swap creation.
 Employee list endpoints are limited to the authenticated employee, and the manager
-list endpoint is limited to teams managed by the authenticated manager.
+list endpoints are limited to teams managed by the authenticated manager. The manager
+team request list includes active requests in both `PENDING_EMPLOYEE` and
+`PENDING_MANAGER` states, while the pending manager approval endpoint includes only
+requests that are ready for manager action.
 The response also includes source and, for full swaps, target shift descriptions
 and start/end times so clients can identify the concrete shifts involved.
 

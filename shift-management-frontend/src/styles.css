@@ -265,7 +265,7 @@ nav a:hover,
   padding: 16px;
   position: absolute;
   top: calc(100% + 8px);
-  width: min(430px, calc(100vw - 56px));
+  width: min(520px, calc(100vw - 40px));
   z-index: 20;
 }
 
@@ -291,10 +291,12 @@ nav a:hover,
 
 .notification-card-actions {
   align-items: center;
+  border-top: 1px solid #e1e6ef;
   display: flex;
   flex-wrap: wrap;
   gap: 8px;
   justify-content: flex-end;
+  padding-top: 10px;
 }
 
 .topbar {
@@ -447,7 +449,7 @@ nav a:hover,
   border-radius: 8px;
   display: grid;
   gap: 14px;
-  grid-template-columns: minmax(0, 1fr) auto;
+  grid-template-columns: minmax(0, 1fr);
   padding: 14px;
 }
 
@@ -481,6 +483,7 @@ nav a:hover,
 .notification-row p {
   color: #37445a;
   margin-bottom: 6px;
+  overflow-wrap: anywhere;
 }
 
 .notification-meta {
@@ -662,6 +665,14 @@ nav a:hover,
   flex-wrap: wrap;
   gap: 8px;
   justify-content: flex-end;
+}
+
+.request-action-hint {
+  color: #66758b;
+  font-size: 0.86rem;
+  font-weight: 700;
+  max-width: 220px;
+  text-align: end;
 }
 
 .status-badge {

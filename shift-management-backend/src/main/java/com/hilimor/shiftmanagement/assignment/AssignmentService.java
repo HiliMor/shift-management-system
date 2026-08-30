@@ -63,7 +63,7 @@ public class AssignmentService {
 
     @Transactional
     public AssignmentResponse createAssignment(String managerUsername, CreateAssignmentRequest request) {
-        Shift shift = shiftRepository.findById(request.shiftId())
+        Shift shift = shiftRepository.findByIdForUpdate(request.shiftId())
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Shift not found"));
 
         Schedule schedule = shift.getSchedule();
@@ -97,6 +97,9 @@ public class AssignmentService {
         }
 
         List<Shift> shifts = shiftRepository.findBySchedule_IdOrderByStartTime(scheduleId);
+        List<Shift> lockedShifts = shifts.stream()
+                .map(this::lockShift)
+                .toList();
         List<Assignment> existingAssignments = assignmentRepository
                 .findByShift_Schedule_IdOrderByShift_StartTimeAscEmployee_FullNameAsc(scheduleId);
         List<User> candidates = teamMemberRepository.findByTeam_IdAndActiveTrue(teamId)
@@ -111,7 +114,7 @@ public class AssignmentService {
         Map<Long, Long> assignedMinutesByEmployeeId = assignedMinutesByEmployeeId(existingAssignments);
         List<AutoAssignmentShiftResultResponse> shiftResults = new ArrayList<>();
 
-        for (Shift shift : shifts) {
+        for (Shift shift : lockedShifts) {
             List<Assignment> shiftAssignments = new ArrayList<>(
                     assignmentsByShiftId.getOrDefault(shift.getId(), List.of())
             );
@@ -251,6 +254,11 @@ public class AssignmentService {
         }
 
         return null;
+    }
+
+    private Shift lockShift(Shift shift) {
+        return shiftRepository.findByIdForUpdate(shift.getId())
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Shift not found"));
     }
 
     private Assignment createValidatedAssignment(

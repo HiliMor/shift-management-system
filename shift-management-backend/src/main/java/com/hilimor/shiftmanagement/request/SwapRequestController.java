@@ -57,6 +57,11 @@ public class SwapRequestController {
         return swapRequestService.listPendingManagerRequests(authentication.getName());
     }
 
+    @GetMapping("/manager")
+    public List<SwapRequestResponse> listManagerRequests(Authentication authentication) {
+        return swapRequestService.listManagerRequests(authentication.getName());
+    }
+
     @PostMapping("/{requestId}/employee-approve")
     public SwapRequestResponse approveByTargetEmployee(
             Authentication authentication,

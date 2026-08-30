@@ -19,4 +19,9 @@ public interface SwapRequestRepository extends JpaRepository<SwapRequest, Long> 
             SwapRequestStatus status,
             Collection<Long> teamIds
     );
+
+    List<SwapRequest> findByStatusInAndSourceAssignment_Shift_Schedule_Team_IdInOrderByCreatedAtDesc(
+            Collection<SwapRequestStatus> statuses,
+            Collection<Long> teamIds
+    );
 }

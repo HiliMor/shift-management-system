@@ -93,7 +93,7 @@ class AssignmentServiceTest {
         Shift shift = shift(schedule(ScheduleStatus.DRAFT), 20L);
         User employee = employee();
 
-        when(shiftRepository.findById(20L)).thenReturn(Optional.of(shift));
+        when(shiftRepository.findByIdForUpdate(20L)).thenReturn(Optional.of(shift));
         when(teamManagerRepository.existsByManager_UsernameAndTeam_Id("manager1", 1L)).thenReturn(true);
         when(userRepository.findById(2L)).thenReturn(Optional.of(employee));
         when(teamMemberRepository.existsByUser_IdAndTeam_IdAndActiveTrue(2L, 1L)).thenReturn(true);
@@ -145,7 +145,7 @@ class AssignmentServiceTest {
         Shift shift = shift(schedule, 20L, requiredRole);
         User employee = employee();
 
-        when(shiftRepository.findById(20L)).thenReturn(Optional.of(shift));
+        when(shiftRepository.findByIdForUpdate(20L)).thenReturn(Optional.of(shift));
         when(teamManagerRepository.existsByManager_UsernameAndTeam_Id("manager1", 1L)).thenReturn(true);
         when(userRepository.findById(2L)).thenReturn(Optional.of(employee));
         when(teamMemberRepository.existsByUser_IdAndTeam_IdAndActiveTrue(2L, 1L)).thenReturn(true);
@@ -194,7 +194,7 @@ class AssignmentServiceTest {
         Shift shift = shift(schedule, 20L, requiredRole);
         User employee = employee();
 
-        when(shiftRepository.findById(20L)).thenReturn(Optional.of(shift));
+        when(shiftRepository.findByIdForUpdate(20L)).thenReturn(Optional.of(shift));
         when(teamManagerRepository.existsByManager_UsernameAndTeam_Id("manager1", 1L)).thenReturn(true);
         when(userRepository.findById(2L)).thenReturn(Optional.of(employee));
         when(teamMemberRepository.existsByUser_IdAndTeam_IdAndActiveTrue(2L, 1L)).thenReturn(true);
@@ -215,7 +215,7 @@ class AssignmentServiceTest {
     void createAssignmentRejectsUnmanagedShiftTeam() {
         Shift shift = shift(schedule(ScheduleStatus.DRAFT), 20L);
 
-        when(shiftRepository.findById(20L)).thenReturn(Optional.of(shift));
+        when(shiftRepository.findByIdForUpdate(20L)).thenReturn(Optional.of(shift));
         when(teamManagerRepository.existsByManager_UsernameAndTeam_Id("manager2", 1L)).thenReturn(false);
 
         assertThatThrownBy(() -> assignmentService.createAssignment("manager2", validRequest()))
@@ -229,7 +229,7 @@ class AssignmentServiceTest {
     void createAssignmentRejectsPublishedSchedule() {
         Shift shift = shift(schedule(ScheduleStatus.PUBLISHED), 20L);
 
-        when(shiftRepository.findById(20L)).thenReturn(Optional.of(shift));
+        when(shiftRepository.findByIdForUpdate(20L)).thenReturn(Optional.of(shift));
         when(teamManagerRepository.existsByManager_UsernameAndTeam_Id("manager1", 1L)).thenReturn(true);
 
         assertThatThrownBy(() -> assignmentService.createAssignment("manager1", validRequest()))
@@ -246,7 +246,7 @@ class AssignmentServiceTest {
         Shift shift = shift(schedule(ScheduleStatus.DRAFT), 20L);
         User employee = employee();
 
-        when(shiftRepository.findById(20L)).thenReturn(Optional.of(shift));
+        when(shiftRepository.findByIdForUpdate(20L)).thenReturn(Optional.of(shift));
         when(teamManagerRepository.existsByManager_UsernameAndTeam_Id("manager1", 1L)).thenReturn(true);
         when(userRepository.findById(2L)).thenReturn(Optional.of(employee));
         when(teamMemberRepository.existsByUser_IdAndTeam_IdAndActiveTrue(2L, 1L)).thenReturn(false);
@@ -261,7 +261,7 @@ class AssignmentServiceTest {
         Shift shift = shift(schedule(ScheduleStatus.DRAFT), 20L);
         User employee = employee();
 
-        when(shiftRepository.findById(20L)).thenReturn(Optional.of(shift));
+        when(shiftRepository.findByIdForUpdate(20L)).thenReturn(Optional.of(shift));
         when(teamManagerRepository.existsByManager_UsernameAndTeam_Id("manager1", 1L)).thenReturn(true);
         when(userRepository.findById(2L)).thenReturn(Optional.of(employee));
         when(teamMemberRepository.existsByUser_IdAndTeam_IdAndActiveTrue(2L, 1L)).thenReturn(true);
@@ -277,7 +277,7 @@ class AssignmentServiceTest {
         Shift shift = shift(schedule(ScheduleStatus.DRAFT), 20L);
         User employee = employee();
 
-        when(shiftRepository.findById(20L)).thenReturn(Optional.of(shift));
+        when(shiftRepository.findByIdForUpdate(20L)).thenReturn(Optional.of(shift));
         when(teamManagerRepository.existsByManager_UsernameAndTeam_Id("manager1", 1L)).thenReturn(true);
         when(userRepository.findById(2L)).thenReturn(Optional.of(employee));
         when(teamMemberRepository.existsByUser_IdAndTeam_IdAndActiveTrue(2L, 1L)).thenReturn(true);
@@ -294,7 +294,7 @@ class AssignmentServiceTest {
         Shift shift = shift(schedule(ScheduleStatus.DRAFT), 20L);
         User employee = employee();
 
-        when(shiftRepository.findById(20L)).thenReturn(Optional.of(shift));
+        when(shiftRepository.findByIdForUpdate(20L)).thenReturn(Optional.of(shift));
         when(teamManagerRepository.existsByManager_UsernameAndTeam_Id("manager1", 1L)).thenReturn(true);
         when(userRepository.findById(2L)).thenReturn(Optional.of(employee));
         when(teamMemberRepository.existsByUser_IdAndTeam_IdAndActiveTrue(2L, 1L)).thenReturn(true);
@@ -317,7 +317,7 @@ class AssignmentServiceTest {
         User employee = employee();
         Shift overlappingShift = shift(schedule(ScheduleStatus.PUBLISHED), 21L);
 
-        when(shiftRepository.findById(20L)).thenReturn(Optional.of(shift));
+        when(shiftRepository.findByIdForUpdate(20L)).thenReturn(Optional.of(shift));
         when(teamManagerRepository.existsByManager_UsernameAndTeam_Id("manager1", 1L)).thenReturn(true);
         when(userRepository.findById(2L)).thenReturn(Optional.of(employee));
         when(teamMemberRepository.existsByUser_IdAndTeam_IdAndActiveTrue(2L, 1L)).thenReturn(true);
@@ -353,7 +353,7 @@ class AssignmentServiceTest {
         );
         ReflectionTestUtils.setField(previousShift, "id", 21L);
 
-        when(shiftRepository.findById(20L)).thenReturn(Optional.of(shift));
+        when(shiftRepository.findByIdForUpdate(20L)).thenReturn(Optional.of(shift));
         when(teamManagerRepository.existsByManager_UsernameAndTeam_Id("manager1", 1L)).thenReturn(true);
         when(userRepository.findById(2L)).thenReturn(Optional.of(employee));
         when(teamMemberRepository.existsByUser_IdAndTeam_IdAndActiveTrue(2L, 1L)).thenReturn(true);
@@ -393,7 +393,7 @@ class AssignmentServiceTest {
         );
         ReflectionTestUtils.setField(nextShift, "id", 22L);
 
-        when(shiftRepository.findById(20L)).thenReturn(Optional.of(shift));
+        when(shiftRepository.findByIdForUpdate(20L)).thenReturn(Optional.of(shift));
         when(teamManagerRepository.existsByManager_UsernameAndTeam_Id("manager1", 1L)).thenReturn(true);
         when(userRepository.findById(2L)).thenReturn(Optional.of(employee));
         when(teamMemberRepository.existsByUser_IdAndTeam_IdAndActiveTrue(2L, 1L)).thenReturn(true);
@@ -480,6 +480,8 @@ class AssignmentServiceTest {
         when(scheduleRepository.findById(10L)).thenReturn(Optional.of(schedule));
         when(teamManagerRepository.existsByManager_UsernameAndTeam_Id("manager1", 1L)).thenReturn(true);
         when(shiftRepository.findBySchedule_IdOrderByStartTime(10L)).thenReturn(List.of(fullShift, targetShift));
+        when(shiftRepository.findByIdForUpdate(19L)).thenReturn(Optional.of(fullShift));
+        when(shiftRepository.findByIdForUpdate(20L)).thenReturn(Optional.of(targetShift));
         when(assignmentRepository.findByShift_Schedule_IdOrderByShift_StartTimeAscEmployee_FullNameAsc(10L))
                 .thenReturn(List.of(assignment(fullShift, busyEmployee)));
         when(teamMemberRepository.findByTeam_IdAndActiveTrue(1L))
@@ -543,6 +545,7 @@ class AssignmentServiceTest {
         when(scheduleRepository.findById(10L)).thenReturn(Optional.of(schedule));
         when(teamManagerRepository.existsByManager_UsernameAndTeam_Id("manager1", 1L)).thenReturn(true);
         when(shiftRepository.findBySchedule_IdOrderByStartTime(10L)).thenReturn(List.of(shift));
+        when(shiftRepository.findByIdForUpdate(20L)).thenReturn(Optional.of(shift));
         when(assignmentRepository.findByShift_Schedule_IdOrderByShift_StartTimeAscEmployee_FullNameAsc(10L))
                 .thenReturn(List.of());
         when(teamMemberRepository.findByTeam_IdAndActiveTrue(1L)).thenReturn(List.of(teamMember(unavailableEmployee)));

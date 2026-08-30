@@ -6,6 +6,7 @@ import java.util.Objects;
 
 import com.hilimor.shiftmanagement.assignment.Assignment;
 import com.hilimor.shiftmanagement.assignment.AssignmentRepository;
+import com.hilimor.shiftmanagement.messaging.EventOutboxService;
 import com.hilimor.shiftmanagement.schedule.Schedule;
 import com.hilimor.shiftmanagement.schedule.ScheduleStatus;
 import com.hilimor.shiftmanagement.team.TeamManagerRepository;
@@ -37,6 +38,7 @@ public class SwapRequestService {
     private final UserRepository userRepository;
     private final TeamMemberRepository teamMemberRepository;
     private final TeamManagerRepository teamManagerRepository;
+    private final EventOutboxService eventOutboxService;
 
     public SwapRequestService(
             SwapRequestRepository swapRequestRepository,
@@ -44,7 +46,8 @@ public class SwapRequestService {
             SwapRequestExecutor swapRequestExecutor,
             UserRepository userRepository,
             TeamMemberRepository teamMemberRepository,
-            TeamManagerRepository teamManagerRepository
+            TeamManagerRepository teamManagerRepository,
+            EventOutboxService eventOutboxService
     ) {
         this.swapRequestRepository = swapRequestRepository;
         this.assignmentRepository = assignmentRepository;
@@ -52,6 +55,7 @@ public class SwapRequestService {
         this.userRepository = userRepository;
         this.teamMemberRepository = teamMemberRepository;
         this.teamManagerRepository = teamManagerRepository;
+        this.eventOutboxService = eventOutboxService;
     }
 
     @Transactional
@@ -114,6 +118,7 @@ public class SwapRequestService {
                 requester.getId(),
                 targetEmployee.getId()
         );
+        publishRequestCreatedEvent(savedRequest);
 
         return SwapRequestResponse.from(savedRequest);
     }
@@ -192,6 +197,7 @@ public class SwapRequestService {
                 targetAssignment.getId(),
                 requester.getId()
         );
+        publishRequestCreatedEvent(savedRequest);
 
         return SwapRequestResponse.from(savedRequest);
     }
@@ -236,6 +242,30 @@ public class SwapRequestService {
                 SwapRequestStatus.PENDING_MANAGER,
                 teamIds
         )
+                .stream()
+                .map(SwapRequestResponse::from)
+                .toList();
+    }
+
+    @Transactional(readOnly = true)
+    public List<SwapRequestResponse> listManagerRequests(String username) {
+        User manager = currentUser(username);
+        requireManager(manager, "Only managers can view team requests");
+
+        List<Long> teamIds = teamManagerRepository.findByManager_Username(username)
+                .stream()
+                .map(teamManager -> teamManager.getTeam().getId())
+                .toList();
+
+        if (teamIds.isEmpty()) {
+            return List.of();
+        }
+
+        return swapRequestRepository
+                .findByStatusInAndSourceAssignment_Shift_Schedule_Team_IdInOrderByCreatedAtDesc(
+                        ACTIVE_REQUEST_STATUSES,
+                        teamIds
+                )
                 .stream()
                 .map(SwapRequestResponse::from)
                 .toList();
@@ -367,6 +397,10 @@ public class SwapRequestService {
                 assignmentId,
                 ACTIVE_REQUEST_STATUSES
         );
+    }
+
+    private void publishRequestCreatedEvent(SwapRequest request) {
+        eventOutboxService.createEvent("request.created", SwapRequestCreatedEvent.from(request));
     }
 
     private User currentUser(String username) {

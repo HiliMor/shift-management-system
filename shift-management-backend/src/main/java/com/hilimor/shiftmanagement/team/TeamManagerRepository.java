@@ -13,4 +13,6 @@ public interface TeamManagerRepository extends JpaRepository<TeamManager, Long> 
     List<TeamManager> findByManager_Id(Long managerId);
 
     List<TeamManager> findByManager_Username(String username);
+
+    List<TeamManager> findByTeam_Id(Long teamId);
 }

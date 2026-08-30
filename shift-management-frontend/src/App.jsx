@@ -102,12 +102,18 @@ function App() {
   }
 
   function openNotificationRelatedEntity(notification) {
-    if (notification.relatedEntityType !== "SCHEDULE" || !notification.relatedEntityId) {
+    if (!notification.relatedEntityId) {
       return;
     }
 
-    setSelectedScheduleId(notification.relatedEntityId);
-    document.getElementById("schedules")?.scrollIntoView({ behavior: "smooth", block: "start" });
+    if (notification.relatedEntityType === "SCHEDULE") {
+      setSelectedScheduleId(notification.relatedEntityId);
+      document.getElementById("schedules")?.scrollIntoView({ behavior: "smooth", block: "start" });
+    }
+
+    if (notification.relatedEntityType === "REQUEST") {
+      document.getElementById("transfer-requests")?.scrollIntoView({ behavior: "smooth", block: "start" });
+    }
   }
 
   function handleApiError(error, setError) {
@@ -242,7 +248,7 @@ function App() {
     isCreatingTransferRequest,
     isLoadingTransferRequests,
     outgoingTransferRequests,
-    pendingManagerTransferRequests,
+    managerTransferRequests,
     refreshTransferRequests,
     rejectIncomingTransferRequest,
     resetTransferRequests,
@@ -481,7 +487,7 @@ function App() {
         onRejectIncomingTransferRequest={rejectIncomingTransferRequest}
         onTransferRequestCreationFormChange={handleTransferRequestCreationFormChange}
         outgoingTransferRequests={outgoingTransferRequests}
-        pendingManagerTransferRequests={pendingManagerTransferRequests}
+        managerTransferRequests={managerTransferRequests}
         selectedScheduleDetails={selectedScheduleDetails}
         sourceAssignmentOptions={sourceAssignmentOptions}
         swapTargetAssignmentOptions={swapTargetAssignmentOptions}

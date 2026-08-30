@@ -128,7 +128,7 @@ function TransferRequestsSection({
   onRefreshTransferRequests,
   onRejectIncomingTransferRequest,
   outgoingTransferRequests,
-  pendingManagerTransferRequests,
+  managerTransferRequests,
   selectedScheduleDetails,
   sourceAssignmentOptions,
   swapTargetAssignmentOptions,
@@ -177,9 +177,10 @@ function TransferRequestsSection({
       {isManager ? (
         <div className="request-section-stack">
           <section className="request-panel">
-            <h3>{t("pendingManagerApproval")}</h3>
+            <h3>{t("managerRequests")}</h3>
+            <p className="muted">{t("managerRequestsDescription")}</p>
             <div className="request-list">
-              {pendingManagerTransferRequests.map((request) =>
+              {managerTransferRequests.map((request) =>
                 renderRequest(
                   request,
                   formatDateTime,
@@ -195,7 +196,9 @@ function TransferRequestsSection({
                         ? t("approving")
                         : t("approve")}
                     </button>
-                  ) : null,
+                  ) : (
+                    <span className="request-action-hint">{t("waitingForEmployeeApproval")}</span>
+                  ),
                 ),
               )}
             </div>

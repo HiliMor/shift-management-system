@@ -8,7 +8,7 @@ import {
   createTransferRequest,
   listMyIncomingTransferRequests,
   listMyOutgoingTransferRequests,
-  listPendingManagerTransferRequests,
+  listManagerTransferRequests,
   rejectTransferAsTargetEmployee,
 } from "../api.js";
 
@@ -37,7 +37,7 @@ function useTransferRequests(
 ) {
   const [incomingTransferRequests, setIncomingTransferRequests] = useState([]);
   const [outgoingTransferRequests, setOutgoingTransferRequests] = useState([]);
-  const [pendingManagerTransferRequests, setPendingManagerTransferRequests] = useState([]);
+  const [managerTransferRequests, setManagerTransferRequests] = useState([]);
   const [transferRequestCreationForm, setTransferRequestCreationForm] = useState(DEFAULT_CREATION_FORM);
   const [transferRequestCreationError, setTransferRequestCreationError] = useState("");
   const [transferRequestCreationMessage, setTransferRequestCreationMessage] = useState("");
@@ -86,14 +86,14 @@ function useTransferRequests(
   );
 
   const transferRequestCount = isManager
-    ? pendingManagerTransferRequests.length
+    ? managerTransferRequests.length
     : incomingTransferRequests.length + outgoingTransferRequests.length;
 
   useEffect(() => {
     if (!session?.accessToken) {
       setIncomingTransferRequests([]);
       setOutgoingTransferRequests([]);
-      setPendingManagerTransferRequests([]);
+      setManagerTransferRequests([]);
       setTransferRequestsError("");
       setTransferRequestCreationForm(DEFAULT_CREATION_FORM);
       setTransferRequestCreationError("");
@@ -105,8 +105,8 @@ function useTransferRequests(
     setTransferRequestsError("");
 
     const loadRequests = isManager
-      ? listPendingManagerTransferRequests(session.accessToken).then((requests) => {
-          setPendingManagerTransferRequests(requests);
+      ? listManagerTransferRequests(session.accessToken).then((requests) => {
+          setManagerTransferRequests(requests);
           setIncomingTransferRequests([]);
           setOutgoingTransferRequests([]);
         })
@@ -116,7 +116,7 @@ function useTransferRequests(
         ]).then(([incomingRequests, outgoingRequests]) => {
           setIncomingTransferRequests(incomingRequests);
           setOutgoingTransferRequests(outgoingRequests);
-          setPendingManagerTransferRequests([]);
+          setManagerTransferRequests([]);
         });
 
     loadRequests
@@ -283,7 +283,7 @@ function useTransferRequests(
   function resetTransferRequests() {
     setIncomingTransferRequests([]);
     setOutgoingTransferRequests([]);
-    setPendingManagerTransferRequests([]);
+    setManagerTransferRequests([]);
     setTransferRequestCreationForm(DEFAULT_CREATION_FORM);
     setTransferRequestCreationError("");
     setTransferRequestCreationMessage("");
@@ -306,7 +306,7 @@ function useTransferRequests(
     isCreatingTransferRequest,
     isLoadingTransferRequests,
     outgoingTransferRequests,
-    pendingManagerTransferRequests,
+    managerTransferRequests,
     refreshTransferRequests,
     rejectIncomingTransferRequest,
     resetTransferRequests,

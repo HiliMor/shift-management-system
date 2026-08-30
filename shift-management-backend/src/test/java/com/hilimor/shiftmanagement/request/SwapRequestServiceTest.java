@@ -2,6 +2,7 @@ package com.hilimor.shiftmanagement.request;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.never;
@@ -16,6 +17,7 @@ import java.util.Optional;
 
 import com.hilimor.shiftmanagement.assignment.Assignment;
 import com.hilimor.shiftmanagement.assignment.AssignmentRepository;
+import com.hilimor.shiftmanagement.messaging.EventOutboxService;
 import com.hilimor.shiftmanagement.schedule.Schedule;
 import com.hilimor.shiftmanagement.schedule.ScheduleStatus;
 import com.hilimor.shiftmanagement.shift.Shift;
@@ -58,6 +60,9 @@ class SwapRequestServiceTest {
 
     @Mock
     private TeamManagerRepository teamManagerRepository;
+
+    @Mock
+    private EventOutboxService eventOutboxService;
 
     @InjectMocks
     private SwapRequestService swapRequestService;
@@ -109,6 +114,13 @@ class SwapRequestServiceTest {
         assertThat(captor.getValue().getRequester()).isSameAs(requester);
         assertThat(captor.getValue().getSourceAssignment()).isSameAs(sourceAssignment);
         assertThat(captor.getValue().getTargetEmployee()).isSameAs(targetEmployee);
+
+        ArgumentCaptor<SwapRequestCreatedEvent> eventCaptor = ArgumentCaptor.forClass(SwapRequestCreatedEvent.class);
+        verify(eventOutboxService).createEvent(eq("request.created"), eventCaptor.capture());
+        assertThat(eventCaptor.getValue().requestId()).isEqualTo(40L);
+        assertThat(eventCaptor.getValue().requestType()).isEqualTo(SwapRequestType.TRANSFER);
+        assertThat(eventCaptor.getValue().targetEmployeeId()).isEqualTo(3L);
+        assertThat(eventCaptor.getValue().sourceShiftId()).isEqualTo(20L);
     }
 
     @Test
@@ -425,6 +437,46 @@ class SwapRequestServiceTest {
         assertThat(responses).isEmpty();
         verify(swapRequestRepository, never())
                 .findByStatusAndSourceAssignment_Shift_Schedule_Team_IdInOrderByCreatedAtDesc(any(), any());
+    }
+
+    @Test
+    void listManagerRequestsIncludesRequestsWaitingForEmployeeAndManagerApproval() {
+        User requester = employee("employee1", 2L);
+        User targetEmployee = employee("employee2", 3L);
+        User manager = user("manager1", 4L, ApplicationRole.MANAGER);
+        SwapRequest request = transferRequest(
+                requester,
+                targetEmployee,
+                schedule(ScheduleStatus.PUBLISHED, SwapApprovalPolicy.MANAGER)
+        );
+        TeamManager teamManager = new TeamManager(manager, request.getSourceAssignment().getShift().getSchedule().getTeam());
+
+        when(userRepository.findByUsername("manager1")).thenReturn(Optional.of(manager));
+        when(teamManagerRepository.findByManager_Username("manager1")).thenReturn(List.of(teamManager));
+        when(swapRequestRepository.findByStatusInAndSourceAssignment_Shift_Schedule_Team_IdInOrderByCreatedAtDesc(
+                List.of(SwapRequestStatus.PENDING_EMPLOYEE, SwapRequestStatus.PENDING_MANAGER),
+                List.of(1L)
+        )).thenReturn(List.of(request));
+
+        List<SwapRequestResponse> responses = swapRequestService.listManagerRequests("manager1");
+
+        assertThat(responses).hasSize(1);
+        assertThat(responses.getFirst().status()).isEqualTo(SwapRequestStatus.PENDING_EMPLOYEE);
+        assertThat(responses.getFirst().targetEmployeeUsername()).isEqualTo("employee2");
+    }
+
+    @Test
+    void listManagerRequestsReturnsEmptyListWhenManagerHasNoTeams() {
+        User manager = user("manager1", 4L, ApplicationRole.MANAGER);
+
+        when(userRepository.findByUsername("manager1")).thenReturn(Optional.of(manager));
+        when(teamManagerRepository.findByManager_Username("manager1")).thenReturn(List.of());
+
+        List<SwapRequestResponse> responses = swapRequestService.listManagerRequests("manager1");
+
+        assertThat(responses).isEmpty();
+        verify(swapRequestRepository, never())
+                .findByStatusInAndSourceAssignment_Shift_Schedule_Team_IdInOrderByCreatedAtDesc(any(), any());
     }
 
     @Test

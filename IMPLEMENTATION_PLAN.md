@@ -362,7 +362,7 @@ Deferred from Phase 4:
 - Assignment move endpoint.
 - Availability constraint checks, because availability is Phase 5.
 - Staffing-role checks, because staffing roles are Phase 6.
-- Full scheduling concurrency protection, which will be revisited before automatic assignment and swaps.
+- Full scheduling concurrency protection, which was deferred from this phase and later implemented during hardening.
 
 ## Phase 5 - Availability Constraints
 
@@ -850,6 +850,7 @@ Goal: make the project ready for submission and presentation.
 - [ ] Unit tests for overlap and rest calculations.
 - [ ] Repository integration tests.
 - [ ] Basic security tests.
+- [x] Assignment capacity protection for concurrent requests.
 - [x] Unified error handling with `ControllerAdvice`.
 - [x] Basic logging.
 - [x] Seed data for the demo.
@@ -1488,16 +1489,17 @@ Still open:
 - Added employee outgoing transfer request listing: `GET /api/requests/me/outgoing`.
 - Added employee incoming transfer request listing: `GET /api/requests/me/incoming`.
 - Added manager pending approval listing: `GET /api/requests/manager/pending`.
+- Added manager team request listing: `GET /api/requests/manager`, including active requests that are still waiting for target employee approval.
 - Kept request visibility scoped to the authenticated employee or to teams managed by the authenticated manager.
 - Added focused service tests for the new request list workflows.
 
 ### 2026-08-11 - Frontend Transfer Request Lists
 
-- Added frontend API calls for outgoing, incoming, and pending-manager transfer request lists.
+- Added frontend API calls for outgoing, incoming, and manager team transfer request lists.
 - Added frontend API calls for target employee approval, target employee rejection, requester cancellation, and manager approval.
 - Added an authenticated transfer request screen section.
 - Employees can view incoming and outgoing transfer requests.
-- Managers can view transfer requests waiting for manager approval.
+- Managers can view active transfer requests from their teams, including the current approval stage.
 - Transfer request actions refresh the relevant list after completion.
 - Verified the frontend production build succeeds.
 
@@ -1672,3 +1674,18 @@ Still open:
 
 - Clear manual-assignment validation messages when the manager selects a different shift in the calendar.
 - Keep the message visible for the current failed attempt so the manager can understand why it was rejected.
+
+### 2026-08-30 - JMS Request Notifications: Request Creation Event
+
+- Added a `request.created` outbox event for new transfer and swap requests.
+- Added a JMS consumer route that creates notifications for the target employee and the team's managers.
+- Added a request link in the notification center so users can open the transfer and swap request section.
+- Added focused tests for event creation, event routing, and request notification recipients.
+
+### 2026-08-30 - Assignment Concurrency Protection
+
+- Added a dedicated `findByIdForUpdate` repository query using JPA `PESSIMISTIC_WRITE` locking.
+- Applied the row lock before manual assignment capacity validation.
+- Applied row locks to all shifts before automatic assignment loads current assignments and fills open slots.
+- Documented that concurrent requests for the same shift are serialized by the database transaction.
+- Updated assignment service tests to cover the locked repository path.

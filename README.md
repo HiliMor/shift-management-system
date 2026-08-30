@@ -27,6 +27,7 @@ Implemented:
 - Shift create, list, update, and delete operations.
 - Manual assignment create, list, and delete operations.
 - Assignment validations for team membership, duplicate assignments, shift capacity, overlap, and minimum rest.
+- Manual and automatic assignment capacity checks use a PostgreSQL row-level write lock so concurrent requests cannot overfill the same shift.
 - Basic automatic assignment for draft schedules.
 - Automatic assignment ranks eligible employees by fewer assigned minutes in the schedule.
 - Automatic assignment returns a report with created assignments and remaining open slots.
@@ -59,10 +60,11 @@ Implemented:
 - ActiveMQ Artemis JMS configuration.
 - Scheduled outbox dispatcher that sends pending events to JMS.
 - JMS consumer that creates schedule-published notifications for active team members.
+- Request-created events that notify the target employee and team managers through JMS.
 - Transfer and swap request persistence model.
 - Transfer request creation endpoint for published assignments.
 - Swap request creation endpoint for exchanging two published assignments.
-- Outgoing, incoming, and pending-manager request list endpoints.
+- Outgoing, incoming, manager team, and pending-manager request list endpoints.
 - Target employee approval endpoint for transfer and swap requests.
 - Target employee rejection endpoint for transfer and swap requests.
 - Requester cancellation endpoint for active transfer and swap requests.
@@ -94,7 +96,8 @@ Frontend:
 - Automatic assignment screen displays the created-assignment report and remaining open slots.
 - Manager publication screen supports readiness checks, publishing draft schedules, and reopening published schedules.
 - Notification center connected to personal notification list, unread count, and mark-as-read APIs.
-- Transfer and swap request screen connected to outgoing, incoming, and pending-manager request APIs.
+- Transfer and swap request screen connected to outgoing, incoming, and manager team request APIs.
+- Manager request view shows active requests waiting for either employee or manager approval, with actions enabled only at the correct workflow stage.
 - Transfer and swap request screen supports employee request creation from a selected published schedule.
 - Transfer and swap request screen supports employee approve/reject, requester cancel, and manager approve actions.
 - Manager screens use focused step-based navigation for draft, build, assign, and publish workflows.

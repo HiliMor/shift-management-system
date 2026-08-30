@@ -406,12 +406,14 @@ public class DevelopmentDataSeeder {
             ScheduleStatus status,
             Instant publishedAt
     ) {
-        return scheduleRepository.findByTeam_IdAndStartDateAndEndDateAndStatus(
+        return scheduleRepository.findByTeam_IdAndStartDateAndEndDateAndStatusOrderByIdDesc(
                         team.getId(),
                         startDate,
                         endDate,
                         status
                 )
+                .stream()
+                .findFirst()
                 .orElseGet(() -> {
                     Schedule schedule = scheduleRepository.save(new Schedule(team, startDate, endDate));
 
