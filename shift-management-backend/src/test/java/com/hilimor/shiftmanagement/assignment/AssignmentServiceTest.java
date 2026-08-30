@@ -3,6 +3,7 @@ package com.hilimor.shiftmanagement.assignment;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.inOrder;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -34,6 +35,7 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
+import org.mockito.InOrder;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.http.HttpStatus;
@@ -95,7 +97,7 @@ class AssignmentServiceTest {
 
         when(shiftRepository.findByIdForUpdate(20L)).thenReturn(Optional.of(shift));
         when(teamManagerRepository.existsByManager_UsernameAndTeam_Id("manager1", 1L)).thenReturn(true);
-        when(userRepository.findById(2L)).thenReturn(Optional.of(employee));
+        when(userRepository.findByIdForUpdate(2L)).thenReturn(Optional.of(employee));
         when(teamMemberRepository.existsByUser_IdAndTeam_IdAndActiveTrue(2L, 1L)).thenReturn(true);
         when(assignmentRepository.existsByShift_IdAndEmployee_Id(20L, 2L)).thenReturn(false);
         when(assignmentRepository.countByShift_Id(20L)).thenReturn(0L);
@@ -136,6 +138,12 @@ class AssignmentServiceTest {
         verify(assignmentRepository).save(captor.capture());
         assertThat(captor.getValue().getShift()).isSameAs(shift);
         assertThat(captor.getValue().getEmployee()).isSameAs(employee);
+
+        InOrder locking = inOrder(shiftRepository, userRepository, assignmentRepository);
+        locking.verify(shiftRepository).findByIdForUpdate(20L);
+        locking.verify(userRepository).findByIdForUpdate(2L);
+        locking.verify(assignmentRepository).countByShift_Id(20L);
+        locking.verify(assignmentRepository).save(any(Assignment.class));
     }
 
     @Test
@@ -147,7 +155,7 @@ class AssignmentServiceTest {
 
         when(shiftRepository.findByIdForUpdate(20L)).thenReturn(Optional.of(shift));
         when(teamManagerRepository.existsByManager_UsernameAndTeam_Id("manager1", 1L)).thenReturn(true);
-        when(userRepository.findById(2L)).thenReturn(Optional.of(employee));
+        when(userRepository.findByIdForUpdate(2L)).thenReturn(Optional.of(employee));
         when(teamMemberRepository.existsByUser_IdAndTeam_IdAndActiveTrue(2L, 1L)).thenReturn(true);
         when(teamMemberStaffingRoleRepository.existsByTeamMember_User_IdAndTeamMember_Team_IdAndStaffingRole_Id(
                 2L,
@@ -196,7 +204,7 @@ class AssignmentServiceTest {
 
         when(shiftRepository.findByIdForUpdate(20L)).thenReturn(Optional.of(shift));
         when(teamManagerRepository.existsByManager_UsernameAndTeam_Id("manager1", 1L)).thenReturn(true);
-        when(userRepository.findById(2L)).thenReturn(Optional.of(employee));
+        when(userRepository.findByIdForUpdate(2L)).thenReturn(Optional.of(employee));
         when(teamMemberRepository.existsByUser_IdAndTeam_IdAndActiveTrue(2L, 1L)).thenReturn(true);
         when(teamMemberStaffingRoleRepository.existsByTeamMember_User_IdAndTeamMember_Team_IdAndStaffingRole_Id(
                 2L,
@@ -248,7 +256,7 @@ class AssignmentServiceTest {
 
         when(shiftRepository.findByIdForUpdate(20L)).thenReturn(Optional.of(shift));
         when(teamManagerRepository.existsByManager_UsernameAndTeam_Id("manager1", 1L)).thenReturn(true);
-        when(userRepository.findById(2L)).thenReturn(Optional.of(employee));
+        when(userRepository.findByIdForUpdate(2L)).thenReturn(Optional.of(employee));
         when(teamMemberRepository.existsByUser_IdAndTeam_IdAndActiveTrue(2L, 1L)).thenReturn(false);
 
         assertAssignmentConflict("TEAM_MEMBERSHIP");
@@ -263,7 +271,7 @@ class AssignmentServiceTest {
 
         when(shiftRepository.findByIdForUpdate(20L)).thenReturn(Optional.of(shift));
         when(teamManagerRepository.existsByManager_UsernameAndTeam_Id("manager1", 1L)).thenReturn(true);
-        when(userRepository.findById(2L)).thenReturn(Optional.of(employee));
+        when(userRepository.findByIdForUpdate(2L)).thenReturn(Optional.of(employee));
         when(teamMemberRepository.existsByUser_IdAndTeam_IdAndActiveTrue(2L, 1L)).thenReturn(true);
         when(assignmentRepository.existsByShift_IdAndEmployee_Id(20L, 2L)).thenReturn(true);
 
@@ -279,7 +287,7 @@ class AssignmentServiceTest {
 
         when(shiftRepository.findByIdForUpdate(20L)).thenReturn(Optional.of(shift));
         when(teamManagerRepository.existsByManager_UsernameAndTeam_Id("manager1", 1L)).thenReturn(true);
-        when(userRepository.findById(2L)).thenReturn(Optional.of(employee));
+        when(userRepository.findByIdForUpdate(2L)).thenReturn(Optional.of(employee));
         when(teamMemberRepository.existsByUser_IdAndTeam_IdAndActiveTrue(2L, 1L)).thenReturn(true);
         when(assignmentRepository.existsByShift_IdAndEmployee_Id(20L, 2L)).thenReturn(false);
         when(assignmentRepository.countByShift_Id(20L)).thenReturn(2L);
@@ -296,7 +304,7 @@ class AssignmentServiceTest {
 
         when(shiftRepository.findByIdForUpdate(20L)).thenReturn(Optional.of(shift));
         when(teamManagerRepository.existsByManager_UsernameAndTeam_Id("manager1", 1L)).thenReturn(true);
-        when(userRepository.findById(2L)).thenReturn(Optional.of(employee));
+        when(userRepository.findByIdForUpdate(2L)).thenReturn(Optional.of(employee));
         when(teamMemberRepository.existsByUser_IdAndTeam_IdAndActiveTrue(2L, 1L)).thenReturn(true);
         when(assignmentRepository.existsByShift_IdAndEmployee_Id(20L, 2L)).thenReturn(false);
         when(assignmentRepository.countByShift_Id(20L)).thenReturn(0L);
@@ -319,7 +327,7 @@ class AssignmentServiceTest {
 
         when(shiftRepository.findByIdForUpdate(20L)).thenReturn(Optional.of(shift));
         when(teamManagerRepository.existsByManager_UsernameAndTeam_Id("manager1", 1L)).thenReturn(true);
-        when(userRepository.findById(2L)).thenReturn(Optional.of(employee));
+        when(userRepository.findByIdForUpdate(2L)).thenReturn(Optional.of(employee));
         when(teamMemberRepository.existsByUser_IdAndTeam_IdAndActiveTrue(2L, 1L)).thenReturn(true);
         when(assignmentRepository.existsByShift_IdAndEmployee_Id(20L, 2L)).thenReturn(false);
         when(assignmentRepository.countByShift_Id(20L)).thenReturn(0L);
@@ -355,7 +363,7 @@ class AssignmentServiceTest {
 
         when(shiftRepository.findByIdForUpdate(20L)).thenReturn(Optional.of(shift));
         when(teamManagerRepository.existsByManager_UsernameAndTeam_Id("manager1", 1L)).thenReturn(true);
-        when(userRepository.findById(2L)).thenReturn(Optional.of(employee));
+        when(userRepository.findByIdForUpdate(2L)).thenReturn(Optional.of(employee));
         when(teamMemberRepository.existsByUser_IdAndTeam_IdAndActiveTrue(2L, 1L)).thenReturn(true);
         when(assignmentRepository.existsByShift_IdAndEmployee_Id(20L, 2L)).thenReturn(false);
         when(assignmentRepository.countByShift_Id(20L)).thenReturn(0L);
@@ -395,7 +403,7 @@ class AssignmentServiceTest {
 
         when(shiftRepository.findByIdForUpdate(20L)).thenReturn(Optional.of(shift));
         when(teamManagerRepository.existsByManager_UsernameAndTeam_Id("manager1", 1L)).thenReturn(true);
-        when(userRepository.findById(2L)).thenReturn(Optional.of(employee));
+        when(userRepository.findByIdForUpdate(2L)).thenReturn(Optional.of(employee));
         when(teamMemberRepository.existsByUser_IdAndTeam_IdAndActiveTrue(2L, 1L)).thenReturn(true);
         when(assignmentRepository.existsByShift_IdAndEmployee_Id(20L, 2L)).thenReturn(false);
         when(assignmentRepository.countByShift_Id(20L)).thenReturn(0L);
@@ -460,7 +468,7 @@ class AssignmentServiceTest {
         Schedule schedule = schedule(ScheduleStatus.DRAFT);
         Shift fullShift = shift(
                 schedule,
-                19L,
+                21L,
                 Instant.parse("2026-07-06T00:00:00Z"),
                 Instant.parse("2026-07-06T04:00:00Z"),
                 "Already covered",
@@ -480,12 +488,14 @@ class AssignmentServiceTest {
         when(scheduleRepository.findById(10L)).thenReturn(Optional.of(schedule));
         when(teamManagerRepository.existsByManager_UsernameAndTeam_Id("manager1", 1L)).thenReturn(true);
         when(shiftRepository.findBySchedule_IdOrderByStartTime(10L)).thenReturn(List.of(fullShift, targetShift));
-        when(shiftRepository.findByIdForUpdate(19L)).thenReturn(Optional.of(fullShift));
+        when(shiftRepository.findByIdForUpdate(21L)).thenReturn(Optional.of(fullShift));
         when(shiftRepository.findByIdForUpdate(20L)).thenReturn(Optional.of(targetShift));
         when(assignmentRepository.findByShift_Schedule_IdOrderByShift_StartTimeAscEmployee_FullNameAsc(10L))
                 .thenReturn(List.of(assignment(fullShift, busyEmployee)));
         when(teamMemberRepository.findByTeam_IdAndActiveTrue(1L))
-                .thenReturn(List.of(teamMember(busyEmployee), teamMember(freeEmployee)));
+                .thenReturn(List.of(teamMember(freeEmployee), teamMember(busyEmployee)));
+        when(userRepository.findByIdForUpdate(2L)).thenReturn(Optional.of(busyEmployee));
+        when(userRepository.findByIdForUpdate(3L)).thenReturn(Optional.of(freeEmployee));
         when(teamMemberRepository.existsByUser_IdAndTeam_IdAndActiveTrue(3L, 1L)).thenReturn(true);
         when(assignmentRepository.existsByShift_IdAndEmployee_Id(20L, 3L)).thenReturn(false);
         when(availabilityConstraintRepository.findByEmployee_IdAndStartTimeLessThanAndEndTimeGreaterThan(
@@ -527,6 +537,13 @@ class AssignmentServiceTest {
         assertThat(captor.getValue().getShift()).isSameAs(targetShift);
         assertThat(captor.getValue().getEmployee()).isSameAs(freeEmployee);
         verify(assignmentRepository).countByShift_Id(20L);
+
+        InOrder locking = inOrder(shiftRepository, userRepository, assignmentRepository);
+        locking.verify(shiftRepository).findByIdForUpdate(20L);
+        locking.verify(shiftRepository).findByIdForUpdate(21L);
+        locking.verify(userRepository).findByIdForUpdate(2L);
+        locking.verify(userRepository).findByIdForUpdate(3L);
+        locking.verify(assignmentRepository).save(any(Assignment.class));
     }
 
     @Test
@@ -549,6 +566,7 @@ class AssignmentServiceTest {
         when(assignmentRepository.findByShift_Schedule_IdOrderByShift_StartTimeAscEmployee_FullNameAsc(10L))
                 .thenReturn(List.of());
         when(teamMemberRepository.findByTeam_IdAndActiveTrue(1L)).thenReturn(List.of(teamMember(unavailableEmployee)));
+        when(userRepository.findByIdForUpdate(2L)).thenReturn(Optional.of(unavailableEmployee));
         when(teamMemberRepository.existsByUser_IdAndTeam_IdAndActiveTrue(2L, 1L)).thenReturn(true);
         when(assignmentRepository.existsByShift_IdAndEmployee_Id(20L, 2L)).thenReturn(false);
         when(availabilityConstraintRepository.findByEmployee_IdAndStartTimeLessThanAndEndTimeGreaterThan(

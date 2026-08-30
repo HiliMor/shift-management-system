@@ -73,8 +73,7 @@ public class AssignmentService {
             throw conflict("SCHEDULE_NOT_DRAFT", "Employees can be assigned only while the schedule is a draft");
         }
 
-        User employee = userRepository.findById(request.employeeId())
-                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Employee not found"));
+        User employee = lockEmployee(request.employeeId());
 
         Assignment savedAssignment = createValidatedAssignment(managerUsername, shift, employee, teamId);
 
@@ -97,16 +96,21 @@ public class AssignmentService {
         }
 
         List<Shift> shifts = shiftRepository.findBySchedule_IdOrderByStartTime(scheduleId);
+        // Lock all shifts, then all employees, in ID order before validating or writing assignments.
         List<Shift> lockedShifts = shifts.stream()
+                .sorted(Comparator.comparing(Shift::getId))
                 .map(this::lockShift)
+                .sorted(Comparator.comparing(Shift::getStartTime).thenComparing(Shift::getId))
                 .toList();
-        List<Assignment> existingAssignments = assignmentRepository
-                .findByShift_Schedule_IdOrderByShift_StartTimeAscEmployee_FullNameAsc(scheduleId);
         List<User> candidates = teamMemberRepository.findByTeam_IdAndActiveTrue(teamId)
                 .stream()
                 .map(TeamMember::getUser)
                 .filter(user -> user.getApplicationRole() == ApplicationRole.EMPLOYEE)
+                .sorted(Comparator.comparing(User::getId))
+                .map(user -> lockEmployee(user.getId()))
                 .toList();
+        List<Assignment> existingAssignments = assignmentRepository
+                .findByShift_Schedule_IdOrderByShift_StartTimeAscEmployee_FullNameAsc(scheduleId);
 
         Map<Long, List<Assignment>> assignmentsByShiftId = existingAssignments
                 .stream()
@@ -259,6 +263,11 @@ public class AssignmentService {
     private Shift lockShift(Shift shift) {
         return shiftRepository.findByIdForUpdate(shift.getId())
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Shift not found"));
+    }
+
+    private User lockEmployee(Long employeeId) {
+        return userRepository.findByIdForUpdate(employeeId)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Employee not found"));
     }
 
     private Assignment createValidatedAssignment(

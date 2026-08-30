@@ -40,6 +40,7 @@ Implemented:
 - Assignment delete endpoint: `DELETE /api/assignments/{assignmentId}`.
 - Assignment validation for team membership, duplicate assignment, shift capacity, availability constraints, overlap, and minimum rest.
 - Manual and automatic assignment capacity checks use a PostgreSQL row-level write lock so concurrent requests cannot overfill the same shift.
+- Employee row locks serialize concurrent manual/automatic assignment creation across schedules, so overlap and minimum-rest checks see committed assignments from preceding operations.
 - Basic automatic assignment endpoint: `POST /api/schedules/{scheduleId}/auto-assign`.
 - Automatic assignment ranks eligible employees by fewer assigned minutes in the schedule.
 - Automatic assignment returns a report with created assignments and remaining open slots.
@@ -1447,6 +1448,42 @@ The employee must be an active member of the requested team.
 The assigned staffing role must belong to the requested team.
 Assigning the same staffing role to the same team member twice returns `409 Conflict`.
 Assignment creation validates these employee staffing roles when a shift has a `requiredStaffingRoleId`.
+
+## Verification
+
+Run the fast unit suite without Docker:
+
+```bash
+mvn test
+```
+
+With Docker Desktop running, run the unit suite and PostgreSQL integration tests:
+
+```bash
+mvn verify -Ppostgres-it
+```
+
+The `postgres-it` profile runs `*IT` classes with Maven Failsafe. Testcontainers
+starts a disposable PostgreSQL 16 instance on a random port, applies the real
+Flyway migrations, and removes the container afterwards. Demo seeding, outbox
+dispatch, and JMS consumers are disabled in these tests. They do not connect to
+the development database or require the application servers to be running.
+The first run downloads test dependencies and Docker images as needed.
+
+`AssignmentConcurrencyIT` coordinates real overlapping transactions and checks
+PostgreSQL lock waits. Its six scenarios cover manual/manual overlap,
+minimum rest, manual/automatic overlap, automatic/automatic overlap, same-shift
+capacity, and successful non-conflicting assignments. The unit tests also check
+the deterministic lock order while preserving chronological automatic assignment.
+
+Locks are acquired for shifts first and employees second, with ascending IDs
+inside each group, and held until commit or rollback. Automatic assignment locks
+all candidate employees before validation; this deliberately serializes runs
+that share employees, even across different schedules.
+
+This protection is currently limited to assignment creation and automatic
+assignment. Request execution, shift edits/publication, and availability changes
+have additional open findings tracked in `../IMPLEMENTATION_PLAN.md`.
 
 ## Important Notes
 

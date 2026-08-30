@@ -616,6 +616,7 @@ sequenceDiagram
     AssignmentService->>Repositories: load shift, employee, and managed schedule context
     Repositories->>Database: queries
     AssignmentService->>Database: lock shift row with PESSIMISTIC_WRITE
+    AssignmentService->>Database: lock employee row with PESSIMISTIC_WRITE
     AssignmentService->>AssignmentValidator: validate team membership, role, capacity, availability, overlap, rest
     AssignmentValidator->>Repositories: run assignment validation queries
     AssignmentService->>Repositories: save Assignment
@@ -629,6 +630,18 @@ Manual and automatic assignment workflows acquire a PostgreSQL row-level
 transaction until it completes, so concurrent assignment requests for the same
 shift are serialized. This prevents two requests from both seeing the same open
 slot and inserting assignments beyond `requiredWorkers`.
+
+Both workflows also lock the employee row before assignment validation. A second
+assignment for that employee waits for the first transaction and then checks the
+committed overlap/rest state, including assignments in another schedule.
+Automatic assignment acquires all shift locks in ascending shift ID order, then
+all candidate employee locks in ascending user ID order. Assignment processing
+still uses chronological shift order and the existing workload ranking.
+
+This is not a blanket guarantee for every write path. Concurrent availability
+changes, request execution, and shift editing/publication remain separate
+remediation steps. PostgreSQL regression tests for the protected assignment paths
+run with `mvn verify -Ppostgres-it` from the backend directory.
 
 ### Availability Constraint
 

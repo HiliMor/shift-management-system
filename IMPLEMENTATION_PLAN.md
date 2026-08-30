@@ -1,9 +1,62 @@
 # Implementation Plan - Shift Management System
 
-Last updated: 2026-08-26
+Last updated: 2026-08-31
 
 This document is the working implementation plan for the project.  
 The goal is to build the system in small, understandable steps, while keeping each part easy to explain during the final presentation.
+
+## Submission Remediation Roadmap
+
+The 2026-08-31 review found correctness defects and gaps against the approved
+initial design. The roadmap below is the current priority, ahead of the older
+phase checklists. A passing unit suite or a successful prepared demo does not
+close these findings. Nothing below is complete until its acceptance checks run.
+
+Work one part at a time. At the end of each part, record the results and provide
+explicit `git add`, feature-prefixed commit, and `git push` commands. Do not stage
+local reference files, demo scripts, or submission documents unless requested.
+Do not remove an approved requirement simply to describe the implementation as
+complete. Any scope reduction needs an explicit decision and instructor approval.
+
+| Part | Status | Work and acceptance checks | Commit prefix |
+| --- | --- | --- | --- |
+| 1 | Complete | Serialize manual/automatic assignment checks and writes for the same employee. Real PostgreSQL tests prevent cross-shift overlap, insufficient rest, and same-shift overfilling under concurrent operations. | `Assignment concurrency:` |
+| 2 | Pending | Fix request invalidation rollback; coordinate transfer/swap execution, concurrent approvals, and competing requests. Invalid requests must persist as invalidated without partial ownership changes or an unexpected transaction error. | `Request execution:` |
+| 3 | Pending | Validate existing assignments when changing shift times, roles, rest, or capacity; reject invalid edits. Recheck assignment validity at publication, including when unfilled shifts are explicitly allowed. | `Schedule validation:` |
+| 4 | Pending | Complete cross-workflow concurrency: availability versus assignment, publication/reopening versus writes, and stale edits/deletions. Reuse a consistent locking order and map expected conflicts to clear HTTP responses instead of generic 500 errors. | `Workflow concurrency:` |
+| 5 | Pending | Make demo initialization explicit and non-destructive. Restarting after a transfer, deletion, or manual schedule creation must not restore old assignments, repopulate edited schedules, or adopt a user's schedule by date alone. | `Demo initialization:` |
+| 6 | Pending | Complete manager team-member and staffing-role management, including the minimum user onboarding needed by that screen. Implement API first, then UI in separate commits; enforce team ownership and preserve existing history when removing membership. | `Team management:` |
+| 7 | Pending | Add private manager notes for employees and shifts. Verify that employee APIs and UI never expose them. | `Manager notes:` |
+| 8 | Pending | Implement recurring employee assignment series, distinct from shift-template generation. Preview occurrences and report per-occurrence validation failures without invalid partial assignments. Split persistence/API/UI into separate commits as needed. | `Recurring assignments:` |
+| 9 | Pending | Complete manager shift editing/deletion in the UI and review template/slot lifecycle controls against the approved workflow. Make unsupported edits explicit rather than requiring Postman for normal management. | `Manager editing:` |
+| 10 | Pending | Complete monthly calendar and personal-shift filtering. Reconcile approved read-only access to other teams' published schedules with explicit backend authorization; never expose drafts or private notes. | `Schedule viewing:` |
+| 11 | Pending | Add JMS-backed request-status and team-join notifications. Verify outbox atomicity, retries/idempotence, correct recipients, and meaningful localized UI messages. Test broker interruption and document actual redelivery/DLQ behavior. | `Notification lifecycle:` |
+| 12 | Pending | Verify and simplify end-to-end UI flows: selected schedule consistency, stale async responses, action/error feedback, empty states, and responsive Hebrew/English layouts. Refactor only where it helps these workflows. | `Frontend workflow:` |
+| 13 | Pending | Correct installation/runtime requirements and update all three submission documents, diagrams, screenshots, and class/function explanations to match tested behavior. Keep the user guide concise and separate from demo setup. | `Submission documentation:` |
+| 14 | Pending | Run the final regression matrix: fresh isolated install, manager/employee end-to-end flows, negative authorization, concurrent writes, and JMS recovery. Record results and known limitations before release. | `Release verification:` |
+
+### Part 1 Boundary
+
+This part protects assignment creation and automatic assignment from each other.
+It does not yet claim to fix shift editing/publication, request execution, or
+concurrent availability changes; those have their own steps above. It needs no
+database migration and must not change the assignment API contract.
+
+Integration tests use a disposable PostgreSQL container with demo seeding and
+messaging disabled. They run separately using `mvn verify -Ppostgres-it`; normal
+`mvn test` remains the fast unit suite and does not require Docker.
+
+### Completion Record
+
+- Part 1 (2026-08-31): employee write locks added to manual/automatic assignment;
+  automatic assignment takes shift locks and employee locks in deterministic ID
+  order, then processes shifts chronologically. No migration or API change.
+- Regression baseline: before the production fix, four of the first five
+  PostgreSQL tests failed to observe serialization; same-shift capacity passed.
+- Verification: `mvn verify -Ppostgres-it` passed all 259 unit tests and six
+  PostgreSQL integration tests, with no failures or skips. Test data was isolated
+  from the development database; no submission documents were modified.
+- Next part: request invalidation rollback and coordinated transfer/swap execution.
 
 ## Working Sources
 

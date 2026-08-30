@@ -28,6 +28,7 @@ Implemented:
 - Manual assignment create, list, and delete operations.
 - Assignment validations for team membership, duplicate assignments, shift capacity, overlap, and minimum rest.
 - Manual and automatic assignment capacity checks use a PostgreSQL row-level write lock so concurrent requests cannot overfill the same shift.
+- Manual and automatic assignment also lock employee rows before validation, preventing concurrent assignment creation from bypassing overlap and minimum-rest checks across schedules.
 - Basic automatic assignment for draft schedules.
 - Automatic assignment ranks eligible employees by fewer assigned minutes in the schedule.
 - Automatic assignment returns a report with created assignments and remaining open slots.
@@ -107,7 +108,7 @@ Frontend:
 
 Planned next:
 
-- Submission documentation polish.
+- Follow the submission remediation roadmap in `IMPLEMENTATION_PLAN.md`: request execution, shift validation, remaining concurrency gaps, safe demo initialization, approved functional requirements, and submission verification.
 
 ## Backend Documentation
 
