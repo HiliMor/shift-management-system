@@ -34,6 +34,7 @@ Implemented:
 - Shift list endpoint: `GET /api/schedules/{scheduleId}/shifts`.
 - Shift update endpoint: `PUT /api/schedules/{scheduleId}/shifts/{shiftId}`.
 - Shift edits validate existing assignments and roll back invalid changes.
+- `ScheduleWriteLock` coordinates publication/reopening, draft deletion, shift writes, assignment writes, and template generation with request execution through the same team row lock.
 - Shift delete endpoint: `DELETE /api/schedules/{scheduleId}/shifts/{shiftId}`.
 - Initial assignment domain model.
 - Manual assignment endpoint: `POST /api/assignments`.
@@ -1510,10 +1511,11 @@ minimum rest, manual/automatic overlap, automatic/automatic overlap, same-shift
 capacity, and successful non-conflicting assignments. The unit tests also check
 the deterministic lock order while preserving chronological automatic assignment.
 
-Locks are acquired for shifts first and employees second, with ascending IDs
-inside each group, and held until commit or rollback. Automatic assignment locks
-all candidate employees before validation; this deliberately serializes runs
-that share employees, even across different schedules.
+Schedule writes first lock the owning team, then acquire any needed shift locks
+and employee locks, with ascending IDs inside each group. Locks are held until
+commit or rollback. Automatic assignment locks all candidate employees before
+validation; this deliberately serializes runs that share employees, even across
+different teams. Writes to different schedules in the same team also serialize.
 
 `SwapRequestExecutionIT` adds twelve PostgreSQL scenarios: invalid transfer,
 invalid second swap leg, successful full swap, successful/invalid employee-only
@@ -1558,11 +1560,37 @@ constraints. They do not acquire team/shift write locks afterwards, preserving t
 team-then-shifts-then-employees order used by request execution. The lock lasts
 until transaction completion; it is not a JVM-only lock.
 
-Existing-assignment validation is not a concurrency guarantee for every write
-path. Availability versus shift editing, publication/reopening versus writes,
-other stale edits/deletions, and expected lock-failure HTTP mapping remain in
-parts 4.2-4.3 of `../IMPLEMENTATION_PLAN.md`. No schema change or new JMS event
-type is introduced by this step.
+`ScheduleWorkflowConcurrencyIT` adds 28 scenarios. Nine draft operations are
+tested against publication in both commit orders: manual assignment, automatic
+assignment, shift creation/editing/deletion, assignment deletion, template
+generation, draft deletion, and publication itself. Other scenarios cover
+reopening versus transfer/full-swap execution, assigned-shift edits versus
+availability and cross-team assignment, unconfirmed publication after assignment
+removal, and assignment after reopening. Tests observe database lock waits and
+check committed shifts, owners, schedule status, and publication outbox events.
+Four `ScheduleWriteLockTest` unit tests check ordering, employee deduplication,
+and missing-entity handling after a wait.
+
+`ScheduleWriteLock` uses the same team row as `SwapRequestLock`. It refreshes
+schedule/shift/assignment state loaded before waiting, so draft-only writes do
+not proceed after publication. Duplicate publication returns `409` without
+another publication event; publication after committed draft deletion returns
+`404`. Reopening before request execution results in `INVALIDATED` and unchanged
+owners; execution committed first is preserved when reopening the schedule.
+
+Assigned-shift editing and publication lock the assigned employees before
+validating availability, overlap, and rest. Editing applies new fields only
+after these locks are held. Publication reads assignments once and reuses that
+protected list for readiness validation. The read-only readiness endpoint takes
+no write lock and is only a current preview, not a reservation or permission to
+skip validation when publishing.
+
+This is not a complete concurrency protocol for every API. Client-supplied
+versions for stale edits, remaining template/slot lifecycle races, and expected
+lock-failure HTTP mapping remain in part 4.3 of `../IMPLEMENTATION_PLAN.md`.
+Future team/member/role writes must join the protocol when implemented; demo
+initialization is handled separately in part 5. No schema change, response DTO
+change, or new JMS event type is introduced by this step.
 
 ## Important Notes
 

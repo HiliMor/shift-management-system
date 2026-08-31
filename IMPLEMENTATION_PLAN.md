@@ -51,11 +51,13 @@ messaging disabled. They run separately using `mvn verify -Ppostgres-it`; normal
 - 4.1 (complete): coordinate availability creation/deletion with manual and
   automatic assignment and transfer/swap execution through the employee lock.
   Verify both commit orders against PostgreSQL, including availability deletion.
-- 4.2 (pending): coordinate schedule publication/reopening and shift/template
-  writes with assignment validation. Availability versus shift edits belongs here.
+- 4.2 (complete): coordinate publication/reopening, draft deletion, shift and
+  assignment writes, and template generation. Lock assigned employees for shift
+  edits/publication; verify availability and cross-team assignment races.
 - 4.3 (pending): address remaining stale edits/deletions and map expected
-  concurrency failures to explicit HTTP conflicts. Completing 4.1 alone does not
-  close part 4 or protect every workflow that changes shift times or ownership.
+  concurrency failures to explicit HTTP conflicts. Include template/slot creation
+  and deletion versus generation, and client versions for stale edit submissions.
+  Completing 4.1-4.2 alone does not close part 4 or protect every API write path.
 
 ### Completion Record
 
@@ -115,8 +117,31 @@ messaging disabled. They run separately using `mvn verify -Ppostgres-it`; normal
 - Boundary: no development data, frontend, or local submission documents were
   changed. Browser interaction was not tested. Part 4 remains in progress;
   availability versus shift edits and other uncoordinated writes are not closed.
-- Next increment: 4.2, coordinate publication/reopening and shift/template writes
-  with the other write workflows; then 4.3 for remaining stale-write conflicts.
+- Part 4.2 (2026-08-31): `ScheduleWriteLock` coordinates publication/reopening,
+  draft deletion, shift CRUD writes, assignment creation/deletion/auto-assignment,
+  and template generation through the same team row used by `SwapRequestLock`.
+  Schedule/shift/assignment state read before waiting is refreshed afterwards.
+- Assigned-shift edits and publication also lock assigned employees in ID order
+  before validating. Manual assignment now locks the team before the shift,
+  preserving team-then-shifts-then-employees ordering. Same-team schedule writes
+  deliberately serialize, even for different schedules.
+- Part 4.2 baseline: all nine publication-first PostgreSQL cases failed to
+  observe serialization before the fix. Focused verification subsequently passed
+  101 unit tests and the first 26 new integration cases. Two final positive/negative
+  workflow cases were then added before the full run.
+- Part 4.2 verification: `mvn -B -Ppostgres-it clean verify` passed 263 unit tests
+  and 74 PostgreSQL integration tests with no failures or skips. The 28 new
+  scenarios verify both publication/write commit orders, reopening versus
+  transfer/swap execution, assigned-shift edits versus availability/cross-team
+  assignment, rejected unconfirmed publication after assignment removal, and
+  successful assignment after reopening. Stored state and outbox counts are checked.
+- Boundary: read-only readiness is a preview, not a reservation. No migration,
+  response DTO, frontend, development data, or submission-document changes.
+  Browser interaction was not tested. Template generation is coordinated with
+  schedule writes; template/slot lifecycle races and client-version conflicts
+  are still pending. Part 4 remains in progress.
+- Next increment: 4.3, remaining stale edits/deletions, template lifecycle
+  conflicts, and explicit handling of expected concurrency errors.
 
 ## Working Sources
 

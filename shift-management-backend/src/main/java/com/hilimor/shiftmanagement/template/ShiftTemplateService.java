@@ -12,6 +12,7 @@ import java.util.Objects;
 import com.hilimor.shiftmanagement.schedule.Schedule;
 import com.hilimor.shiftmanagement.schedule.ScheduleRepository;
 import com.hilimor.shiftmanagement.schedule.ScheduleStatus;
+import com.hilimor.shiftmanagement.schedule.ScheduleWriteLock;
 import com.hilimor.shiftmanagement.shift.Shift;
 import com.hilimor.shiftmanagement.shift.ShiftRepository;
 import com.hilimor.shiftmanagement.shift.ShiftResponse;
@@ -40,6 +41,7 @@ public class ShiftTemplateService {
     private final StaffingRoleRepository staffingRoleRepository;
     private final ScheduleRepository scheduleRepository;
     private final ShiftRepository shiftRepository;
+    private final ScheduleWriteLock writeLock;
 
     public ShiftTemplateService(
             ShiftTemplateRepository shiftTemplateRepository,
@@ -48,7 +50,8 @@ public class ShiftTemplateService {
             TeamManagerRepository teamManagerRepository,
             StaffingRoleRepository staffingRoleRepository,
             ScheduleRepository scheduleRepository,
-            ShiftRepository shiftRepository
+            ShiftRepository shiftRepository,
+            ScheduleWriteLock writeLock
     ) {
         this.shiftTemplateRepository = shiftTemplateRepository;
         this.templateSlotRepository = templateSlotRepository;
@@ -57,6 +60,7 @@ public class ShiftTemplateService {
         this.staffingRoleRepository = staffingRoleRepository;
         this.scheduleRepository = scheduleRepository;
         this.shiftRepository = shiftRepository;
+        this.writeLock = writeLock;
     }
 
     @Transactional
@@ -157,6 +161,7 @@ public class ShiftTemplateService {
         if (!Objects.equals(schedule.getTeam().getId(), shiftTemplate.getTeam().getId())) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Template must belong to the schedule team");
         }
+        writeLock.lockSchedule(schedule);
         if (schedule.getStatus() != ScheduleStatus.DRAFT) {
             throw new ResponseStatusException(HttpStatus.CONFLICT, "Template shifts can be generated only for draft schedules");
         }

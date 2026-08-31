@@ -28,6 +28,7 @@ import org.springframework.web.server.ResponseStatusException;
 import com.hilimor.shiftmanagement.schedule.Schedule;
 import com.hilimor.shiftmanagement.schedule.ScheduleRepository;
 import com.hilimor.shiftmanagement.schedule.ScheduleStatus;
+import com.hilimor.shiftmanagement.schedule.ScheduleWriteLock;
 import com.hilimor.shiftmanagement.shift.Shift;
 import com.hilimor.shiftmanagement.shift.ShiftRepository;
 import com.hilimor.shiftmanagement.staffing.StaffingRole;
@@ -60,6 +61,9 @@ class ShiftTemplateServiceTest {
 
     @Mock
     private ShiftRepository shiftRepository;
+
+    @Mock
+    private ScheduleWriteLock writeLock;
 
     @InjectMocks
     private ShiftTemplateService shiftTemplateService;

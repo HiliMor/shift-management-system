@@ -72,6 +72,9 @@ class ScheduleServiceTest {
     @Mock
     private EventOutboxService eventOutboxService;
 
+    @Mock
+    private ScheduleWriteLock writeLock;
+
     @InjectMocks
     private ScheduleService scheduleService;
 

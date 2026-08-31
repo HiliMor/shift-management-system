@@ -14,6 +14,7 @@ import java.util.stream.Collectors;
 import com.hilimor.shiftmanagement.schedule.Schedule;
 import com.hilimor.shiftmanagement.schedule.ScheduleRepository;
 import com.hilimor.shiftmanagement.schedule.ScheduleStatus;
+import com.hilimor.shiftmanagement.schedule.ScheduleWriteLock;
 import com.hilimor.shiftmanagement.shift.Shift;
 import com.hilimor.shiftmanagement.shift.ShiftRepository;
 import com.hilimor.shiftmanagement.team.TeamManagerRepository;
@@ -42,6 +43,7 @@ public class AssignmentService {
     private final TeamMemberRepository teamMemberRepository;
     private final TeamManagerRepository teamManagerRepository;
     private final AssignmentValidator assignmentValidator;
+    private final ScheduleWriteLock writeLock;
 
     public AssignmentService(
             AssignmentRepository assignmentRepository,
@@ -50,7 +52,8 @@ public class AssignmentService {
             UserRepository userRepository,
             TeamMemberRepository teamMemberRepository,
             TeamManagerRepository teamManagerRepository,
-            AssignmentValidator assignmentValidator
+            AssignmentValidator assignmentValidator,
+            ScheduleWriteLock writeLock
     ) {
         this.assignmentRepository = assignmentRepository;
         this.scheduleRepository = scheduleRepository;
@@ -59,15 +62,17 @@ public class AssignmentService {
         this.teamMemberRepository = teamMemberRepository;
         this.teamManagerRepository = teamManagerRepository;
         this.assignmentValidator = assignmentValidator;
+        this.writeLock = writeLock;
     }
 
     @Transactional
     public AssignmentResponse createAssignment(String managerUsername, CreateAssignmentRequest request) {
-        Shift shift = shiftRepository.findByIdForUpdate(request.shiftId())
+        Shift shift = shiftRepository.findById(request.shiftId())
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Shift not found"));
 
         Schedule schedule = shift.getSchedule();
         Long teamId = requireManagedSchedule(managerUsername, schedule, "Only a team manager can assign employees to this shift");
+        writeLock.lockShift(shift);
 
         if (schedule.getStatus() != ScheduleStatus.DRAFT) {
             throw conflict("SCHEDULE_NOT_DRAFT", "Employees can be assigned only while the schedule is a draft");
@@ -90,6 +95,7 @@ public class AssignmentService {
                 schedule,
                 "Only a team manager can auto-assign this schedule"
         );
+        writeLock.lockSchedule(schedule);
 
         if (schedule.getStatus() != ScheduleStatus.DRAFT) {
             throw conflict("SCHEDULE_NOT_DRAFT", "Automatic assignment can run only while the schedule is a draft");
@@ -198,11 +204,13 @@ public class AssignmentService {
 
         Schedule schedule = assignment.getShift().getSchedule();
         requireManagedSchedule(managerUsername, schedule, "Only a team manager can delete this assignment");
+        writeLock.lockAssignment(assignment);
 
         if (schedule.getStatus() != ScheduleStatus.DRAFT) {
             throw conflict("SCHEDULE_NOT_DRAFT", "Assignments can be deleted only while the schedule is a draft");
         }
 
+        writeLock.lockAssignedEmployees(List.of(assignment));
         assignmentRepository.delete(assignment);
         log.info(
                 "Assignment {} deleted from shift {} by manager {}",

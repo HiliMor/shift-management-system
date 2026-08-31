@@ -6,11 +6,13 @@ import java.time.ZoneId;
 import java.util.List;
 import java.util.Objects;
 
+import com.hilimor.shiftmanagement.assignment.Assignment;
 import com.hilimor.shiftmanagement.assignment.AssignmentRepository;
 import com.hilimor.shiftmanagement.assignment.AssignmentValidator;
 import com.hilimor.shiftmanagement.schedule.Schedule;
 import com.hilimor.shiftmanagement.schedule.ScheduleRepository;
 import com.hilimor.shiftmanagement.schedule.ScheduleStatus;
+import com.hilimor.shiftmanagement.schedule.ScheduleWriteLock;
 import com.hilimor.shiftmanagement.staffing.StaffingRole;
 import com.hilimor.shiftmanagement.staffing.StaffingRoleRepository;
 import com.hilimor.shiftmanagement.team.TeamManagerRepository;
@@ -29,6 +31,7 @@ public class ShiftService {
     private final StaffingRoleRepository staffingRoleRepository;
     private final AssignmentRepository assignmentRepository;
     private final AssignmentValidator assignmentValidator;
+    private final ScheduleWriteLock writeLock;
 
     public ShiftService(
             ScheduleRepository scheduleRepository,
@@ -36,7 +39,8 @@ public class ShiftService {
             TeamManagerRepository teamManagerRepository,
             StaffingRoleRepository staffingRoleRepository,
             AssignmentRepository assignmentRepository,
-            AssignmentValidator assignmentValidator
+            AssignmentValidator assignmentValidator,
+            ScheduleWriteLock writeLock
     ) {
         this.scheduleRepository = scheduleRepository;
         this.shiftRepository = shiftRepository;
@@ -44,6 +48,7 @@ public class ShiftService {
         this.staffingRoleRepository = staffingRoleRepository;
         this.assignmentRepository = assignmentRepository;
         this.assignmentValidator = assignmentValidator;
+        this.writeLock = writeLock;
     }
 
     @Transactional
@@ -53,6 +58,7 @@ public class ShiftService {
         }
 
         Schedule schedule = managedSchedule(username, scheduleId);
+        writeLock.lockSchedule(schedule);
 
         if (schedule.getStatus() != ScheduleStatus.DRAFT) {
             throw new ResponseStatusException(HttpStatus.CONFLICT, "Shifts can be created only in draft schedules");
@@ -91,6 +97,7 @@ public class ShiftService {
         }
 
         Schedule schedule = managedSchedule(username, scheduleId);
+        writeLock.lockSchedule(schedule);
 
         if (schedule.getStatus() != ScheduleStatus.DRAFT) {
             throw new ResponseStatusException(HttpStatus.CONFLICT, "Shifts can be updated only in draft schedules");
@@ -102,8 +109,11 @@ public class ShiftService {
         if (!Objects.equals(shift.getSchedule().getId(), scheduleId)) {
             throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Shift not found");
         }
+        writeLock.lockShift(shift);
         validateShiftWithinSchedule(schedule, request.startTime(), request.endTime());
         StaffingRole requiredStaffingRole = requiredStaffingRole(schedule, request.requiredStaffingRoleId());
+        List<Assignment> assignments = assignmentRepository.findByShift_IdOrderById(shiftId);
+        writeLock.lockAssignedEmployees(assignments);
 
         shift.updateDetails(
                 request.startTime(),
@@ -113,7 +123,7 @@ public class ShiftService {
                 request.minRestHours(),
                 requiredStaffingRole
         );
-        assignmentValidator.validateExistingAssignments(shift, assignmentRepository.findByShift_IdOrderById(shiftId));
+        assignmentValidator.validateExistingAssignments(shift, assignments);
 
         return ShiftResponse.from(shift);
     }
@@ -121,6 +131,7 @@ public class ShiftService {
     @Transactional
     public void deleteShift(String username, Long scheduleId, Long shiftId) {
         Schedule schedule = managedSchedule(username, scheduleId);
+        writeLock.lockSchedule(schedule);
 
         if (schedule.getStatus() != ScheduleStatus.DRAFT) {
             throw new ResponseStatusException(HttpStatus.CONFLICT, "Shifts can be deleted only in draft schedules");
@@ -133,6 +144,7 @@ public class ShiftService {
             throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Shift not found");
         }
 
+        writeLock.lockShift(shift);
         shiftRepository.delete(shift);
     }
 

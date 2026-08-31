@@ -39,6 +39,7 @@ public class ScheduleService {
     private final AssignmentRepository assignmentRepository;
     private final AssignmentValidator assignmentValidator;
     private final EventOutboxService eventOutboxService;
+    private final ScheduleWriteLock writeLock;
 
     public ScheduleService(
             ScheduleRepository scheduleRepository,
@@ -49,7 +50,8 @@ public class ScheduleService {
             ShiftRepository shiftRepository,
             AssignmentRepository assignmentRepository,
             AssignmentValidator assignmentValidator,
-            EventOutboxService eventOutboxService
+            EventOutboxService eventOutboxService,
+            ScheduleWriteLock writeLock
     ) {
         this.scheduleRepository = scheduleRepository;
         this.teamRepository = teamRepository;
@@ -60,6 +62,7 @@ public class ScheduleService {
         this.assignmentRepository = assignmentRepository;
         this.assignmentValidator = assignmentValidator;
         this.eventOutboxService = eventOutboxService;
+        this.writeLock = writeLock;
     }
 
     @Transactional
@@ -94,6 +97,7 @@ public class ScheduleService {
                 scheduleId,
                 "Only a team manager can delete this schedule"
         );
+        writeLock.lockSchedule(schedule);
 
         if (schedule.getStatus() != ScheduleStatus.DRAFT) {
             throw new ResponseStatusException(HttpStatus.CONFLICT, "Only draft schedules can be deleted");
@@ -113,12 +117,16 @@ public class ScheduleService {
                 scheduleId,
                 "Only a team manager can publish this schedule"
         );
+        writeLock.lockSchedule(schedule);
 
         if (schedule.getStatus() != ScheduleStatus.DRAFT) {
             throw new ResponseStatusException(HttpStatus.CONFLICT, "Only draft schedules can be published");
         }
 
-        SchedulePublicationReadinessResponse readiness = publicationReadiness(schedule, scheduleId);
+        List<Assignment> assignments = assignmentRepository
+                .findByShift_Schedule_IdOrderByShift_StartTimeAscEmployee_FullNameAsc(scheduleId);
+        writeLock.lockAssignedEmployees(assignments);
+        SchedulePublicationReadinessResponse readiness = publicationReadiness(schedule, assignments);
         if (!confirmUnfilled && !readiness.readyToPublish()) {
             throw new ResponseStatusException(
                     HttpStatus.CONFLICT,
@@ -150,6 +158,7 @@ public class ScheduleService {
                 scheduleId,
                 "Only a team manager can reopen this schedule"
         );
+        writeLock.lockSchedule(schedule);
 
         try {
             schedule.reopen();
@@ -280,13 +289,19 @@ public class ScheduleService {
     }
 
     private SchedulePublicationReadinessResponse publicationReadiness(Schedule schedule, Long scheduleId) {
-        Map<Long, List<Assignment>> assignmentsByShiftId = assignmentsByShiftId(scheduleId);
-        List<SchedulePublicationReadinessShiftResponse> shifts = shiftRepository.findBySchedule_IdOrderByStartTime(scheduleId)
+        return publicationReadiness(schedule, assignmentRepository
+                .findByShift_Schedule_IdOrderByShift_StartTimeAscEmployee_FullNameAsc(scheduleId));
+    }
+
+    private SchedulePublicationReadinessResponse publicationReadiness(Schedule schedule, List<Assignment> assignments) {
+        Map<Long, List<Assignment>> assignmentsByShiftId = assignments.stream()
+                .collect(Collectors.groupingBy(assignment -> assignment.getShift().getId()));
+        List<SchedulePublicationReadinessShiftResponse> shifts = shiftRepository.findBySchedule_IdOrderByStartTime(schedule.getId())
                 .stream()
                 .map(shift -> {
-                    List<Assignment> assignments = assignmentsByShiftId.getOrDefault(shift.getId(), List.of());
-                    assignmentValidator.validateExistingAssignments(shift, assignments);
-                    return SchedulePublicationReadinessShiftResponse.from(shift, assignments.size());
+                    List<Assignment> shiftAssignments = assignmentsByShiftId.getOrDefault(shift.getId(), List.of());
+                    assignmentValidator.validateExistingAssignments(shift, shiftAssignments);
+                    return SchedulePublicationReadinessShiftResponse.from(shift, shiftAssignments.size());
                 })
                 .toList();
 

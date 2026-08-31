@@ -441,12 +441,16 @@ sequenceDiagram
     participant EventOutboxService
     participant EventOutboxRepository
     participant AssignmentValidator
+    participant ScheduleWriteLock
 
     Client->>Security: POST /api/schedules/{scheduleId}/publish with Bearer token
     Security->>ScheduleController: authenticated request
     ScheduleController->>ScheduleService: publishSchedule(username, scheduleId, confirmUnfilled)
     ScheduleService->>ScheduleRepository: findById(scheduleId)
-    ScheduleService->>ScheduleService: validate manager and draft status
+    ScheduleService->>ScheduleService: validate manager access
+    ScheduleService->>ScheduleWriteLock: lockSchedule: lock team, refresh schedule
+    ScheduleService->>ScheduleService: validate refreshed draft status, load assignments
+    ScheduleService->>ScheduleWriteLock: lockAssignedEmployees in ascending ID order
     ScheduleService->>AssignmentValidator: validate existing assignments for each shift
     Note over ScheduleService,AssignmentValidator: Invalid assignment: 409, no publication or outbox event
     ScheduleService->>ScheduleService: require full staffing or explicit unfilled confirmation
@@ -526,8 +530,8 @@ sequenceDiagram
     ScheduleController->>ScheduleService: getPublicationReadiness(username, scheduleId)
     ScheduleService->>ScheduleRepository: findById(scheduleId)
     ScheduleService->>ScheduleService: validate manager access
-    ScheduleService->>ShiftRepository: find shifts in schedule order
     ScheduleService->>AssignmentRepository: find assignments for schedule shifts
+    ScheduleService->>ShiftRepository: find shifts in schedule order
     ScheduleService->>AssignmentValidator: validate existing assignments for each shift
     Note over ScheduleService,AssignmentValidator: Invalid assignment: 409 instead of a readiness report
     ScheduleService->>ScheduleService: calculate required workers, assigned workers, and open slots
@@ -541,21 +545,51 @@ minimum rest using the existing rules. The current assignment is excluded from
 overlap/rest queries, and a fully staffed shift is valid. `confirmUnfilled` only
 permits open slots; it never bypasses eligibility checks. Validation failure
 leaves the draft and publication number unchanged and creates no outbox event.
+The read-only readiness endpoint does not lock or reserve the schedule. Publishing
+revalidates under write locks, even if a previous readiness report was successful.
+
+### Schedule Write Coordination
+
+`ScheduleWriteLock` requires an existing service transaction. It acquires the
+same team row lock as `SwapRequestLock`, then refreshes entities loaded before
+waiting. Schedule publication/reopening/deletion, shift creation/editing/deletion,
+manual/automatic assignment, assignment deletion, and template generation all
+participate. This deliberately serializes writes to different schedules within
+one team. Different teams can proceed independently unless they share employees.
+
+The order is team, any needed shifts in ID order, then employees in ID order.
+Publication needs the team and assigned-employee locks; the team lock already
+prevents its shifts and assignments from changing through these write paths.
+Manual assignment now reads the shift without locking, checks manager access,
+then locks the team before the shift. It must not take a shift lock first and
+wait for the team, since request execution takes these locks in the opposite order.
+
+After waiting, draft-only actions return `409` if the schedule is now published.
+A schedule/shift/assignment removed during the wait returns `404` when refreshed.
+Two publications cannot produce two publication events for the same draft state.
+Reopening coordinates with request execution: reopening first invalidates the
+request at execution without changing owners; execution first keeps the completed
+transfer/swap when the schedule is reopened.
+
+This does not reject every edit submitted from an old browser view. Client
+versions, remaining template/slot lifecycle races, and expected lock-failure HTTP
+mapping remain in part 4.3. Demo writes and future team/member/role mutations need
+their own planned work; no all-writers guarantee is claimed for them.
 
 ### Shift Editing
 
-`ShiftService.updateShift` checks manager ownership, draft status, the schedule
-date range, and the required role's team before applying the proposed fields.
-It then loads the shift's existing assignments and calls the same validator in
-the service transaction. An eligibility or excess-capacity conflict propagates
+`ShiftService.updateShift` checks manager ownership, acquires the team lock, and
+refreshes the schedule before checking draft status. It locks and refreshes the
+shift, checks the schedule date range and role's team, then locks assigned
+employees in ID order before applying the proposed fields. It calls the shared
+validator in the service transaction. An eligibility or excess-capacity conflict propagates
 as `409`; rollback restores every edited field, including any changes Hibernate
 flushed while running validation queries. Assignment owners are not changed.
 
-These checks reject invalid sequential operations and legacy inconsistent data;
-they do not yet coordinate every concurrent write. Availability versus shift
-editing, publication/reopening versus writes, and other stale edits/deletions
-remain in parts 4.2-4.3 of the remediation roadmap. Availability versus assignment
-creation and transfer/swap execution is coordinated through the employee lock.
+The employee locks coordinate editing with availability changes and assignment
+creation in other teams. A conflicting operation committed first is visible to
+the second operation's validation. PostgreSQL tests verify both orders and
+rollback without ownership changes.
 
 ### Schedule Reopening
 
@@ -566,12 +600,15 @@ sequenceDiagram
     participant ScheduleController
     participant ScheduleService
     participant ScheduleRepository
+    participant ScheduleWriteLock
 
     Client->>Security: POST /api/schedules/{scheduleId}/reopen with Bearer token
     Security->>ScheduleController: authenticated request
     ScheduleController->>ScheduleService: reopenSchedule(username, scheduleId)
     ScheduleService->>ScheduleRepository: findById(scheduleId)
-    ScheduleService->>ScheduleService: validate manager and published status
+    ScheduleService->>ScheduleService: validate manager access
+    ScheduleService->>ScheduleWriteLock: lock team and refresh schedule
+    ScheduleService->>ScheduleService: validate refreshed published status
     ScheduleService->>ScheduleService: mark schedule DRAFT
     ScheduleService-->>ScheduleController: ScheduleResponse
     ScheduleController-->>Client: 200 OK
@@ -643,7 +680,8 @@ sequenceDiagram
     AssignmentController->>AssignmentService: createAssignment(username, request)
     AssignmentService->>Repositories: load shift, employee, and managed schedule context
     Repositories->>Database: queries
-    AssignmentService->>Database: lock shift row with PESSIMISTIC_WRITE
+    AssignmentService->>Database: lock team, refresh schedule, then lock and refresh shift
+    AssignmentService->>AssignmentService: validate refreshed draft status
     AssignmentService->>Database: lock employee row with PESSIMISTIC_WRITE
     AssignmentService->>AssignmentValidator: validate team membership, role, capacity, availability, overlap, rest
     AssignmentValidator->>Repositories: run assignment validation queries
@@ -653,8 +691,9 @@ sequenceDiagram
     AssignmentController-->>Client: 201 Created
 ```
 
-Manual and automatic assignment workflows acquire a PostgreSQL row-level
-`PESSIMISTIC_WRITE` lock before checking shift capacity. The lock is held by the
+Manual and automatic assignment workflows first lock the team and refresh the
+schedule, then acquire a PostgreSQL row-level `PESSIMISTIC_WRITE` shift lock
+before checking capacity. The lock is held by the
 transaction until it completes, so concurrent assignment requests for the same
 shift are serialized. This prevents two requests from both seeing the same open
 slot and inserting assignments beyond `requiredWorkers`.
@@ -666,12 +705,12 @@ Automatic assignment acquires all shift locks in ascending shift ID order, then
 all candidate employee locks in ascending user ID order. Assignment processing
 still uses chronological shift order and the existing workload ranking.
 
-Transfer/swap execution uses the same shift-then-employee lock order, as described
-below. Availability writes also take the employee lock before validation or
-deletion, without subsequently acquiring team/shift locks. This is not a blanket
-guarantee for every write path: shift editing/publication remain separate
-remediation steps. PostgreSQL regression tests run with `mvn verify -Ppostgres-it`
-from the backend directory.
+Transfer/swap execution uses the same team-then-shifts-then-employees lock order,
+as described below. Availability writes also take the employee lock before
+validation or deletion, without subsequently acquiring team/shift locks. Assigned
+shift edits and publication also take employee locks before eligibility checks.
+PostgreSQL regression tests run with `mvn verify -Ppostgres-it` from the backend
+directory. Remaining protocol boundaries are listed under Schedule Write Coordination.
 
 ### Availability Constraint
 
@@ -710,8 +749,8 @@ returns `409`. If the constraint commits first, manual assignment returns `409`,
 automatic assignment skips the employee, and transfer/swap execution records
 `INVALIDATED` without changing either owner. A waiting assignment can proceed
 after a conflicting constraint is deleted. These outcomes are verified in
-`AvailabilityConcurrencyIT`; publication and shift-edit races are not covered by
-this employee-only availability protocol yet.
+`AvailabilityConcurrencyIT`. `ScheduleWorkflowConcurrencyIT` additionally verifies
+availability versus assigned-shift editing through the same employee lock.
 
 ### Transfer Request Creation
 
@@ -896,7 +935,7 @@ flowchart LR
 | `health` | Public health check endpoint. |
 | `user` | User entity and broad application role such as `MANAGER` or `EMPLOYEE`. |
 | `team` | Teams, active team membership, team managers, and managed team listing for manager UI. |
-| `schedule` | Draft schedule creation, managed draft schedule listing, schedule publication, explicit unfilled-publication confirmation, schedule reopening, publication readiness, employee and manager published schedule list/details, and schedule lifecycle state fields. |
+| `schedule` | Draft schedule creation, managed draft schedule listing, publication/reopening, readiness, employee and manager published list/details, and shared write coordination through `ScheduleWriteLock`. |
 | `shift` | Shift creation, listing, update with existing-assignment revalidation, deletion, schedule-range validation, optional required staffing role storage, and optional source template slot storage for generated shifts. |
 | `assignment` | Manual assignment creation/list/delete, basic automatic assignment, and shared validation through `AssignmentValidator` for candidates and existing assignments, including capacity, membership, availability, overlap, rest, and required staffing roles. |
 | `request` | Transfer and swap request model, request statuses, transfer/swap creation, employee and manager scoped request lists, target employee approval/rejection, manager approval, requester cancellation, team-scoped write coordination through `SwapRequestLock`, and atomic approved request execution through `SwapRequestExecutor`. |

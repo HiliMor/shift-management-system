@@ -26,6 +26,7 @@ Implemented:
 - Manager-only draft schedule deletion, including its shifts and assignments.
 - Shift create, list, update, and delete operations.
 - Shift edits revalidate existing assignments; invalid changes return `409` and leave the stored shift unchanged.
+- Schedule publication/reopening, draft deletion, shift writes, assignment writes, and template generation share a team write lock and reload state after waiting. Assigned-shift edits also lock employees before validation.
 - Manual assignment create, list, and delete operations.
 - Assignment validations for team membership, duplicate assignments, shift capacity, overlap, and minimum rest.
 - Manual and automatic assignment capacity checks use a PostgreSQL row-level write lock so concurrent requests cannot overfill the same shift.
