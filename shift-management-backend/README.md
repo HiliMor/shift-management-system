@@ -33,6 +33,7 @@ Implemented:
 - Shift creation endpoint: `POST /api/schedules/{scheduleId}/shifts`.
 - Shift list endpoint: `GET /api/schedules/{scheduleId}/shifts`.
 - Shift update endpoint: `PUT /api/schedules/{scheduleId}/shifts/{shiftId}`.
+- Shift edits validate existing assignments and roll back invalid changes.
 - Shift delete endpoint: `DELETE /api/schedules/{scheduleId}/shifts/{shiftId}`.
 - Initial assignment domain model.
 - Manual assignment endpoint: `POST /api/assignments`.
@@ -680,6 +681,20 @@ Only managers assigned to the schedule's team can view publication readiness.
 This report is read-only. It does not publish the schedule and does not change assignments.
 Publishing a schedule with open slots requires `confirmUnfilled: true`.
 
+Both readiness and publication revalidate existing assignments: active team
+membership, required staffing role, availability, overlap with other assignments,
+minimum rest before/after the shift, and assigned count not exceeding capacity.
+The current assignment is excluded from its own overlap/rest queries. A full
+shift is valid; only excess staffing is a capacity conflict.
+
+If any assignment is invalid, readiness and publication return `409 Conflict`
+with a business code and the affected shift ID (and employee ID for eligibility
+failures), instead of reporting the schedule as ready. Publication performs these
+checks even when `confirmUnfilled` is `true`. Rejected publication leaves the
+schedule in `DRAFT`, does not increment its publication number, and creates no
+`schedule.published` outbox event. Correct the conflicting assignment or shift
+before retrying; confirmation only permits open slots.
+
 List published schedules for the authenticated employee:
 
 ```bash
@@ -905,6 +920,12 @@ Only managers assigned to the schedule's team can update shifts.
 Shifts can be updated only while the schedule is still `DRAFT`.
 Updated shift dates must stay inside the schedule date range according to the team's time zone.
 Updating a shift with `requiredStaffingRoleId: null` clears the professional role requirement.
+Existing employees must remain eligible for the edited shift, and
+`requiredWorkers` cannot be reduced below the number already assigned. An
+invalid edit returns `409` with a business code such as `SHIFT_OVERLAP`,
+`AVAILABILITY_CONFLICT`, `MINIMUM_REST`, `STAFFING_ROLE_REQUIRED`,
+`TEAM_MEMBERSHIP`, or `SHIFT_CAPACITY`. All edited fields roll back and existing
+assignments remain unchanged. Unassigned shifts can still be edited normally.
 
 Delete a shift from a draft schedule:
 
@@ -1507,9 +1528,18 @@ Repeated approvals or approval after cancellation/invalidation return `409`;
 validation failures during execution return the existing `200` response with
 status `INVALIDATED`. The API contract and schema are unchanged.
 
-Shift edits/publication, concurrent availability changes, and stale deletions
-still have open findings tracked in `../IMPLEMENTATION_PLAN.md`. These tests do
-not claim to protect those write paths or bypass the application's authorization.
+`ScheduleValidationIT` adds eighteen scenarios for shift editing, readiness, and
+publication. Negative cases cover availability, cross-schedule overlap, rest on
+both sides, increased rest requirements, missing staffing roles, excess capacity,
+and inactive membership. They verify stored-field rollback, unchanged assignment
+owners, blocked publication with either confirmation value, and no outbox event
+on failure. Positive cases cover qualified employees at exact rest/availability
+boundaries, full shifts, confirmed open slots, and editing unassigned shifts.
+
+Existing-assignment validation is not a concurrency guarantee for these new
+paths. Concurrent availability changes, publication/reopening versus writes,
+and stale edits/deletions remain in part 4 of `../IMPLEMENTATION_PLAN.md`. No
+schema change or new JMS event type is introduced by this validation step.
 
 ## Important Notes
 

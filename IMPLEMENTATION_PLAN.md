@@ -22,7 +22,7 @@ complete. Any scope reduction needs an explicit decision and instructor approval
 | --- | --- | --- | --- |
 | 1 | Complete | Serialize manual/automatic assignment checks and writes for the same employee. Real PostgreSQL tests prevent cross-shift overlap, insufficient rest, and same-shift overfilling under concurrent operations. | `Assignment concurrency:` |
 | 2 | Complete | Fix request invalidation rollback; coordinate transfer/swap execution, concurrent approvals, and competing requests. Invalid requests persist as invalidated without partial ownership changes or an unexpected transaction error, verified against PostgreSQL. | `Request execution:` |
-| 3 | Pending | Validate existing assignments when changing shift times, roles, rest, or capacity; reject invalid edits. Recheck assignment validity at publication, including when unfilled shifts are explicitly allowed. | `Schedule validation:` |
+| 3 | Complete | Validate existing assignments when changing shift times, roles, rest, or capacity; reject invalid edits. Readiness and publication recheck assignment validity even when unfilled shifts are explicitly allowed. PostgreSQL tests verify rollback and no publication event on failure. | `Schedule validation:` |
 | 4 | Pending | Complete cross-workflow concurrency: availability versus assignment, publication/reopening versus writes, and stale edits/deletions. Reuse a consistent locking order and map expected conflicts to clear HTTP responses instead of generic 500 errors. | `Workflow concurrency:` |
 | 5 | Pending | Make demo initialization explicit and non-destructive. Restarting after a transfer, deletion, or manual schedule creation must not restore old assignments, repopulate edited schedules, or adopt a user's schedule by date alone. | `Demo initialization:` |
 | 6 | Pending | Complete manager team-member and staffing-role management, including the minimum user onboarding needed by that screen. Implement API first, then UI in separate commits; enforce team ownership and preserve existing history when removing membership. | `Team management:` |
@@ -73,7 +73,24 @@ messaging disabled. They run separately using `mvn verify -Ppostgres-it`; normal
 - Boundary: same-team request writes deliberately serialize. Availability,
   publication/editing, and stale-deletion races remain in parts 3-4. Request
   lifecycle notifications remain in part 11; this part does not add JMS events.
-- Next part: validate existing assignments during shift edits and publication.
+- Part 3 (2026-08-31): shift editing, readiness, and publication now use shared
+  existing-assignment validation for capacity, membership, staffing role,
+  availability, overlap, and rest. Own assignments are excluded from overlap/rest
+  queries. Full capacity is valid; excess assignments are rejected.
+- Invalid edits return `409` and roll back all shift fields without removing
+  assignments. Invalid readiness/publication returns `409` even with
+  `confirmUnfilled=true`; rejected publication leaves the draft/publication
+  number unchanged and creates no outbox event. No migration or response DTO change.
+- Part 3 baseline: 15 negative PostgreSQL scenarios failed before the fix because
+  invalid edits/readiness were accepted; all three positive scenarios passed.
+- Part 3 verification: `mvn -B -Ppostgres-it clean verify` passed 259 unit tests
+  and 36 PostgreSQL integration tests (18 new validation scenarios), with no
+  failures or skips. Development data and local submission documents were not
+  modified. Browser interaction was not tested in this backend-only step.
+- Boundary: this adds validation, not a complete concurrency protocol for edits
+  and publication. Existing data is checked, not automatically repaired.
+- Next part: coordinate availability, publication/reopening, and stale
+  edits/deletions with the other write workflows.
 
 ## Working Sources
 

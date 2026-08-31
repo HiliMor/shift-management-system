@@ -7,6 +7,7 @@ import java.util.stream.Collectors;
 
 import com.hilimor.shiftmanagement.assignment.Assignment;
 import com.hilimor.shiftmanagement.assignment.AssignmentRepository;
+import com.hilimor.shiftmanagement.assignment.AssignmentValidator;
 import com.hilimor.shiftmanagement.messaging.EventOutboxService;
 import com.hilimor.shiftmanagement.shift.ShiftRepository;
 import com.hilimor.shiftmanagement.team.Team;
@@ -36,6 +37,7 @@ public class ScheduleService {
     private final UserRepository userRepository;
     private final ShiftRepository shiftRepository;
     private final AssignmentRepository assignmentRepository;
+    private final AssignmentValidator assignmentValidator;
     private final EventOutboxService eventOutboxService;
 
     public ScheduleService(
@@ -46,6 +48,7 @@ public class ScheduleService {
             UserRepository userRepository,
             ShiftRepository shiftRepository,
             AssignmentRepository assignmentRepository,
+            AssignmentValidator assignmentValidator,
             EventOutboxService eventOutboxService
     ) {
         this.scheduleRepository = scheduleRepository;
@@ -55,6 +58,7 @@ public class ScheduleService {
         this.userRepository = userRepository;
         this.shiftRepository = shiftRepository;
         this.assignmentRepository = assignmentRepository;
+        this.assignmentValidator = assignmentValidator;
         this.eventOutboxService = eventOutboxService;
     }
 
@@ -114,14 +118,12 @@ public class ScheduleService {
             throw new ResponseStatusException(HttpStatus.CONFLICT, "Only draft schedules can be published");
         }
 
-        if (!confirmUnfilled) {
-            SchedulePublicationReadinessResponse readiness = publicationReadiness(schedule, scheduleId);
-            if (!readiness.readyToPublish()) {
-                throw new ResponseStatusException(
-                        HttpStatus.CONFLICT,
-                        "Schedule is not fully assigned; confirm publication with unfilled shifts"
-                );
-            }
+        SchedulePublicationReadinessResponse readiness = publicationReadiness(schedule, scheduleId);
+        if (!confirmUnfilled && !readiness.readyToPublish()) {
+            throw new ResponseStatusException(
+                    HttpStatus.CONFLICT,
+                    "Schedule is not fully assigned; confirm publication with unfilled shifts"
+            );
         }
 
         try {
@@ -281,10 +283,11 @@ public class ScheduleService {
         Map<Long, List<Assignment>> assignmentsByShiftId = assignmentsByShiftId(scheduleId);
         List<SchedulePublicationReadinessShiftResponse> shifts = shiftRepository.findBySchedule_IdOrderByStartTime(scheduleId)
                 .stream()
-                .map(shift -> SchedulePublicationReadinessShiftResponse.from(
-                        shift,
-                        assignmentsByShiftId.getOrDefault(shift.getId(), List.of()).size()
-                ))
+                .map(shift -> {
+                    List<Assignment> assignments = assignmentsByShiftId.getOrDefault(shift.getId(), List.of());
+                    assignmentValidator.validateExistingAssignments(shift, assignments);
+                    return SchedulePublicationReadinessShiftResponse.from(shift, assignments.size());
+                })
                 .toList();
 
         return SchedulePublicationReadinessResponse.from(schedule, shifts);

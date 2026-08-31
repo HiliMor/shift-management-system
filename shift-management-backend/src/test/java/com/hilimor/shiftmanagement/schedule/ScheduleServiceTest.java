@@ -27,6 +27,7 @@ import org.springframework.web.server.ResponseStatusException;
 
 import com.hilimor.shiftmanagement.assignment.Assignment;
 import com.hilimor.shiftmanagement.assignment.AssignmentRepository;
+import com.hilimor.shiftmanagement.assignment.AssignmentValidator;
 import com.hilimor.shiftmanagement.messaging.EventOutboxService;
 import com.hilimor.shiftmanagement.shift.Shift;
 import com.hilimor.shiftmanagement.shift.ShiftRepository;
@@ -64,6 +65,9 @@ class ScheduleServiceTest {
 
     @Mock
     private AssignmentRepository assignmentRepository;
+
+    @Mock
+    private AssignmentValidator assignmentValidator;
 
     @Mock
     private EventOutboxService eventOutboxService;
@@ -358,8 +362,8 @@ class ScheduleServiceTest {
         assertThat(response.status()).isEqualTo(ScheduleStatus.PUBLISHED);
         assertThat(response.publicationNumber()).isEqualTo(1);
         assertThat(schedule.getStatus()).isEqualTo(ScheduleStatus.PUBLISHED);
-        verify(shiftRepository, never()).findBySchedule_IdOrderByStartTime(any());
-        verify(assignmentRepository, never()).findByShift_Schedule_IdOrderByShift_StartTimeAscEmployee_FullNameAsc(any());
+        verify(shiftRepository).findBySchedule_IdOrderByStartTime(10L);
+        verify(assignmentRepository).findByShift_Schedule_IdOrderByShift_StartTimeAscEmployee_FullNameAsc(10L);
         verify(eventOutboxService).createEvent(eq("schedule.published"), any(SchedulePublishedEvent.class));
     }
 

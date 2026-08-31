@@ -440,13 +440,16 @@ sequenceDiagram
     participant ScheduleRepository
     participant EventOutboxService
     participant EventOutboxRepository
+    participant AssignmentValidator
 
     Client->>Security: POST /api/schedules/{scheduleId}/publish with Bearer token
     Security->>ScheduleController: authenticated request
     ScheduleController->>ScheduleService: publishSchedule(username, scheduleId, confirmUnfilled)
     ScheduleService->>ScheduleRepository: findById(scheduleId)
     ScheduleService->>ScheduleService: validate manager and draft status
-    ScheduleService->>ScheduleService: require readiness or explicit unfilled confirmation
+    ScheduleService->>AssignmentValidator: validate existing assignments for each shift
+    Note over ScheduleService,AssignmentValidator: Invalid assignment: 409, no publication or outbox event
+    ScheduleService->>ScheduleService: require full staffing or explicit unfilled confirmation
     ScheduleService->>ScheduleService: mark schedule PUBLISHED
     ScheduleService->>EventOutboxService: createEvent("schedule.published", payload)
     EventOutboxService->>EventOutboxRepository: save pending event
@@ -516,6 +519,7 @@ sequenceDiagram
     participant ScheduleRepository
     participant ShiftRepository
     participant AssignmentRepository
+    participant AssignmentValidator
 
     Client->>Security: GET /api/schedules/{scheduleId}/publication-readiness with Bearer token
     Security->>ScheduleController: authenticated request
@@ -524,10 +528,33 @@ sequenceDiagram
     ScheduleService->>ScheduleService: validate manager access
     ScheduleService->>ShiftRepository: find shifts in schedule order
     ScheduleService->>AssignmentRepository: find assignments for schedule shifts
+    ScheduleService->>AssignmentValidator: validate existing assignments for each shift
+    Note over ScheduleService,AssignmentValidator: Invalid assignment: 409 instead of a readiness report
     ScheduleService->>ScheduleService: calculate required workers, assigned workers, and open slots
     ScheduleService-->>ScheduleController: SchedulePublicationReadinessResponse
     ScheduleController-->>Client: 200 OK
 ```
+
+Readiness and publication share `AssignmentValidator.validateExistingAssignments`.
+It checks capacity, active membership, required role, availability, overlap, and
+minimum rest using the existing rules. The current assignment is excluded from
+overlap/rest queries, and a fully staffed shift is valid. `confirmUnfilled` only
+permits open slots; it never bypasses eligibility checks. Validation failure
+leaves the draft and publication number unchanged and creates no outbox event.
+
+### Shift Editing
+
+`ShiftService.updateShift` checks manager ownership, draft status, the schedule
+date range, and the required role's team before applying the proposed fields.
+It then loads the shift's existing assignments and calls the same validator in
+the service transaction. An eligibility or excess-capacity conflict propagates
+as `409`; rollback restores every edited field, including any changes Hibernate
+flushed while running validation queries. Assignment owners are not changed.
+
+These checks reject invalid sequential operations and legacy inconsistent data;
+they do not yet coordinate every concurrent write. Availability versus assignment,
+publication/reopening versus writes, and stale edits/deletions remain part 4 of
+the remediation roadmap.
 
 ### Schedule Reopening
 
@@ -849,8 +876,8 @@ flowchart LR
 | `user` | User entity and broad application role such as `MANAGER` or `EMPLOYEE`. |
 | `team` | Teams, active team membership, team managers, and managed team listing for manager UI. |
 | `schedule` | Draft schedule creation, managed draft schedule listing, schedule publication, explicit unfilled-publication confirmation, schedule reopening, publication readiness, employee and manager published schedule list/details, and schedule lifecycle state fields. |
-| `shift` | Shift creation, listing, update, deletion, schedule-range validation, optional required staffing role storage, and optional source template slot storage for generated shifts. |
-| `assignment` | Manual assignment creation/list/delete, basic automatic assignment, and shared assignment validation through `AssignmentValidator`, including capacity, availability, overlap, rest, and required staffing roles. |
+| `shift` | Shift creation, listing, update with existing-assignment revalidation, deletion, schedule-range validation, optional required staffing role storage, and optional source template slot storage for generated shifts. |
+| `assignment` | Manual assignment creation/list/delete, basic automatic assignment, and shared validation through `AssignmentValidator` for candidates and existing assignments, including capacity, membership, availability, overlap, rest, and required staffing roles. |
 | `request` | Transfer and swap request model, request statuses, transfer/swap creation, employee and manager scoped request lists, target employee approval/rejection, manager approval, requester cancellation, team-scoped write coordination through `SwapRequestLock`, and atomic approved request execution through `SwapRequestExecutor`. |
 | `availability` | Employee unavailable time ranges and conflict checks with assignments. |
 | `staffing` | Team-specific professional roles, role create/list API, employee role assignment/list API, and persistence for assigning roles to team members. |

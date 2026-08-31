@@ -25,6 +25,7 @@ Implemented:
 - Draft schedule creation.
 - Manager-only draft schedule deletion, including its shifts and assignments.
 - Shift create, list, update, and delete operations.
+- Shift edits revalidate existing assignments; invalid changes return `409` and leave the stored shift unchanged.
 - Manual assignment create, list, and delete operations.
 - Assignment validations for team membership, duplicate assignments, shift capacity, overlap, and minimum rest.
 - Manual and automatic assignment capacity checks use a PostgreSQL row-level write lock so concurrent requests cannot overfill the same shift.
@@ -54,6 +55,7 @@ Implemented:
 - Manager published schedule list endpoint.
 - Publication readiness report.
 - Explicit confirmation for publishing schedules with unfilled shifts.
+- Readiness and publication validate existing assignments, including capacity, membership, roles, availability, overlap, and rest. Confirmation allows open slots, not invalid assignments.
 - Notification persistence model.
 - Personal notification list, unread count, and mark-as-read backend endpoints.
 - Event outbox persistence model for asynchronous messaging.
@@ -110,7 +112,7 @@ Frontend:
 
 Planned next:
 
-- Follow the submission remediation roadmap in `IMPLEMENTATION_PLAN.md`: shift validation, remaining concurrency gaps, safe demo initialization, approved functional requirements, and submission verification.
+- Follow the submission remediation roadmap in `IMPLEMENTATION_PLAN.md`: remaining cross-workflow concurrency gaps, safe demo initialization, approved functional requirements, and submission verification.
 
 ## Backend Documentation
 

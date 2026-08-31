@@ -6,6 +6,8 @@ import java.time.ZoneId;
 import java.util.List;
 import java.util.Objects;
 
+import com.hilimor.shiftmanagement.assignment.AssignmentRepository;
+import com.hilimor.shiftmanagement.assignment.AssignmentValidator;
 import com.hilimor.shiftmanagement.schedule.Schedule;
 import com.hilimor.shiftmanagement.schedule.ScheduleRepository;
 import com.hilimor.shiftmanagement.schedule.ScheduleStatus;
@@ -25,17 +27,23 @@ public class ShiftService {
     private final ShiftRepository shiftRepository;
     private final TeamManagerRepository teamManagerRepository;
     private final StaffingRoleRepository staffingRoleRepository;
+    private final AssignmentRepository assignmentRepository;
+    private final AssignmentValidator assignmentValidator;
 
     public ShiftService(
             ScheduleRepository scheduleRepository,
             ShiftRepository shiftRepository,
             TeamManagerRepository teamManagerRepository,
-            StaffingRoleRepository staffingRoleRepository
+            StaffingRoleRepository staffingRoleRepository,
+            AssignmentRepository assignmentRepository,
+            AssignmentValidator assignmentValidator
     ) {
         this.scheduleRepository = scheduleRepository;
         this.shiftRepository = shiftRepository;
         this.teamManagerRepository = teamManagerRepository;
         this.staffingRoleRepository = staffingRoleRepository;
+        this.assignmentRepository = assignmentRepository;
+        this.assignmentValidator = assignmentValidator;
     }
 
     @Transactional
@@ -105,6 +113,7 @@ public class ShiftService {
                 request.minRestHours(),
                 requiredStaffingRole
         );
+        assignmentValidator.validateExistingAssignments(shift, assignmentRepository.findByShift_IdOrderById(shiftId));
 
         return ShiftResponse.from(shift);
     }

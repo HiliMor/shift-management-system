@@ -12,6 +12,8 @@ import java.time.LocalDate;
 import java.util.List;
 import java.util.Optional;
 
+import com.hilimor.shiftmanagement.assignment.AssignmentRepository;
+import com.hilimor.shiftmanagement.assignment.AssignmentValidator;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
@@ -45,6 +47,12 @@ class ShiftServiceTest {
 
     @Mock
     private StaffingRoleRepository staffingRoleRepository;
+
+    @Mock
+    private AssignmentRepository assignmentRepository;
+
+    @Mock
+    private AssignmentValidator assignmentValidator;
 
     @InjectMocks
     private ShiftService shiftService;
@@ -307,6 +315,7 @@ class ShiftServiceTest {
 
         ShiftResponse response = shiftService.updateShift("manager1", 10L, 20L, request);
 
+        verify(assignmentValidator).validateExistingAssignments(shift, List.of());
         assertThat(response.id()).isEqualTo(20L);
         assertThat(response.scheduleId()).isEqualTo(10L);
         assertThat(response.startTime()).isEqualTo(Instant.parse("2026-07-06T14:00:00Z"));

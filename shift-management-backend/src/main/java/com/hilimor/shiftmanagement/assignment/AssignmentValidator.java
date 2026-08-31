@@ -2,6 +2,7 @@ package com.hilimor.shiftmanagement.assignment;
 
 import java.time.Duration;
 import java.time.Instant;
+import java.util.List;
 import java.util.Objects;
 
 import com.hilimor.shiftmanagement.availability.AvailabilityConstraintRepository;
@@ -72,6 +73,29 @@ public class AssignmentValidator {
         validateAvailability(shift, employeeId);
         validateNoOverlap(shift, employeeId, ignoredAssignmentId);
         validateMinimumRest(shift, employeeId, ignoredAssignmentId);
+    }
+
+    public void validateExistingAssignments(Shift shift, List<Assignment> assignments) {
+        // Full capacity is valid here: these employees are already assigned, not new candidates.
+        if (assignments.size() > shift.getRequiredWorkers()) {
+            throw conflict("SHIFT_CAPACITY", "Shift #" + shift.getId()
+                    + " has more assigned employees than required workers");
+        }
+
+        Long teamId = shift.getSchedule().getTeam().getId();
+        for (Assignment assignment : assignments) {
+            Long employeeId = assignment.getEmployee().getId();
+            try {
+                validateTeamMembership(employeeId, teamId);
+                validateRequiredStaffingRole(shift, employeeId, teamId);
+                validateAvailability(shift, employeeId);
+                validateNoOverlap(shift, employeeId, assignment.getId());
+                validateMinimumRest(shift, employeeId, assignment.getId());
+            } catch (AssignmentValidationException exception) {
+                throw new AssignmentValidationException(exception.getStatus(), exception.getCode(),
+                        "Shift #" + shift.getId() + ", employee #" + employeeId + ": " + exception.getMessage());
+            }
+        }
     }
 
     private void validateTeamMembership(Long employeeId, Long teamId) {
