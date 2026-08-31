@@ -1,8 +1,8 @@
 # Install, Run And Verify
 
 This guide covers local development and presentation. For design decisions see
-[Architecture](current-backend-architecture.md); for feature gaps see
-[Known Limitations](../README.md#known-limitations).
+[Architecture](current-backend-architecture.md); for the scope of this release see
+[Current Scope](../README.md#current-scope).
 
 ## Requirements
 

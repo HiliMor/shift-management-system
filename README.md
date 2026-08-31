@@ -3,18 +3,6 @@
 A Java course project for managing team schedules, employee assignments,
 availability constraints, and shift transfers/swaps, with a Hebrew/English React UI.
 
-## Documentation
-
-- [Install, run, and verify](docs/RUN_LOCALLY.md): first-time setup, demo accounts,
-  tests, Postman, troubleshooting, and safe shutdown.
-- [Architecture](docs/current-backend-architecture.md): layers, domain model,
-  authorization, transactions, concurrency, JMS, and implementation boundaries.
-
-The updated design document, bilingual user guide, and installation guide for
-the instructor are submitted separately as DOCX files. Local planning notes are
-not required to build or run the repository. Known limitations remain below;
-removing duplicate documentation does not change the agreed project requirements.
-
 ## Implemented Workflows
 
 | User | Available workflows |
@@ -26,12 +14,12 @@ removing duplicate documentation does not change the agreed project requirements
 | Employee | Submit/delete unavailability constraints; create transfer/swap requests; approve/reject incoming requests; cancel outgoing active requests. |
 | Both | Sign in using JWT; view personal notifications, mark them as read, and follow links to schedules or requests. |
 
-Staffing-role creation and assignment also have manager-scoped APIs; not every
-administrative API has a UI. Managers have a separate read-only published view.
+Staffing-role creation and assignment also have manager-scoped APIs. Managers
+have a separate read-only published view.
 Scheduling checks cover active membership, required roles, capacity, unavailable
 times, overlap, and minimum rest. Updates/deletions reject stale client state.
-Calendar weeks start on Sunday. Templates generate shifts, not recurring employee
-assignment series. JMS currently handles publication and request-creation events.
+Calendar weeks start on Sunday. Templates generate shifts across a date range,
+and JMS delivers notifications for publication and request-creation events.
 
 ## Technology And Structure
 
@@ -47,34 +35,42 @@ docs/                      Architecture and run instructions
 docs/postman/              API collection and local environment JSON
 ```
 
-Start with [Run Locally](docs/RUN_LOCALLY.md). On an empty database, the explicit
-initialization command creates demo login accounts; ordinary restarts never reset
-or refill application data. There is no public registration endpoint.
+## Getting Started And Documentation
+
+Start with [Install, run, and verify](docs/RUN_LOCALLY.md) for prerequisites,
+first-time setup, demo accounts, Postman examples, and troubleshooting. On an empty
+database, the explicit initialization command creates demo accounts and data;
+ordinary restarts preserve existing application data.
+
+The [architecture guide](docs/current-backend-architecture.md) describes the
+layers, domain model, authorization, transactions, concurrency, and JMS flow.
+The updated design document, bilingual user guide, and instructor installation
+guide are submitted separately as DOCX files.
 
 ## Verification
 
-Tests stay in the repository. They do not become demo data, and frontend tests
-are not included in the production bundle. See [verification commands and their
-limits](docs/RUN_LOCALLY.md#verification).
+The test suite covers business rules, API behavior, and PostgreSQL transaction
+and concurrency scenarios, alongside frontend checks. Tests are included with
+the source; frontend test files are not part of the production bundle.
 
 The 2026-08-31 run passed 279 backend unit tests, 156 PostgreSQL integration tests,
 17 frontend Node tests, four focused browser checks, and the frontend build.
-These results are not a claim of complete end-to-end or production verification.
+Full live end-to-end flows, a clean-machine installation, load testing, and broker
+outage/redelivery/DLQ behavior have not yet been verified. See the
+[verification guide](docs/RUN_LOCALLY.md#verification) for commands and test scope.
 
-## Known Limitations
+## Current Scope
 
-- No UI/API for creating teams or managers; initial setup is technical administration.
-  New employee creation is supported, but adding existing accounts to teams,
-  member editing/removal, invitations, and password reset/change are not implemented.
-- Private manager notes and recurring employee assignment series are not implemented.
-- Employees cannot view published schedules of teams they do not actively belong to.
-- Template/slot editing and individual slot deletion are not implemented.
-- JMS request-status/team-join notifications are not implemented. Some notification
-  content remains English even when the surrounding UI is Hebrew.
-- Full live end-to-end verification, a clean-machine installation rehearsal, broad
-  load tests, and broker outage/redelivery/DLQ verification remain outstanding.
-- Configuration contains development-only credentials and a JWT secret. The current
-  broker container has no persistent data volume. This is not a public-deployment setup.
+- Team and manager setup is a technical administration step. The manager UI
+  supports creating new employees with team roles; adding existing accounts,
+  editing/removing members, and ongoing role administration are not fully available
+  through the UI. Employee schedule access is limited to active team memberships.
+- Private manager notes, recurring employee assignment series, template/slot
+  editing, individual slot deletion, and request-status/team-join notifications
+  are not implemented in this version. Some notification content remains English
+  within the bilingual UI.
 
-The [architecture](docs/current-backend-architecture.md) explains these boundaries
-and the trade-off of serializing scheduling writes within each team.
+The supplied configuration is intended for local development and course
+demonstration. It uses development credentials and a development JWT secret;
+the broker has no persistent data volume. Public deployment would require
+additional security, persistence, and operational verification work.

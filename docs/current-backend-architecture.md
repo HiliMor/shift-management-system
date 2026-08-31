@@ -1,8 +1,8 @@
 # System Architecture
 
 This document describes the implemented system. Setup, tests, and API examples
-are in [Run Locally](RUN_LOCALLY.md); outstanding requirements are listed in
-[Known Limitations](../README.md#known-limitations).
+are in [Run Locally](RUN_LOCALLY.md); the release scope is summarized in
+[Current Scope](../README.md#current-scope).
 
 ## System Context
 
