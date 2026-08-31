@@ -100,6 +100,8 @@ Implemented:
 - Transfer execution for teams with `MANAGER` approval policy.
 - Swap execution for teams with `EMPLOYEE` or `MANAGER` approval policy.
 - Separate `SwapRequestExecutor` component for approved transfer and swap execution.
+- `SwapRequestLock` serializes request creation and status changes per team and refreshes state after waiting. Final execution also locks shifts and employees in the same order as manual/automatic assignment.
+- Failed execution validation persists `INVALIDATED` without partial ownership changes. Successful execution invalidates active requests that reference either changed assignment.
 - Basic business logging for schedule, assignment, transfer and swap request, outbox, and notification workflows.
 - Unified JSON error responses for API and security errors.
 
@@ -1481,9 +1483,33 @@ inside each group, and held until commit or rollback. Automatic assignment locks
 all candidate employees before validation; this deliberately serializes runs
 that share employees, even across different schedules.
 
-This protection is currently limited to assignment creation and automatic
-assignment. Request execution, shift edits/publication, and availability changes
-have additional open findings tracked in `../IMPLEMENTATION_PLAN.md`.
+`SwapRequestExecutionIT` adds twelve PostgreSQL scenarios: invalid transfer,
+invalid second swap leg, successful full swap, successful/invalid employee-only
+approval, duplicate manager approvals, overlapping transfers, cross-column active
+request creation, legacy competing-request invalidation, cancellation versus
+approval, stale ownership after transfer, and transfer versus manual assignment
+in another team. Assertions read the committed database state; concurrency tests
+also observe an actual PostgreSQL lock wait.
+
+Request creation, approval, rejection, and cancellation first lock the source
+team row. This intentionally serializes request writes within one team, including
+requests sharing an assignment across the source/target columns. Unrelated teams
+do not share that team lock. Final execution additionally locks all affected
+shifts and both employees, ordered by ID, so shared employees coordinate with
+manual/automatic assignments across teams. Locks last until the enclosing
+service transaction completes.
+
+The executor calls the non-transactional `AssignmentValidator` directly inside
+that transaction. A caught validation failure can therefore persist
+`INVALIDATED`, without an inner service transaction marking the entire operation
+rollback-only. Both swap legs are validated before changing either owner.
+Repeated approvals or approval after cancellation/invalidation return `409`;
+validation failures during execution return the existing `200` response with
+status `INVALIDATED`. The API contract and schema are unchanged.
+
+Shift edits/publication, concurrent availability changes, and stale deletions
+still have open findings tracked in `../IMPLEMENTATION_PLAN.md`. These tests do
+not claim to protect those write paths or bypass the application's authorization.
 
 ## Important Notes
 

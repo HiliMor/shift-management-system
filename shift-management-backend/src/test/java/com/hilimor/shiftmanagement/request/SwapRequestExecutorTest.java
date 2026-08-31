@@ -9,7 +9,7 @@ import java.time.Instant;
 import java.time.LocalDate;
 
 import com.hilimor.shiftmanagement.assignment.Assignment;
-import com.hilimor.shiftmanagement.assignment.AssignmentService;
+import com.hilimor.shiftmanagement.assignment.AssignmentValidator;
 import com.hilimor.shiftmanagement.assignment.AssignmentValidationException;
 import com.hilimor.shiftmanagement.schedule.Schedule;
 import com.hilimor.shiftmanagement.schedule.ScheduleStatus;
@@ -34,7 +34,13 @@ class SwapRequestExecutorTest {
     private static final Instant EXECUTED_AT = Instant.parse("2026-08-04T19:00:00Z");
 
     @Mock
-    private AssignmentService assignmentService;
+    private AssignmentValidator assignmentValidator;
+
+    @Mock
+    private SwapRequestLock requestLock;
+
+    @Mock
+    private SwapRequestRepository swapRequestRepository;
 
     @InjectMocks
     private SwapRequestExecutor swapRequestExecutor;
@@ -53,7 +59,7 @@ class SwapRequestExecutorTest {
 
         assertThat(request.getStatus()).isEqualTo(SwapRequestStatus.PENDING_EMPLOYEE);
         assertThat(request.getSourceAssignment().getEmployee()).isSameAs(requester);
-        verifyNoInteractions(assignmentService);
+        verifyNoInteractions(assignmentValidator, requestLock, swapRequestRepository);
     }
 
     @Test
@@ -72,7 +78,8 @@ class SwapRequestExecutorTest {
         assertThat(request.getStatus()).isEqualTo(SwapRequestStatus.APPROVED);
         assertThat(request.getSourceAssignment().getEmployee()).isSameAs(targetEmployee);
         assertThat(request.getSourceAssignment().getAssignedAt()).isEqualTo(EXECUTED_AT);
-        verify(assignmentService).validateEmployeeCanReceiveTransferredAssignment(
+        verify(requestLock).lockExecution(request);
+        verify(assignmentValidator).validateEmployeeCanReceiveTransferredAssignment(
                 request.getSourceAssignment().getShift(),
                 targetEmployee
         );
@@ -96,7 +103,7 @@ class SwapRequestExecutorTest {
         assertThat(request.getStatus()).isEqualTo(SwapRequestStatus.INVALIDATED);
         assertThat(request.getUpdatedAt()).isEqualTo(EXECUTED_AT);
         assertThat(request.getSourceAssignment().getEmployee()).isSameAs(otherEmployee);
-        verifyNoInteractions(assignmentService);
+        verifyNoInteractions(assignmentValidator, swapRequestRepository);
     }
 
     @Test
@@ -114,7 +121,7 @@ class SwapRequestExecutorTest {
 
         assertThat(request.getStatus()).isEqualTo(SwapRequestStatus.INVALIDATED);
         assertThat(request.getSourceAssignment().getEmployee()).isSameAs(requester);
-        verifyNoInteractions(assignmentService);
+        verifyNoInteractions(assignmentValidator, swapRequestRepository);
     }
 
     @Test
@@ -127,7 +134,7 @@ class SwapRequestExecutorTest {
                 schedule(ScheduleStatus.PUBLISHED)
         );
         request.approveByTargetEmployee(EXECUTED_AT, SwapApprovalPolicy.EMPLOYEE);
-        doThrow(validationException()).when(assignmentService)
+        doThrow(validationException()).when(assignmentValidator)
                 .validateEmployeeCanReceiveTransferredAssignment(
                         request.getSourceAssignment().getShift(),
                         targetEmployee
@@ -160,12 +167,12 @@ class SwapRequestExecutorTest {
         assertThat(targetAssignment.getEmployee()).isSameAs(requester);
         assertThat(sourceAssignment.getAssignedAt()).isEqualTo(EXECUTED_AT);
         assertThat(targetAssignment.getAssignedAt()).isEqualTo(EXECUTED_AT);
-        verify(assignmentService).validateEmployeeCanReceiveSwappedAssignment(
+        verify(assignmentValidator).validateEmployeeCanReceiveSwappedAssignment(
                 sourceAssignment.getShift(),
                 targetEmployee,
                 targetAssignment
         );
-        verify(assignmentService).validateEmployeeCanReceiveSwappedAssignment(
+        verify(assignmentValidator).validateEmployeeCanReceiveSwappedAssignment(
                 targetAssignment.getShift(),
                 requester,
                 sourceAssignment
@@ -190,7 +197,7 @@ class SwapRequestExecutorTest {
         assertThat(request.getStatus()).isEqualTo(SwapRequestStatus.INVALIDATED);
         assertThat(request.getSourceAssignment().getEmployee()).isSameAs(requester);
         assertThat(request.getTargetAssignment().getEmployee()).isSameAs(otherEmployee);
-        verifyNoInteractions(assignmentService);
+        verifyNoInteractions(assignmentValidator, swapRequestRepository);
     }
 
     @Test
@@ -209,7 +216,7 @@ class SwapRequestExecutorTest {
         assertThat(request.getStatus()).isEqualTo(SwapRequestStatus.INVALIDATED);
         assertThat(request.getSourceAssignment().getEmployee()).isSameAs(requester);
         assertThat(request.getTargetAssignment().getEmployee()).isSameAs(targetEmployee);
-        verifyNoInteractions(assignmentService);
+        verifyNoInteractions(assignmentValidator, swapRequestRepository);
     }
 
     @Test
@@ -224,7 +231,7 @@ class SwapRequestExecutorTest {
         Assignment sourceAssignment = request.getSourceAssignment();
         Assignment targetAssignment = request.getTargetAssignment();
         request.approveByTargetEmployee(EXECUTED_AT, SwapApprovalPolicy.EMPLOYEE);
-        doThrow(validationException()).when(assignmentService)
+        doThrow(validationException()).when(assignmentValidator)
                 .validateEmployeeCanReceiveSwappedAssignment(
                         sourceAssignment.getShift(),
                         targetEmployee,

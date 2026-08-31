@@ -21,7 +21,7 @@ complete. Any scope reduction needs an explicit decision and instructor approval
 | Part | Status | Work and acceptance checks | Commit prefix |
 | --- | --- | --- | --- |
 | 1 | Complete | Serialize manual/automatic assignment checks and writes for the same employee. Real PostgreSQL tests prevent cross-shift overlap, insufficient rest, and same-shift overfilling under concurrent operations. | `Assignment concurrency:` |
-| 2 | Pending | Fix request invalidation rollback; coordinate transfer/swap execution, concurrent approvals, and competing requests. Invalid requests must persist as invalidated without partial ownership changes or an unexpected transaction error. | `Request execution:` |
+| 2 | Complete | Fix request invalidation rollback; coordinate transfer/swap execution, concurrent approvals, and competing requests. Invalid requests persist as invalidated without partial ownership changes or an unexpected transaction error, verified against PostgreSQL. | `Request execution:` |
 | 3 | Pending | Validate existing assignments when changing shift times, roles, rest, or capacity; reject invalid edits. Recheck assignment validity at publication, including when unfilled shifts are explicitly allowed. | `Schedule validation:` |
 | 4 | Pending | Complete cross-workflow concurrency: availability versus assignment, publication/reopening versus writes, and stale edits/deletions. Reuse a consistent locking order and map expected conflicts to clear HTTP responses instead of generic 500 errors. | `Workflow concurrency:` |
 | 5 | Pending | Make demo initialization explicit and non-destructive. Restarting after a transfer, deletion, or manual schedule creation must not restore old assignments, repopulate edited schedules, or adopt a user's schedule by date alone. | `Demo initialization:` |
@@ -56,7 +56,24 @@ messaging disabled. They run separately using `mvn verify -Ppostgres-it`; normal
 - Verification: `mvn verify -Ppostgres-it` passed all 259 unit tests and six
   PostgreSQL integration tests, with no failures or skips. Test data was isolated
   from the development database; no submission documents were modified.
-- Next part: request invalidation rollback and coordinated transfer/swap execution.
+- Part 2 (2026-08-31): `SwapRequestLock` serializes request creation and all status
+  changes per team, then refreshes pre-wait state. Execution locks shifts and
+  employees in ID order, coordinating with manual/automatic assignment.
+- The executor now uses `AssignmentValidator` directly in the caller's
+  transaction. Failed eligibility checks persist `INVALIDATED`; both swap legs
+  validate before either owner changes. Successful execution invalidates active
+  requests referencing either changed assignment. No migration or API change.
+- Part 2 regression baseline: eight of the first nine PostgreSQL scenarios
+  failed before the fix: two rollback-only errors and six missing lock waits.
+- Part 2 verification: `mvn -B -Ppostgres-it clean verify` passed 259 unit tests
+  and 18 PostgreSQL integration tests (six assignment and twelve request tests),
+  with no failures or skips. Both approval policies and concurrent manual
+  assignment in another team are covered. Development data and local submission
+  documents were not modified.
+- Boundary: same-team request writes deliberately serialize. Availability,
+  publication/editing, and stale-deletion races remain in parts 3-4. Request
+  lifecycle notifications remain in part 11; this part does not add JMS events.
+- Next part: validate existing assignments during shift edits and publication.
 
 ## Working Sources
 

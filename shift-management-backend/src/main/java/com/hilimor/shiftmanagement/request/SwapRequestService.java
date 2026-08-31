@@ -35,6 +35,7 @@ public class SwapRequestService {
     private final SwapRequestRepository swapRequestRepository;
     private final AssignmentRepository assignmentRepository;
     private final SwapRequestExecutor swapRequestExecutor;
+    private final SwapRequestLock requestLock;
     private final UserRepository userRepository;
     private final TeamMemberRepository teamMemberRepository;
     private final TeamManagerRepository teamManagerRepository;
@@ -44,6 +45,7 @@ public class SwapRequestService {
             SwapRequestRepository swapRequestRepository,
             AssignmentRepository assignmentRepository,
             SwapRequestExecutor swapRequestExecutor,
+            SwapRequestLock requestLock,
             UserRepository userRepository,
             TeamMemberRepository teamMemberRepository,
             TeamManagerRepository teamManagerRepository,
@@ -52,6 +54,7 @@ public class SwapRequestService {
         this.swapRequestRepository = swapRequestRepository;
         this.assignmentRepository = assignmentRepository;
         this.swapRequestExecutor = swapRequestExecutor;
+        this.requestLock = requestLock;
         this.userRepository = userRepository;
         this.teamMemberRepository = teamMemberRepository;
         this.teamManagerRepository = teamManagerRepository;
@@ -65,6 +68,7 @@ public class SwapRequestService {
 
         Assignment sourceAssignment = assignmentRepository.findById(request.sourceAssignmentId())
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Assignment not found"));
+        requestLock.lockSource(sourceAssignment);
 
         if (!Objects.equals(sourceAssignment.getEmployee().getId(), requester.getId())) {
             throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Assignment not found");
@@ -130,6 +134,7 @@ public class SwapRequestService {
 
         Assignment sourceAssignment = assignmentRepository.findById(request.sourceAssignmentId())
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Source assignment not found"));
+        requestLock.lockSource(sourceAssignment);
 
         if (!Objects.equals(sourceAssignment.getEmployee().getId(), requester.getId())) {
             throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Source assignment not found");
@@ -278,6 +283,7 @@ public class SwapRequestService {
 
         SwapRequest request = swapRequestRepository.findById(requestId)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Request not found"));
+        requestLock.lockRequest(request);
 
         if (!Objects.equals(request.getTargetEmployee().getId(), targetEmployee.getId())) {
             throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Request not found");
@@ -312,6 +318,7 @@ public class SwapRequestService {
 
         SwapRequest request = swapRequestRepository.findById(requestId)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Request not found"));
+        requestLock.lockRequest(request);
 
         Long teamId = request.getSourceAssignment().getShift().getSchedule().getTeam().getId();
         if (!teamManagerRepository.existsByManager_UsernameAndTeam_Id(username, teamId)) {
@@ -347,6 +354,7 @@ public class SwapRequestService {
 
         SwapRequest request = swapRequestRepository.findById(requestId)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Request not found"));
+        requestLock.lockRequest(request);
 
         if (!Objects.equals(request.getTargetEmployee().getId(), targetEmployee.getId())) {
             throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Request not found");
@@ -374,6 +382,7 @@ public class SwapRequestService {
 
         SwapRequest request = swapRequestRepository.findById(requestId)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Request not found"));
+        requestLock.lockRequest(request);
 
         if (!Objects.equals(request.getRequester().getId(), requester.getId())) {
             throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Request not found");

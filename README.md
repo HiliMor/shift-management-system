@@ -73,6 +73,8 @@ Implemented:
 - Manager approval and transfer execution for teams with `MANAGER` approval policy.
 - Swap execution for teams with `EMPLOYEE` or `MANAGER` approval policy.
 - Separate approved transfer/swap execution component in the backend request workflow.
+- Transfer/swap validation failures persist as `INVALIDATED` without changing assignment owners.
+- Request writes are serialized per team; final execution also locks shifts and employees to coordinate with manual/automatic assignment. Duplicate approvals return a conflict, and successful execution invalidates competing active requests.
 - Basic business logging for schedule, assignment, transfer and swap request, outbox, and notification workflows.
 - Unified JSON error responses for API and security errors.
 - Development seed data for a presentation scenario with users, a managed team, staffing roles, draft and published schedules, assignments, notifications, and an active transfer request.
@@ -108,7 +110,7 @@ Frontend:
 
 Planned next:
 
-- Follow the submission remediation roadmap in `IMPLEMENTATION_PLAN.md`: request execution, shift validation, remaining concurrency gaps, safe demo initialization, approved functional requirements, and submission verification.
+- Follow the submission remediation roadmap in `IMPLEMENTATION_PLAN.md`: shift validation, remaining concurrency gaps, safe demo initialization, approved functional requirements, and submission verification.
 
 ## Backend Documentation
 

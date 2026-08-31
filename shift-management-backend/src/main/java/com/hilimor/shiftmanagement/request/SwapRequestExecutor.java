@@ -1,10 +1,12 @@
 package com.hilimor.shiftmanagement.request;
 
 import java.time.Instant;
+import java.util.List;
 import java.util.Objects;
+import java.util.stream.Stream;
 
 import com.hilimor.shiftmanagement.assignment.Assignment;
-import com.hilimor.shiftmanagement.assignment.AssignmentService;
+import com.hilimor.shiftmanagement.assignment.AssignmentValidator;
 import com.hilimor.shiftmanagement.assignment.AssignmentValidationException;
 import com.hilimor.shiftmanagement.schedule.ScheduleStatus;
 import com.hilimor.shiftmanagement.user.User;
@@ -12,6 +14,7 @@ import com.hilimor.shiftmanagement.user.User;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Component;
+import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 
 @Component
@@ -19,24 +22,36 @@ public class SwapRequestExecutor {
 
     private static final Logger log = LoggerFactory.getLogger(SwapRequestExecutor.class);
 
-    private final AssignmentService assignmentService;
+    private final AssignmentValidator assignmentValidator;
+    private final SwapRequestLock requestLock;
+    private final SwapRequestRepository swapRequestRepository;
 
-    public SwapRequestExecutor(AssignmentService assignmentService) {
-        this.assignmentService = assignmentService;
+    public SwapRequestExecutor(
+            AssignmentValidator assignmentValidator,
+            SwapRequestLock requestLock,
+            SwapRequestRepository swapRequestRepository
+    ) {
+        this.assignmentValidator = assignmentValidator;
+        this.requestLock = requestLock;
+        this.swapRequestRepository = swapRequestRepository;
     }
 
-    @Transactional
+    @Transactional(propagation = Propagation.MANDATORY)
     public void executeIfReady(SwapRequest request, Instant executedAt) {
         if (request.getStatus() != SwapRequestStatus.APPROVED) {
             return;
         }
 
+        requestLock.lockExecution(request);
         if (request.getType() == SwapRequestType.TRANSFER) {
             executeTransfer(request, executedAt);
-            return;
+        } else {
+            executeSwap(request, executedAt);
         }
 
-        executeSwap(request, executedAt);
+        if (request.getStatus() == SwapRequestStatus.APPROVED) {
+            invalidateCompetingRequests(request, executedAt);
+        }
     }
 
     private void executeTransfer(SwapRequest request, Instant executedAt) {
@@ -54,7 +69,7 @@ public class SwapRequestExecutor {
         }
 
         try {
-            assignmentService.validateEmployeeCanReceiveTransferredAssignment(
+            assignmentValidator.validateEmployeeCanReceiveTransferredAssignment(
                     sourceAssignment.getShift(),
                     targetEmployee
             );
@@ -105,12 +120,12 @@ public class SwapRequestExecutor {
         }
 
         try {
-            assignmentService.validateEmployeeCanReceiveSwappedAssignment(
+            assignmentValidator.validateEmployeeCanReceiveSwappedAssignment(
                     sourceAssignment.getShift(),
                     targetEmployee,
                     targetAssignment
             );
-            assignmentService.validateEmployeeCanReceiveSwappedAssignment(
+            assignmentValidator.validateEmployeeCanReceiveSwappedAssignment(
                     targetAssignment.getShift(),
                     requester,
                     sourceAssignment
@@ -137,6 +152,21 @@ public class SwapRequestExecutor {
                 targetEmployee.getId(),
                 request.getId()
         );
+    }
+
+    private void invalidateCompetingRequests(SwapRequest request, Instant executedAt) {
+        List<Long> assignmentIds = Stream.of(request.getSourceAssignment(), request.getTargetAssignment())
+                .filter(Objects::nonNull)
+                .map(Assignment::getId)
+                .toList();
+
+        swapRequestRepository.findActiveReferencingAssignments(
+                request.getId(),
+                assignmentIds,
+                List.of(SwapRequestStatus.PENDING_EMPLOYEE, SwapRequestStatus.PENDING_MANAGER)
+        ).forEach(competingRequest -> invalidateRequest(
+                competingRequest, executedAt, "Assignment owner changed through another request"
+        ));
     }
 
     private void invalidateRequest(SwapRequest request, Instant invalidatedAt, String reason) {

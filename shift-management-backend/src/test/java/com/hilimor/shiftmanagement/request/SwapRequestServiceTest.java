@@ -53,6 +53,9 @@ class SwapRequestServiceTest {
     private SwapRequestExecutor swapRequestExecutor;
 
     @Mock
+    private SwapRequestLock requestLock;
+
+    @Mock
     private UserRepository userRepository;
 
     @Mock
@@ -111,6 +114,7 @@ class SwapRequestServiceTest {
 
         ArgumentCaptor<SwapRequest> captor = ArgumentCaptor.forClass(SwapRequest.class);
         verify(swapRequestRepository).save(captor.capture());
+        verify(requestLock).lockSource(sourceAssignment);
         assertThat(captor.getValue().getRequester()).isSameAs(requester);
         assertThat(captor.getValue().getSourceAssignment()).isSameAs(sourceAssignment);
         assertThat(captor.getValue().getTargetEmployee()).isSameAs(targetEmployee);

@@ -638,10 +638,11 @@ Automatic assignment acquires all shift locks in ascending shift ID order, then
 all candidate employee locks in ascending user ID order. Assignment processing
 still uses chronological shift order and the existing workload ranking.
 
-This is not a blanket guarantee for every write path. Concurrent availability
-changes, request execution, and shift editing/publication remain separate
-remediation steps. PostgreSQL regression tests for the protected assignment paths
-run with `mvn verify -Ppostgres-it` from the backend directory.
+Transfer/swap execution uses the same shift-then-employee lock order, as described
+below. This is not a blanket guarantee for every write path: concurrent
+availability changes and shift editing/publication remain separate remediation
+steps. PostgreSQL regression tests run with `mvn verify -Ppostgres-it` from the
+backend directory.
 
 ### Availability Constraint
 
@@ -678,8 +679,10 @@ sequenceDiagram
     Client->>Security: POST /api/requests/transfers with Bearer token
     Security->>SwapRequestController: authenticated request
     SwapRequestController->>SwapRequestService: createTransferRequest(username, request)
-    SwapRequestService->>Repositories: load requester, source assignment, target employee
+    SwapRequestService->>Repositories: load requester and source assignment
     Repositories->>Database: queries
+    SwapRequestService->>Database: lock source team through SwapRequestLock; refresh source state
+    SwapRequestService->>Repositories: load target employee
     SwapRequestService->>SwapRequestService: validate employee requester, ownership, published schedule, target team membership, no active request
     SwapRequestService->>Repositories: save SwapRequest
     Repositories->>Database: insert swap_requests row
@@ -701,8 +704,10 @@ sequenceDiagram
     Client->>Security: POST /api/requests/swaps with Bearer token
     Security->>SwapRequestController: authenticated request
     SwapRequestController->>SwapRequestService: createSwapRequest(username, request)
-    SwapRequestService->>Repositories: load requester, source assignment, target assignment
+    SwapRequestService->>Repositories: load requester and source assignment
     Repositories->>Database: queries
+    SwapRequestService->>Database: lock source team through SwapRequestLock; refresh source state
+    SwapRequestService->>Repositories: load target assignment
     SwapRequestService->>SwapRequestService: validate ownership, published schedules, same team, target membership, no active requests
     SwapRequestService->>Repositories: save SwapRequest
     Repositories->>Database: insert swap_requests row with target_assignment_id
@@ -720,20 +725,24 @@ sequenceDiagram
     participant SwapRequestService
     participant SwapRequest
     participant SwapRequestExecutor
-    participant AssignmentService
+    participant SwapRequestLock
+    participant AssignmentValidator
     participant Assignment
 
     Client->>Security: POST /api/requests/{requestId}/employee-approve with Bearer token
     Security->>SwapRequestController: authenticated request
     SwapRequestController->>SwapRequestService: approveByTargetEmployee(username, requestId)
+    SwapRequestService->>SwapRequestLock: lock team and refresh request/assignment state
     SwapRequestService->>SwapRequestService: validate current user is the target employee
     SwapRequestService->>SwapRequest: approveByTargetEmployee(now, teamApprovalPolicy)
     SwapRequest->>SwapRequest: PENDING_EMPLOYEE to APPROVED or PENDING_MANAGER
     SwapRequestService->>SwapRequestExecutor: executeIfReady(request, approvedAt)
     alt Team policy is EMPLOYEE
-        SwapRequestExecutor->>AssignmentService: validateEmployeeCanReceiveTransferredAssignment(shift, targetEmployee)
+        SwapRequestExecutor->>SwapRequestLock: lock shifts, then employees, in ID order
+        SwapRequestExecutor->>AssignmentValidator: validateEmployeeCanReceiveTransferredAssignment(shift, targetEmployee)
         alt Target employee is eligible
             SwapRequestExecutor->>Assignment: transferTo(targetEmployee, approvedAt)
+            SwapRequestExecutor->>SwapRequestExecutor: invalidate competing active requests
         else Target employee is not eligible
             SwapRequestExecutor->>SwapRequest: invalidate(approvedAt)
         end
@@ -755,20 +764,24 @@ sequenceDiagram
     participant SwapRequest
     participant TeamManagerRepository
     participant SwapRequestExecutor
-    participant AssignmentService
+    participant SwapRequestLock
+    participant AssignmentValidator
     participant Assignment
 
     Client->>Security: POST /api/requests/{requestId}/manager-approve with Bearer token
     Security->>SwapRequestController: authenticated request
     SwapRequestController->>SwapRequestService: approveByManager(username, requestId)
     SwapRequestService->>SwapRequestService: validate current user has MANAGER application role
+    SwapRequestService->>SwapRequestLock: lock team and refresh request/assignment state
     SwapRequestService->>TeamManagerRepository: confirm manager owns the source shift team
     SwapRequestService->>SwapRequest: approveByManager(manager, now)
     SwapRequest->>SwapRequest: PENDING_MANAGER to APPROVED
     SwapRequestService->>SwapRequestExecutor: executeIfReady(request, approvedAt)
-    SwapRequestExecutor->>AssignmentService: validateEmployeeCanReceiveTransferredAssignment(shift, targetEmployee)
+    SwapRequestExecutor->>SwapRequestLock: lock shifts, then employees, in ID order
+    SwapRequestExecutor->>AssignmentValidator: validateEmployeeCanReceiveTransferredAssignment(shift, targetEmployee)
     alt Target employee is eligible
         SwapRequestExecutor->>Assignment: transferTo(targetEmployee, approvedAt)
+        SwapRequestExecutor->>SwapRequestExecutor: invalidate competing active requests
     else Target employee is not eligible
         SwapRequestExecutor->>SwapRequest: invalidate(approvedAt)
     end
@@ -780,6 +793,29 @@ The same approval endpoints handle `SWAP` requests. For swaps, final execution
 validates both resulting assignments while ignoring the assignment each employee
 is giving up, then exchanges the two assignment owners. If either side fails
 validation, the request becomes `INVALIDATED` and no assignment changes.
+
+`SwapRequestLock` uses a pessimistic write lock on the source team row for every
+request write entry point, including creation, rejection, and cancellation.
+This covers source/target cross-column conflicts that the two separate partial
+unique indexes cannot prevent by themselves. It deliberately serializes request
+writes for one team; other teams can proceed unless execution shares employees.
+Entities loaded before a lock wait are refreshed before ownership/status checks.
+A second approval, or an approval after cancellation/invalidation, therefore
+checks the committed state and returns `409 Conflict`.
+
+For final execution, shifts are locked first and employees second, with IDs
+sorted inside each group. This matches manual/automatic assignment and keeps
+their overlap/rest validation coordinated. After a successful transfer or swap,
+active requests referencing either changed assignment are invalidated within
+the same transaction, including conflicting records from earlier versions.
+
+The service owns the transaction. The executor and lock helper require that
+transaction (`Propagation.MANDATORY`); the shared validator does not introduce
+another transactional service boundary. Consequently a caught business
+validation exception does not mark the operation rollback-only, and the
+`INVALIDATED` state can commit. Unexpected database failures still roll back
+the entire operation. No new schema migration or request-status JMS event is
+introduced by this change.
 
 ## Database Migration Timeline
 
@@ -815,7 +851,7 @@ flowchart LR
 | `schedule` | Draft schedule creation, managed draft schedule listing, schedule publication, explicit unfilled-publication confirmation, schedule reopening, publication readiness, employee and manager published schedule list/details, and schedule lifecycle state fields. |
 | `shift` | Shift creation, listing, update, deletion, schedule-range validation, optional required staffing role storage, and optional source template slot storage for generated shifts. |
 | `assignment` | Manual assignment creation/list/delete, basic automatic assignment, and shared assignment validation through `AssignmentValidator`, including capacity, availability, overlap, rest, and required staffing roles. |
-| `request` | Transfer and swap request model, request statuses, transfer/swap creation, employee and manager scoped request lists, target employee approval/rejection, manager approval, requester cancellation, and approved request execution through `SwapRequestExecutor`. |
+| `request` | Transfer and swap request model, request statuses, transfer/swap creation, employee and manager scoped request lists, target employee approval/rejection, manager approval, requester cancellation, team-scoped write coordination through `SwapRequestLock`, and atomic approved request execution through `SwapRequestExecutor`. |
 | `availability` | Employee unavailable time ranges and conflict checks with assignments. |
 | `staffing` | Team-specific professional roles, role create/list API, employee role assignment/list API, and persistence for assigning roles to team members. |
 | `template` | Shift template and template slot persistence model, manager-scoped create/list APIs, and template-based shift generation into draft schedules. |
