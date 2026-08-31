@@ -552,9 +552,10 @@ as `409`; rollback restores every edited field, including any changes Hibernate
 flushed while running validation queries. Assignment owners are not changed.
 
 These checks reject invalid sequential operations and legacy inconsistent data;
-they do not yet coordinate every concurrent write. Availability versus assignment,
-publication/reopening versus writes, and stale edits/deletions remain part 4 of
-the remediation roadmap.
+they do not yet coordinate every concurrent write. Availability versus shift
+editing, publication/reopening versus writes, and other stale edits/deletions
+remain in parts 4.2-4.3 of the remediation roadmap. Availability versus assignment
+creation and transfer/swap execution is coordinated through the employee lock.
 
 ### Schedule Reopening
 
@@ -666,10 +667,11 @@ all candidate employee locks in ascending user ID order. Assignment processing
 still uses chronological shift order and the existing workload ranking.
 
 Transfer/swap execution uses the same shift-then-employee lock order, as described
-below. This is not a blanket guarantee for every write path: concurrent
-availability changes and shift editing/publication remain separate remediation
-steps. PostgreSQL regression tests run with `mvn verify -Ppostgres-it` from the
-backend directory.
+below. Availability writes also take the employee lock before validation or
+deletion, without subsequently acquiring team/shift locks. This is not a blanket
+guarantee for every write path: shift editing/publication remain separate
+remediation steps. PostgreSQL regression tests run with `mvn verify -Ppostgres-it`
+from the backend directory.
 
 ### Availability Constraint
 
@@ -678,19 +680,38 @@ sequenceDiagram
     participant Client as React or API Client
     participant AvailabilityConstraintController
     participant AvailabilityConstraintService
+    participant UserRepository
     participant AssignmentRepository
     participant AvailabilityConstraintRepository
 
     Client->>AvailabilityConstraintController: POST /api/availability-constraints
     AvailabilityConstraintController->>AvailabilityConstraintService: createConstraint(username, request)
     AvailabilityConstraintService->>AvailabilityConstraintService: validate time range
+    AvailabilityConstraintService->>UserRepository: resolve username, then findByIdForUpdate(employeeId)
+    UserRepository-->>AvailabilityConstraintService: employee with write lock held until commit
     AvailabilityConstraintService->>AssignmentRepository: find overlapping assignments
     AssignmentRepository-->>AvailabilityConstraintService: overlaps or empty list
+    Note over AvailabilityConstraintService,AssignmentRepository: Overlap after waiting: 409 and rollback, no constraint saved
     AvailabilityConstraintService->>AvailabilityConstraintRepository: save constraint
     AvailabilityConstraintRepository-->>AvailabilityConstraintService: saved constraint
     AvailabilityConstraintService-->>AvailabilityConstraintController: AvailabilityConstraintResponse
     AvailabilityConstraintController-->>Client: 201 Created
 ```
+
+Availability creation and deletion use `lockCurrentUser`; listing uses the
+non-locking `currentUser`. The existing `UserRepository.findByIdForUpdate` row lock
+coordinates with manual/automatic assignment and request execution across server
+threads or instances, not only within a JVM. Creation checks assignments after
+the lock is acquired. Deletion loads the constraint after locking, so a second
+concurrent deletion sees `404` rather than a stale entity.
+
+If assignment or request execution commits first, an overlapping constraint
+returns `409`. If the constraint commits first, manual assignment returns `409`,
+automatic assignment skips the employee, and transfer/swap execution records
+`INVALIDATED` without changing either owner. A waiting assignment can proceed
+after a conflicting constraint is deleted. These outcomes are verified in
+`AvailabilityConcurrencyIT`; publication and shift-edit races are not covered by
+this employee-only availability protocol yet.
 
 ### Transfer Request Creation
 
@@ -879,7 +900,7 @@ flowchart LR
 | `shift` | Shift creation, listing, update with existing-assignment revalidation, deletion, schedule-range validation, optional required staffing role storage, and optional source template slot storage for generated shifts. |
 | `assignment` | Manual assignment creation/list/delete, basic automatic assignment, and shared validation through `AssignmentValidator` for candidates and existing assignments, including capacity, membership, availability, overlap, rest, and required staffing roles. |
 | `request` | Transfer and swap request model, request statuses, transfer/swap creation, employee and manager scoped request lists, target employee approval/rejection, manager approval, requester cancellation, team-scoped write coordination through `SwapRequestLock`, and atomic approved request execution through `SwapRequestExecutor`. |
-| `availability` | Employee unavailable time ranges and conflict checks with assignments. |
+| `availability` | Employee unavailable time ranges; create/delete operations share the employee write lock with assignment creation and transfer/swap execution before conflict checks or deletion. |
 | `staffing` | Team-specific professional roles, role create/list API, employee role assignment/list API, and persistence for assigning roles to team members. |
 | `template` | Shift template and template slot persistence model, manager-scoped create/list APIs, and template-based shift generation into draft schedules. |
 | `messaging` | Event outbox persistence, event creation, scheduled outbox dispatch, and JMS message shape. |

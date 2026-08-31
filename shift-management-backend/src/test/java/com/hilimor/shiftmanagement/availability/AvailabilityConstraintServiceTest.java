@@ -3,6 +3,7 @@ package com.hilimor.shiftmanagement.availability;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.inOrder;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
@@ -49,6 +50,7 @@ class AvailabilityConstraintServiceTest {
         CreateAvailabilityConstraintRequest request = validRequest();
 
         when(userRepository.findByUsername("employee1")).thenReturn(Optional.of(employee));
+        when(userRepository.findByIdForUpdate(2L)).thenReturn(Optional.of(employee));
         when(assignmentRepository.findByEmployee_IdAndShift_StartTimeLessThanAndShift_EndTimeGreaterThan(
                 2L,
                 request.endTime(),
@@ -72,6 +74,12 @@ class AvailabilityConstraintServiceTest {
         ArgumentCaptor<AvailabilityConstraint> captor = ArgumentCaptor.forClass(AvailabilityConstraint.class);
         verify(availabilityConstraintRepository).save(captor.capture());
         assertThat(captor.getValue().getEmployee()).isSameAs(employee);
+
+        var order = inOrder(userRepository, assignmentRepository, availabilityConstraintRepository);
+        order.verify(userRepository).findByIdForUpdate(2L);
+        order.verify(assignmentRepository).findByEmployee_IdAndShift_StartTimeLessThanAndShift_EndTimeGreaterThan(
+                2L, request.endTime(), request.startTime());
+        order.verify(availabilityConstraintRepository).save(any(AvailabilityConstraint.class));
     }
 
     @Test
@@ -84,6 +92,7 @@ class AvailabilityConstraintServiceTest {
         );
 
         when(userRepository.findByUsername("employee1")).thenReturn(Optional.of(employee));
+        when(userRepository.findByIdForUpdate(2L)).thenReturn(Optional.of(employee));
         when(assignmentRepository.findByEmployee_IdAndShift_StartTimeLessThanAndShift_EndTimeGreaterThan(
                 2L,
                 request.endTime(),
@@ -124,6 +133,7 @@ class AvailabilityConstraintServiceTest {
         CreateAvailabilityConstraintRequest request = validRequest();
 
         when(userRepository.findByUsername("employee1")).thenReturn(Optional.of(employee));
+        when(userRepository.findByIdForUpdate(2L)).thenReturn(Optional.of(employee));
         when(assignmentRepository.findByEmployee_IdAndShift_StartTimeLessThanAndShift_EndTimeGreaterThan(
                 2L,
                 request.endTime(),
@@ -151,6 +161,7 @@ class AvailabilityConstraintServiceTest {
         assertThat(responses.get(0).id()).isEqualTo(40L);
         assertThat(responses.get(0).employeeId()).isEqualTo(2L);
         assertThat(responses.get(0).reason()).isEqualTo("Doctor appointment");
+        verify(userRepository, never()).findByIdForUpdate(any());
     }
 
     @Test
@@ -159,11 +170,15 @@ class AvailabilityConstraintServiceTest {
         AvailabilityConstraint constraint = constraint(employee);
 
         when(userRepository.findByUsername("employee1")).thenReturn(Optional.of(employee));
+        when(userRepository.findByIdForUpdate(2L)).thenReturn(Optional.of(employee));
         when(availabilityConstraintRepository.findById(40L)).thenReturn(Optional.of(constraint));
 
         availabilityConstraintService.deleteMyConstraint("employee1", 40L);
 
-        verify(availabilityConstraintRepository).delete(constraint);
+        var order = inOrder(userRepository, availabilityConstraintRepository);
+        order.verify(userRepository).findByIdForUpdate(2L);
+        order.verify(availabilityConstraintRepository).findById(40L);
+        order.verify(availabilityConstraintRepository).delete(constraint);
     }
 
     @Test
@@ -171,6 +186,7 @@ class AvailabilityConstraintServiceTest {
         User employee = employee();
 
         when(userRepository.findByUsername("employee1")).thenReturn(Optional.of(employee));
+        when(userRepository.findByIdForUpdate(2L)).thenReturn(Optional.of(employee));
         when(availabilityConstraintRepository.findById(99L)).thenReturn(Optional.empty());
 
         assertThatThrownBy(() -> availabilityConstraintService.deleteMyConstraint("employee1", 99L))
@@ -186,6 +202,7 @@ class AvailabilityConstraintServiceTest {
         AvailabilityConstraint constraint = constraint(otherEmployee());
 
         when(userRepository.findByUsername("employee1")).thenReturn(Optional.of(employee));
+        when(userRepository.findByIdForUpdate(2L)).thenReturn(Optional.of(employee));
         when(availabilityConstraintRepository.findById(40L)).thenReturn(Optional.of(constraint));
 
         assertThatThrownBy(() -> availabilityConstraintService.deleteMyConstraint("employee1", 40L))

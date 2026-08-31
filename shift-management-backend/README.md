@@ -58,6 +58,7 @@ Implemented:
 - Personal availability constraint list endpoint: `GET /api/availability-constraints/me`.
 - Availability constraint delete endpoint: `DELETE /api/availability-constraints/{constraintId}`.
 - Availability constraint creation is rejected when it overlaps an existing assignment.
+- Availability creation/deletion shares the employee lock with manual/automatic assignment and transfer/swap execution; conflicting operations recheck state after waiting.
 - Assignment creation is rejected when it overlaps an employee availability constraint.
 - Initial staffing role persistence model.
 - Staffing role assignment persistence between team members and staffing roles.
@@ -1315,6 +1316,16 @@ Expected response:
 The authenticated user creates availability constraints only for their own account.
 Creating an availability constraint that overlaps one of the authenticated user's existing assignments returns `409 Conflict`.
 
+Availability creation and deletion lock the authenticated employee row before
+checking assignments or loading the constraint. Manual/automatic assignment and
+transfer/swap execution use the same employee lock. If an assignment commits
+first, a competing overlapping constraint returns `409`; if the constraint
+commits first, manual assignment returns `409`, automatic assignment skips the
+employee, and transfer/swap execution persists `INVALIDATED` without changing
+owners. Deletion releases the time range for a waiting assignment after commit.
+Two concurrent deletions of the same constraint return `204` then `404`.
+Personal constraint listing remains read-only and does not take this write lock.
+
 List personal availability constraints:
 
 ```bash
@@ -1536,10 +1547,22 @@ owners, blocked publication with either confirmation value, and no outbox event
 on failure. Positive cases cover qualified employees at exact rest/availability
 boundaries, full shifts, confirmed open slots, and editing unassigned shifts.
 
-Existing-assignment validation is not a concurrency guarantee for these new
-paths. Concurrent availability changes, publication/reopening versus writes,
-and stale edits/deletions remain in part 4 of `../IMPLEMENTATION_PLAN.md`. No
-schema change or new JMS event type is introduced by this validation step.
+`AvailabilityConcurrencyIT` adds ten scenarios: availability versus manual and
+automatic assignment, transfer, and full swap in both commit orders; availability
+deletion versus assignment; and duplicate deletion. Every scenario observes a
+real PostgreSQL lock wait and checks the committed outcome. The eight availability
+unit tests also check lock-before-validation/load ordering and lock-free listing.
+
+Availability writes lock only the employee row, then read assignments or modify
+constraints. They do not acquire team/shift write locks afterwards, preserving the
+team-then-shifts-then-employees order used by request execution. The lock lasts
+until transaction completion; it is not a JVM-only lock.
+
+Existing-assignment validation is not a concurrency guarantee for every write
+path. Availability versus shift editing, publication/reopening versus writes,
+other stale edits/deletions, and expected lock-failure HTTP mapping remain in
+parts 4.2-4.3 of `../IMPLEMENTATION_PLAN.md`. No schema change or new JMS event
+type is introduced by this step.
 
 ## Important Notes
 

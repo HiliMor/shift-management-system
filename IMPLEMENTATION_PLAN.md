@@ -23,7 +23,7 @@ complete. Any scope reduction needs an explicit decision and instructor approval
 | 1 | Complete | Serialize manual/automatic assignment checks and writes for the same employee. Real PostgreSQL tests prevent cross-shift overlap, insufficient rest, and same-shift overfilling under concurrent operations. | `Assignment concurrency:` |
 | 2 | Complete | Fix request invalidation rollback; coordinate transfer/swap execution, concurrent approvals, and competing requests. Invalid requests persist as invalidated without partial ownership changes or an unexpected transaction error, verified against PostgreSQL. | `Request execution:` |
 | 3 | Complete | Validate existing assignments when changing shift times, roles, rest, or capacity; reject invalid edits. Readiness and publication recheck assignment validity even when unfilled shifts are explicitly allowed. PostgreSQL tests verify rollback and no publication event on failure. | `Schedule validation:` |
-| 4 | Pending | Complete cross-workflow concurrency: availability versus assignment, publication/reopening versus writes, and stale edits/deletions. Reuse a consistent locking order and map expected conflicts to clear HTTP responses instead of generic 500 errors. | `Workflow concurrency:` |
+| 4 | In progress | Complete cross-workflow concurrency: availability versus assignment, publication/reopening versus writes, and stale edits/deletions. Reuse a consistent locking order and map expected conflicts to clear HTTP responses instead of generic 500 errors. | `Workflow concurrency:` |
 | 5 | Pending | Make demo initialization explicit and non-destructive. Restarting after a transfer, deletion, or manual schedule creation must not restore old assignments, repopulate edited schedules, or adopt a user's schedule by date alone. | `Demo initialization:` |
 | 6 | Pending | Complete manager team-member and staffing-role management, including the minimum user onboarding needed by that screen. Implement API first, then UI in separate commits; enforce team ownership and preserve existing history when removing membership. | `Team management:` |
 | 7 | Pending | Add private manager notes for employees and shifts. Verify that employee APIs and UI never expose them. | `Manager notes:` |
@@ -45,6 +45,17 @@ database migration and must not change the assignment API contract.
 Integration tests use a disposable PostgreSQL container with demo seeding and
 messaging disabled. They run separately using `mvn verify -Ppostgres-it`; normal
 `mvn test` remains the fast unit suite and does not require Docker.
+
+### Part 4 Increments
+
+- 4.1 (complete): coordinate availability creation/deletion with manual and
+  automatic assignment and transfer/swap execution through the employee lock.
+  Verify both commit orders against PostgreSQL, including availability deletion.
+- 4.2 (pending): coordinate schedule publication/reopening and shift/template
+  writes with assignment validation. Availability versus shift edits belongs here.
+- 4.3 (pending): address remaining stale edits/deletions and map expected
+  concurrency failures to explicit HTTP conflicts. Completing 4.1 alone does not
+  close part 4 or protect every workflow that changes shift times or ownership.
 
 ### Completion Record
 
@@ -89,8 +100,23 @@ messaging disabled. They run separately using `mvn verify -Ppostgres-it`; normal
   modified. Browser interaction was not tested in this backend-only step.
 - Boundary: this adds validation, not a complete concurrency protocol for edits
   and publication. Existing data is checked, not automatically repaired.
-- Next part: coordinate availability, publication/reopening, and stale
-  edits/deletions with the other write workflows.
+- Part 4.1 (2026-08-31): availability creation/deletion now acquire the existing
+  employee write lock before checking assignments or loading the constraint.
+  Manual/automatic assignment and transfer/swap execution share that lock;
+  availability listing remains read-only. No migration or API change.
+- Part 4.1 baseline: after correcting test-fixture transaction boundaries, eight
+  of ten PostgreSQL scenarios failed before the service fix: six did not observe
+  serialization and two accepted a conflicting constraint after request execution.
+- Part 4.1 verification: focused availability checks passed, followed by
+  `mvn -B -Ppostgres-it clean verify`: 259 unit tests and 46 PostgreSQL integration
+  tests, with no failures or skips. The ten new scenarios cover both commit
+  orders for manual/automatic assignment and transfer/swap execution, deletion
+  versus assignment, and duplicate deletion with a fresh `404` response.
+- Boundary: no development data, frontend, or local submission documents were
+  changed. Browser interaction was not tested. Part 4 remains in progress;
+  availability versus shift edits and other uncoordinated writes are not closed.
+- Next increment: 4.2, coordinate publication/reopening and shift/template writes
+  with the other write workflows; then 4.3 for remaining stale-write conflicts.
 
 ## Working Sources
 

@@ -39,7 +39,7 @@ public class AvailabilityConstraintService {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Availability constraint end time must be after start time");
         }
 
-        User employee = currentUser(username);
+        User employee = lockCurrentUser(username);
         validateNoAssignedShiftOverlap(employee.getId(), request.startTime(), request.endTime());
 
         AvailabilityConstraint constraint = new AvailabilityConstraint(
@@ -67,7 +67,7 @@ public class AvailabilityConstraintService {
 
     @Transactional
     public void deleteMyConstraint(String username, Long constraintId) {
-        User employee = currentUser(username);
+        User employee = lockCurrentUser(username);
         AvailabilityConstraint constraint = availabilityConstraintRepository.findById(constraintId)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Availability constraint not found"));
 
@@ -93,6 +93,13 @@ public class AvailabilityConstraintService {
                     "Availability constraint overlaps an existing assignment"
             );
         }
+    }
+
+    private User lockCurrentUser(String username) {
+        User user = currentUser(username);
+        // Share the employee lock with assignment and transfer/swap validation until commit.
+        return userRepository.findByIdForUpdate(user.getId())
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Authenticated user not found"));
     }
 
     private User currentUser(String username) {

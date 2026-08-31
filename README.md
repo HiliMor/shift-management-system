@@ -41,6 +41,7 @@ Implemented:
 - Availability constraint persistence model.
 - Availability constraint create, personal list, and delete operations.
 - Availability constraint creation is rejected when it overlaps an existing assignment.
+- Availability creation/deletion shares the employee lock with manual/automatic assignment and transfer/swap execution, so competing operations validate committed state.
 - Assignment creation is rejected when it overlaps an employee availability constraint.
 - Initial staffing role persistence model.
 - Staffing role assignment persistence between team members and staffing roles.
