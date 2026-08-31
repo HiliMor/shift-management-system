@@ -32,3 +32,11 @@ postgres_data/
 *.docx
 *.pptx
 *.jpeg
+
+# Local references and separately submitted course material
+/AGENTS.md
+/spec.md
+/build_submission_docs.py
+/docs/DEMO_SCRIPT.md
+/docs/submission/
+/docs/local-reference/

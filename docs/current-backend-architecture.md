@@ -1,223 +1,93 @@
-# Current Backend Architecture
+# System Architecture
 
-This document describes the backend components that currently exist in the project
-and how the initial React frontend connects to them. It intentionally documents
-the implemented state only, not future planned features.
+This document describes the implemented system. Setup, tests, and API examples
+are in [Run Locally](RUN_LOCALLY.md); outstanding requirements are listed in
+[Known Limitations](../README.md#known-limitations).
 
 ## System Context
 
 ```mermaid
 flowchart LR
-    react["React Frontend<br/>Login, schedules, and manager workflows"]
-    apiClient["API Client<br/>Postman or curl"]
-    security["Spring Security<br/>JWT Authentication Filter"]
-    cors["CORS Configuration<br/>Local frontend access"]
-    controllers["REST Controllers"]
-    errorHandling["Error Handling<br/>Unified JSON API errors"]
-    services["Application Services<br/>Business Rules"]
-    outbox["Event Outbox<br/>Pending async events"]
-    dispatcher["Outbox Dispatcher<br/>Scheduled JMS sender"]
-    jms["ActiveMQ Artemis<br/>JMS queue notification.events"]
-    consumer["Notification Event Consumer<br/>JMS listener"]
-    repositories["Spring Data JPA Repositories"]
-    database["PostgreSQL Database"]
-    flyway["Flyway Migrations"]
-    seed["Opt-in Demo Initializer<br/>Empty database only"]
-
-    react --> cors
-    apiClient --> security
-    cors --> security
-    security --> controllers
-    security --> errorHandling
-    controllers --> services
-    controllers --> errorHandling
-    services --> outbox
-    services --> repositories
-    outbox --> database
-    dispatcher --> database
-    dispatcher --> jms
-    jms --> consumer
-    consumer --> services
-    repositories --> database
-    flyway --> database
-    seed --> repositories
+    UI["React / Postman"] --> Security["Spring Security / JWT"]
+    Security --> Controllers["REST controllers"]
+    Controllers --> Services["Transactional services"]
+    Services --> JPA["Spring Data JPA"]
+    JPA --> DB[("PostgreSQL")]
+    Services --> Outbox["Event outbox"]
+    Outbox --> DB
+    DB --> Dispatcher["Scheduled dispatcher"]
+    Dispatcher --> Broker["ActiveMQ Artemis / JMS"]
+    Broker --> Consumer["Notification consumer"]
+    Consumer --> JPA
+    Flyway["Flyway migrations"] --> DB
 ```
 
-## Demo Initialization
+The backend is authoritative for authorization, validation, and persistence.
+Postman and the React UI use the same API and database. JMS is an asynchronous
+notification path, not the mechanism that performs the employee assignment.
 
-`DevelopmentDataSeeder` is disabled by default. Explicitly enabling `app.seed.enabled`
-creates the local demo scenario only when there is no application data. Within a
-single transaction it first acquires a PostgreSQL advisory lock, then checks
-users, teams, and the independent event outbox. Other business tables have foreign
-keys to users/teams. This prevents concurrent initializers from both seeing an
-empty database; all seed writes roll back together on failure.
+## Layers And OOP
 
-Existing, legacy, and partially populated databases are skipped without changes.
-Initialization never adopts a manually created schedule by date or recreates
-deleted/transferred data. It needs no migration or persistent demo marker.
-Normal startup does not seed. Preloaded notifications are fixture rows created
-directly by the notification service, not proof of JMS delivery; real API actions
-continue to use the transactional outbox. Setup is in `RUN_LOCALLY.md`.
+Code is grouped by business feature rather than in one global controller/service
+folder. Most features use this flow:
 
-## Frontend Integration
-
-The current frontend is intentionally small. It is responsible for:
-
-- Displaying the login form.
-- Calling `POST /api/auth/login`.
-- Storing the returned JWT in browser local storage.
-- Sending the JWT as a bearer token for authenticated API calls.
-- Showing a manager or employee workspace based on the authenticated user's role.
-- Loading the signed-in user's published schedules from `GET /api/schedules/me/published`.
-- Loading a manager's teams from `GET /api/teams/me/managed`.
-- Creating draft schedules through `POST /api/schedules`.
-- Loading managed draft schedules from `GET /api/schedules/me/managed/drafts`.
-- Deleting manager-owned draft schedules through `DELETE /api/schedules/{scheduleId}`.
-- Loading a manager's published schedule details from `GET /api/schedules/me/managed/published/{scheduleId}`.
-- Creating shifts through `POST /api/schedules/{scheduleId}/shifts`.
-- Loading draft schedule shifts from `GET /api/schedules/{scheduleId}/shifts`.
-- Loading active team employees from `GET /api/teams/{teamId}/employees`.
-- Loading draft schedule assignments from `GET /api/schedules/{scheduleId}/assignments`.
-- Creating manual assignments through `POST /api/assignments`.
-- Removing draft assignments through `DELETE /api/assignments/{assignmentId}`.
-- Running basic automatic assignment through `POST /api/schedules/{scheduleId}/auto-assign`.
-- Creating and managing reusable shift templates through the template endpoints.
-- Deleting unused templates through `DELETE /api/templates/{templateId}`.
-- Loading personal notifications from `GET /api/notifications`.
-- Loading unread notification count from `GET /api/notifications/unread-count`.
-- Marking a personal notification as read through `POST /api/notifications/{notificationId}/read`.
-- Receiving request-created notifications for transfer and swap requests through JMS.
-- Loading transfer and swap request lists from `GET /api/requests/me/outgoing`, `GET /api/requests/me/incoming`, and `GET /api/requests/manager` for managers.
-- Creating employee transfer and swap requests through `POST /api/requests/transfers` and `POST /api/requests/swaps`.
-- Running transfer and swap request actions through employee approve/reject, requester cancel, and manager approve endpoints.
-
-The backend remains the authority for authentication, authorization, validation,
-business rules, and persistence.
-
-## Backend Packages
-
-```mermaid
-flowchart TD
-    app["ShiftManagementApplication"]
-
-    config["config<br/>SecurityConfig<br/>DevelopmentDataSeeder"]
-    health["health<br/>HealthController"]
-    auth["auth<br/>Login, JWT, current user"]
-    error["error<br/>Unified API error responses and global exception handling"]
-    user["user<br/>User and application role"]
-    team["team<br/>Team, team members, managers, managed team listing, and team employee listing"]
-    schedule["schedule<br/>Draft schedule creation, publication, reopening, readiness, and employee published views"]
-    shift["shift<br/>Shift CRUD inside schedules"]
-    assignment["assignment<br/>Manual and automatic assignment workflow<br/>AssignmentValidator"]
-    request["request<br/>Transfer and swap request workflow<br/>SwapRequestExecutor"]
-    availability["availability<br/>Employee unavailable time ranges"]
-    staffing["staffing<br/>Team staffing roles, member-role links, and role assignment API"]
-    template["template<br/>Shift template, template slot, and shift generation workflow"]
-    messaging["messaging<br/>Event outbox, dispatcher, and JMS event message"]
-    notification["notification<br/>Personal notification model, API, and JMS consumer"]
-
-    app --> config
-    app --> health
-    app --> auth
-    app --> error
-    app --> user
-    app --> team
-    app --> schedule
-    app --> shift
-    app --> assignment
-    app --> request
-    app --> availability
-    app --> staffing
-    app --> template
-    app --> messaging
-    app --> notification
-
-    auth --> user
-    schedule --> team
-    schedule --> shift
-    schedule --> assignment
-    schedule --> messaging
-    messaging --> notification
-    shift --> schedule
-    assignment --> shift
-    assignment --> team
-    assignment --> user
-    assignment --> availability
-    assignment --> staffing
-    request --> assignment
-    request --> team
-    request --> user
-    availability --> user
-    availability --> assignment
-    staffing --> team
-    template --> team
-    template --> staffing
-    shift --> template
-    notification --> user
+```text
+HTTP + request DTO -> controller -> service -> repository -> entity/database
+                                 -> response DTO -> HTTP response
 ```
 
-## Layer Pattern
+- Controllers translate HTTP input and obtain identity from Spring Security.
+- Request DTOs define input shape and Bean Validation constraints; response DTOs
+  avoid exposing persistence entities or password hashes directly.
+- Services own use cases, authorization checks, and transaction boundaries.
+- Entities encapsulate persisted state and domain transitions such as publishing,
+  request approval, and assignment transfer.
+- Spring Data repositories handle persistence. Constructor injection supplies
+  collaborators; application code does not manually construct services.
+- Shared helpers have specific responsibilities: `AssignmentValidator` checks
+  eligibility, `SwapRequestExecutor` executes approved requests, and
+  `ScheduleWriteLock` coordinates scheduling writes.
 
-Most feature packages follow this pattern:
+This is a layered REST backend with a separate React view, not server-rendered
+Spring MVC templates. The implementation uses composition and shared validation;
+it does not implement the originally proposed interface-per-assignment-rule design.
 
-```mermaid
-flowchart TD
-    request["HTTP Request"]
-    controller["Controller<br/>Receives REST request"]
-    requestDto["Request DTO<br/>Input shape and validation annotations"]
-    service["Service<br/>Business rules and authorization checks"]
-    repository["Repository<br/>Database access"]
-    entity["Entity<br/>Persisted domain state"]
-    responseDto["Response DTO<br/>Output shape"]
-    response["HTTP Response"]
+## Module Map
 
-    request --> controller
-    controller --> requestDto
-    controller --> service
-    service --> repository
-    repository --> entity
-    service --> responseDto
-    responseDto --> response
-```
+Backend source: [com.hilimor.shiftmanagement](../shift-management-backend/src/main/java/com/hilimor/shiftmanagement).
 
-Not every package has every layer yet.
-For example, the basic schedule lifecycle, publication readiness report, explicit unfilled-publication confirmation, and employee/manager published schedule views are already implemented.
+| Package | Responsibility |
+| --- | --- |
+| `auth`, `user`, `config` | Login, JWT, users/application roles, security, opt-in initialization. |
+| `team` | Team memberships and managers, scoped listing, transactional new-employee creation. |
+| `schedule` | Draft lifecycle, publication/readiness, published views, write locks and deletion revisions. |
+| `shift` | Shift CRUD, schedule-date checks, versioned editing and existing-assignment validation. |
+| `assignment` | Manual/automatic assignment, removal, shared eligibility validation. |
+| `availability` | Personal unavailable time ranges and conflict checks. |
+| `staffing` | Team-specific professional roles and member-role links. |
+| `template` | Reusable shift patterns, slots and dated shift generation. |
+| `request` | Transfer/swap state machine, authorization, locking and atomic execution. |
+| `messaging` | Event outbox, event serialization and scheduled JMS dispatch. |
+| `notification` | JMS event consumption, recipient notifications and read state. |
+| `error`, `health` | Consistent API errors and public health check. |
 
-## Error Handling
+Frontend source: [src](../shift-management-frontend/src).
+`App.jsx` composes the workspace; `components/` contains screen sections and
+manager panels; `hooks/` manages workflow state and loading; `api.js` handles
+HTTP calls; `i18n/` supplies Hebrew/English text and direction.
 
-API errors use a unified JSON response through the `error` package. Controller-level
-exceptions are handled by `GlobalExceptionHandler`, while Spring Security
-authentication and authorization failures write the same response shape directly
-from `SecurityConfig`.
+The manager workflow shares one selected draft across draft, build, assign, and
+publish steps. Templates belong to teams, not to the selected draft. Generating
+shifts from a template changes that draft; editing template definitions does not.
 
-The response includes:
+Published schedules support Sunday-first weekly/monthly calendars and a list.
+Employees can filter to their own shifts while still seeing coworkers in those
+shifts. Displayed dates use the browser timezone; overnight shifts appear on their
+start date. The published-schedules hook ignores obsolete success/error/loading
+responses after selection changes, refreshes, and reset. This protection is not
+a claim that every async hook has undergone the same verification.
 
-- HTTP status and reason.
-- A stable error code.
-- A human-readable message.
-- The request path.
-- A timestamp.
-
-Assignment business validation now uses the same response shape as the rest of
-the API, while preserving business codes such as `SHIFT_OVERLAP` and
-`MINIMUM_REST`.
-
-## Operational Logging
-
-The backend uses Spring Boot's default SLF4J logging for focused business events.
-Current logging is intentionally limited to workflow checkpoints:
-
-- Schedule creation, publication, reopening, and manager-only deletion of draft schedules.
-- Assignment creation and deletion.
-- Template and template slot creation, template-based shift generation, and safe deletion of unused templates.
-- Transfer and swap request creation, employee and manager scoped request lists, approval, rejection, cancellation, invalidation, assignment transfer execution, and assignment swap execution.
-- Outbox event dispatch and schedule-published notification creation.
-
-Logs include operational identifiers such as schedule IDs, assignment IDs, user IDs,
-team IDs, event IDs, and request IDs. They do not log passwords, JWT tokens, or full
-request payloads.
-
-## Domain Model
+## Domain And Persistence
 
 ```mermaid
 erDiagram
@@ -226,834 +96,247 @@ erDiagram
     TEAMS ||--o{ TEAM_MEMBERS : has
     TEAMS ||--o{ TEAM_MANAGERS : has
     TEAMS ||--o{ SCHEDULES : owns
-    TEAMS ||--o{ STAFFING_ROLES : defines
-    TEAMS ||--o{ SHIFT_TEMPLATES : owns
-
     SCHEDULES ||--o{ SHIFTS : contains
-    SHIFT_TEMPLATES ||--o{ TEMPLATE_SLOTS : contains
-    TEMPLATE_SLOTS |o--o{ SHIFTS : generates
     SHIFTS ||--o{ ASSIGNMENTS : receives
     USERS ||--o{ ASSIGNMENTS : assigned
     USERS ||--o{ AVAILABILITY_CONSTRAINTS : declares
-    USERS ||--o{ NOTIFICATIONS : receives
-    USERS ||--o{ SWAP_REQUESTS : requests
-    USERS ||--o{ SWAP_REQUESTS : receives_transfer
-    USERS ||--o{ SWAP_REQUESTS : manager_approves
+    TEAMS ||--o{ STAFFING_ROLES : defines
+    TEAM_MEMBERS ||--o{ TEAM_MEMBER_STAFFING_ROLES : has
+    STAFFING_ROLES ||--o{ TEAM_MEMBER_STAFFING_ROLES : grants
+    STAFFING_ROLES |o--o{ SHIFTS : requires
+    TEAMS ||--o{ SHIFT_TEMPLATES : owns
+    SHIFT_TEMPLATES ||--o{ TEMPLATE_SLOTS : contains
+    STAFFING_ROLES |o--o{ TEMPLATE_SLOTS : requires
+    TEMPLATE_SLOTS |o--o{ SHIFTS : generates
     ASSIGNMENTS ||--o{ SWAP_REQUESTS : source
     ASSIGNMENTS |o--o{ SWAP_REQUESTS : target
-
-    TEAM_MEMBERS ||--o{ TEAM_MEMBER_STAFFING_ROLES : receives
-    STAFFING_ROLES ||--o{ TEAM_MEMBER_STAFFING_ROLES : assigned
-    STAFFING_ROLES |o--o{ SHIFTS : may_be_required_by
-    STAFFING_ROLES |o--o{ TEMPLATE_SLOTS : may_be_required_by
-
-    USERS {
-        bigint id PK
-        varchar username
-        varchar password_hash
-        varchar full_name
-        varchar email
-        varchar application_role
-    }
-
-    TEAMS {
-        bigint id PK
-        varchar name
-        varchar swap_approval_policy
-        integer default_min_rest_hours
-        varchar time_zone
-    }
-
-    TEAM_MEMBERS {
-        bigint id PK
-        bigint user_id FK
-        bigint team_id FK
-        timestamptz joined_at
-        boolean active
-    }
-
-    TEAM_MANAGERS {
-        bigint id PK
-        bigint manager_id FK
-        bigint team_id FK
-    }
-
-    SCHEDULES {
-        bigint id PK
-        bigint team_id FK
-        date start_date
-        date end_date
-        varchar status
-        integer publication_number
-        timestamptz published_at
-    }
-
-    SHIFTS {
-        bigint id PK
-        bigint schedule_id FK
-        timestamptz start_time
-        timestamptz end_time
-        varchar description
-        integer required_workers
-        integer min_rest_hours
-        bigint required_staffing_role_id FK
-        bigint template_slot_id FK
-    }
-
-    ASSIGNMENTS {
-        bigint id PK
-        bigint shift_id FK
-        bigint employee_id FK
-        timestamptz assigned_at
-    }
-
-    AVAILABILITY_CONSTRAINTS {
-        bigint id PK
-        bigint employee_id FK
-        timestamptz start_time
-        timestamptz end_time
-        varchar reason
-        timestamptz created_at
-    }
-
-    STAFFING_ROLES {
-        bigint id PK
-        bigint team_id FK
-        varchar name
-        varchar description
-    }
-
-    SHIFT_TEMPLATES {
-        bigint id PK
-        bigint team_id FK
-        varchar name
-        varchar description
-        integer cycle_days
-        integer default_min_rest_hours
-        boolean active
-    }
-
-    TEMPLATE_SLOTS {
-        bigint id PK
-        bigint shift_template_id FK
-        integer day_offset
-        time start_time
-        integer duration_minutes
-        varchar description
-        integer required_workers
-        bigint required_staffing_role_id FK
-    }
-
-    TEAM_MEMBER_STAFFING_ROLES {
-        bigint id PK
-        bigint team_member_id FK
-        bigint staffing_role_id FK
-        timestamptz assigned_at
-    }
-
-    NOTIFICATIONS {
-        bigint id PK
-        uuid event_id
-        bigint recipient_id FK
-        varchar type
-        varchar title
-        text message
-        varchar related_entity_type
-        bigint related_entity_id
-        timestamptz created_at
-        timestamptz read_at
-    }
-
-    SWAP_REQUESTS {
-        bigint id PK
-        varchar type
-        bigint requester_id FK
-        bigint source_assignment_id FK
-        bigint target_employee_id FK
-        bigint target_assignment_id FK
-        varchar status
-        timestamptz employee_approved_at
-        bigint manager_approved_by FK
-        timestamptz manager_approved_at
-        timestamptz created_at
-        timestamptz updated_at
-        bigint version
-    }
-
-    EVENT_OUTBOX {
-        uuid event_id PK
-        varchar event_type
-        jsonb payload
-        timestamptz created_at
-        timestamptz sent_at
-        integer attempt_count
-    }
+    USERS ||--o{ SWAP_REQUESTS : requests
+    USERS ||--o{ SWAP_REQUESTS : receives
+    USERS |o--o{ SWAP_REQUESTS : approves_as_manager
+    USERS ||--o{ NOTIFICATIONS : receives
 ```
 
-## Implemented API Areas
+The diagram shows relationships, not every column. The standalone `event_outbox`
+table stores event UUID, type, JSON payload, creation/sent times, and failed-attempt
+count. Notifications carry the event UUID and recipient; their unique pair
+prevents duplicate rows for the same delivery.
 
-```mermaid
-flowchart TD
-    api["REST API"]
+[SQL migrations](../shift-management-backend/src/main/resources/db/migration)
+are the schema source of truth: V1-V8 introduce users/teams, scheduling,
+availability and staffing; V9 adds messaging; V10 requests; V11 templates;
+V12 generated-shift uniqueness; V13 active swap-target uniqueness; V14 renames
+the seeded daily template. Existing migrations are not rewritten to reset data.
+Hibernate uses `ddl-auto: validate` and `open-in-view: false`.
 
-    healthApi["Health<br/>GET /api/health"]
-    authApi["Authentication<br/>POST /api/auth/login<br/>GET /api/auth/me"]
-    teamsApi["Teams<br/>GET /api/teams/me/managed"]
-    schedulesApi["Schedules<br/>POST /api/schedules<br/>GET /api/schedules/me/published<br/>GET /api/schedules/me/published/{scheduleId}<br/>GET /api/schedules/me/managed/drafts<br/>GET /api/schedules/me/managed/published/{scheduleId}<br/>GET /api/schedules/{scheduleId}/publication-readiness<br/>POST /api/schedules/{scheduleId}/publish<br/>POST /api/schedules/{scheduleId}/reopen<br/>DELETE /api/schedules/{scheduleId}"]
-    shiftsApi["Shifts<br/>POST /api/schedules/{scheduleId}/shifts<br/>GET /api/schedules/{scheduleId}/shifts<br/>PUT /api/schedules/{scheduleId}/shifts/{shiftId}<br/>DELETE /api/schedules/{scheduleId}/shifts/{shiftId}"]
-    assignmentsApi["Assignments<br/>POST /api/assignments<br/>GET /api/schedules/{scheduleId}/assignments<br/>POST /api/schedules/{scheduleId}/auto-assign<br/>DELETE /api/assignments/{assignmentId}"]
-    availabilityApi["Availability Constraints<br/>POST /api/availability-constraints<br/>GET /api/availability-constraints/me<br/>DELETE /api/availability-constraints/{constraintId}"]
-    staffingApi["Staffing Roles<br/>POST /api/teams/{teamId}/staffing-roles<br/>GET /api/teams/{teamId}/staffing-roles<br/>POST /api/teams/{teamId}/employees/{employeeId}/staffing-roles<br/>GET /api/teams/{teamId}/employees/{employeeId}/staffing-roles"]
-    templatesApi["Templates<br/>POST /api/teams/{teamId}/templates<br/>GET /api/teams/{teamId}/templates<br/>POST /api/templates/{templateId}/slots<br/>GET /api/templates/{templateId}/slots<br/>POST /api/templates/{templateId}/generate<br/>DELETE /api/templates/{templateId}"]
-    notificationApi["Notifications<br/>GET /api/notifications<br/>GET /api/notifications/unread-count<br/>POST /api/notifications/{notificationId}/read"]
-    requestsApi["Requests<br/>POST /api/requests/transfers<br/>POST /api/requests/swaps<br/>GET /api/requests/me/outgoing<br/>GET /api/requests/me/incoming<br/>GET /api/requests/manager<br/>GET /api/requests/manager/pending<br/>POST /api/requests/{requestId}/employee-approve<br/>POST /api/requests/{requestId}/employee-reject<br/>POST /api/requests/{requestId}/manager-approve<br/>POST /api/requests/{requestId}/cancel"]
+## Authentication And Administration
 
-    api --> healthApi
-    api --> authApi
-    api --> teamsApi
-    api --> schedulesApi
-    api --> shiftsApi
-    api --> assignmentsApi
-    api --> availabilityApi
-    api --> staffingApi
-    api --> templatesApi
-    api --> notificationApi
-    api --> requestsApi
-```
+Only health and login are public API endpoints. The JWT filter validates the
+token and sets the authenticated identity. Services resolve that identity and
+check team access; supplying a team ID or another username is not authorization.
 
-Assignment creation validates required staffing roles when a shift has a professional role requirement.
+`MANAGER` is an application role, distinct from professional staffing roles.
+A manager also needs a `team_managers` association with the target team.
+Employee published views require active membership and `PUBLISHED` status.
+Notification access is recipient-scoped; request actions check ownership and
+the current approval stage.
 
-## Main Request Flow Examples
+`TeamEmployeeService.createEmployee` creates a new `EMPLOYEE` account, active
+membership and optional existing team roles atomically. Username is case-sensitive
+and unique, 3-100 ASCII letters/digits/dots/underscores/hyphens, starting with a
+letter or digit. Full name may be Hebrew and need not be unique (maximum 200
+characters). Email is optional, at most 255 characters; blank becomes null.
+Passwords require at least eight characters and at most 72 UTF-8 bytes, and are
+stored using BCrypt. Responses never include passwords/hashes. Concurrent
+duplicate usernames are also rejected by a database unique constraint.
 
-### Login
+The manager supplies and privately shares the initial password. There is no
+password reset/change, invitation, or mandatory first-login replacement.
+This endpoint cannot create a manager or add an existing account to a team.
+There is currently no team/manager creation API or screen: initial administration
+requires controlled database provisioning of `users`, `teams` and
+`team_managers`, with correctly hashed passwords. This is a limitation, not a
+normal manager workflow. The initializer does not top up an existing database.
+
+## Scheduling Rules
+
+`AssignmentValidator` checks active team membership, required staffing role,
+duplicates, capacity, unavailable times, overlapping assignments and minimum rest.
+Checks include assignments in other schedules/teams. Availability means time when
+the employee **cannot** work. Creating a constraint that overlaps an existing
+assignment is rejected; it does not silently remove that assignment.
+
+Manual creation assigns one employee. Automatic assignment processes shifts
+chronologically, ranks candidates by fewer assigned minutes in the current
+schedule, and returns created assignments and remaining open slots. It is a
+greedy baseline, not a global optimizer or a guarantee of complete staffing.
+
+A template defines a repeating cycle of slots. A one-day cycle with three
+eight-hour slots generates 21 shifts over seven days or 63 over 21 days.
+Generation uses the team's timezone, validates the destination draft, and skips
+already-generated occurrences. It does not assign a recurring employee.
+Unused-template deletion is supported; template/slot editing and individual
+slot deletion are not.
+
+Schedules follow `DRAFT -> PUBLISHED -> DRAFT`. Reopening changes the same
+schedule record and keeps its shifts/assignments, not an archived copy.
+Readiness is a read-only preview of staffing and assignment validity, not a
+reservation. Publishing revalidates under locks. `confirmUnfilled` allows staffing
+gaps, never invalid employee assignments. Invalid publication creates no outbox
+event. Editing a published schedule requires reopening it first.
+
+The UI supports shift editing in the build step. Proposed times, capacity, rest
+and role are checked against current assignments. A failure rolls back all edited
+fields and leaves assignment owners unchanged. Shift edits and manual/automatic
+assignments do not currently emit JMS notifications; publication does.
+
+## Transactions And Concurrency
+
+Service transactions own commit/rollback. `ScheduleWriteLock` and
+`SwapRequestLock` coordinate participating writes using PostgreSQL locks:
+
+1. Lock the owning team and refresh state loaded before waiting.
+2. Lock any needed shifts in ascending ID order.
+3. Lock affected employees in ascending ID order.
+4. Revalidate and persist; release locks when the transaction completes.
+
+Manual/automatic assignment, request execution, publication/reopening, draft
+deletion, shift writes, assignment deletion and template mutations use this
+protocol. Employee creation also uses the team lock. Availability writes take
+only the employee lock and never subsequently wait for team/shift locks.
+
+This deliberately serializes scheduling writes within one team. Different teams
+can proceed independently unless they share locked employees. It protects
+cross-schedule overlap/rest as well as same-shift capacity. An in-memory
+`synchronized` block alone would not protect separate backend processes.
+
+A waiting operation checks committed state: publication may now make a write
+invalid (`409`), or deletion may leave a missing record (`404`). Deterministic
+lock ordering reduces deadlock risk; it does not make all future writers safe.
+Existing staffing-role writes and future team/member/role lifecycle changes are
+not claimed to have complete coverage by this protocol. Broad load testing and
+multi-instance messaging verification remain outstanding.
+
+### Stale Edits And Confirmed Deletion
+
+Shift PUT requests must send the non-negative `version` originally read.
+The service compares it after locking/refreshing and uses JPA `@Version`;
+stale edits return `409 STALE_VERSION`. A successful response includes the saved
+version. A no-op need not increment it. Reload and review before retrying.
+
+Draft, template, shift and assignment deletions require a fresh authorized
+preview and its unchanged `revision` query parameter. `DeletionRevision` hashes
+parent/child IDs and versions; parent versions alone would miss child changes.
+DELETE repeats authorization and eligibility checks under locks and compares the
+snapshot before removing anything. Preview does not hold a lock while the user
+decides, and the revision is not a credential.
+
+Cancel sends no DELETE. Invalid revisions return `400`, changed data `409`,
+and missing records `404`. There is no automatic refresh-and-retry of deletion.
+Draft/shift deletion can remove contained assignments; assignment deletion
+preserves the shift. Source/target request history blocks deletion regardless of
+request status. Used templates cannot be deleted.
+
+## Transfer And Swap Execution
+
+Requests start as `PENDING_EMPLOYEE`. Target approval either executes directly
+under the team's `EMPLOYEE` policy or moves to `PENDING_MANAGER` under
+`MANAGER` policy. The manager sees active requests but can approve only at the
+manager stage. The target may reject; the requester may cancel an active request.
+
+`SwapRequestService` owns the transaction. `SwapRequestExecutor` requires it
+with `Propagation.MANDATORY`. After team/shift/employee locks, it validates the
+resulting assignment(s); swaps ignore the assignment each person is giving up.
+Both swap legs must pass before either owner changes.
+
+A business eligibility failure is caught inside this transaction and commits
+`INVALIDATED` without transferring ownership. The response is `200` with that
+status, not a successful swap. The shared validator has no inner transactional
+service boundary that would mark this handled failure rollback-only. Unexpected
+database errors still roll back the whole operation.
+
+Successful execution changes assignment owners and invalidates competing active
+requests in the same transaction. Team locking also covers cross-column conflicts
+that separate source/target unique indexes cannot prevent alone. Duplicate
+approvals or approval after cancellation/invalidation return `409`.
+
+## JMS And Notifications
 
 ```mermaid
 sequenceDiagram
-    participant Client as React or API Client
-    participant AuthController
-    participant AuthService
-    participant UserRepository
-    participant JwtService
-
-    Client->>AuthController: POST /api/auth/login
-    AuthController->>AuthService: login(username, password)
-    AuthService->>UserRepository: findByUsername(username)
-    AuthService->>AuthService: validate password
-    AuthService->>JwtService: generate token
-    JwtService-->>AuthService: JWT
-    AuthService-->>AuthController: LoginResponse
-    AuthController-->>Client: 200 OK
+    participant Client
+    participant Service
+    participant DB as PostgreSQL
+    participant Dispatcher
+    participant Broker as Artemis
+    participant Consumer
+    Client->>Service: Publish schedule or create request
+    Service->>DB: Business change + pending outbox event
+    DB-->>Service: Commit
+    Service-->>Client: HTTP response
+    Dispatcher->>DB: Read pending events
+    Dispatcher->>Broker: Send event
+    Dispatcher->>DB: Mark sent
+    Broker->>Consumer: Deliver event
+    Consumer->>DB: Create recipient notifications
 ```
 
-### Schedule Publication
-
-```mermaid
-sequenceDiagram
-    participant Client as React or API Client
-    participant Security as JwtAuthenticationFilter
-    participant ScheduleController
-    participant ScheduleService
-    participant ScheduleRepository
-    participant EventOutboxService
-    participant EventOutboxRepository
-    participant AssignmentValidator
-    participant ScheduleWriteLock
-
-    Client->>Security: POST /api/schedules/{scheduleId}/publish with Bearer token
-    Security->>ScheduleController: authenticated request
-    ScheduleController->>ScheduleService: publishSchedule(username, scheduleId, confirmUnfilled)
-    ScheduleService->>ScheduleRepository: findById(scheduleId)
-    ScheduleService->>ScheduleService: validate manager access
-    ScheduleService->>ScheduleWriteLock: lockSchedule: lock team, refresh schedule
-    ScheduleService->>ScheduleService: validate refreshed draft status, load assignments
-    ScheduleService->>ScheduleWriteLock: lockAssignedEmployees in ascending ID order
-    ScheduleService->>AssignmentValidator: validate existing assignments for each shift
-    Note over ScheduleService,AssignmentValidator: Invalid assignment: 409, no publication or outbox event
-    ScheduleService->>ScheduleService: require full staffing or explicit unfilled confirmation
-    ScheduleService->>ScheduleService: mark schedule PUBLISHED
-    ScheduleService->>EventOutboxService: createEvent("schedule.published", payload)
-    EventOutboxService->>EventOutboxRepository: save pending event
-    ScheduleService-->>ScheduleController: ScheduleResponse
-    ScheduleController-->>Client: 200 OK
-```
-
-The JMS delivery step happens asynchronously after the publish request returns.
-
-### Outbox JMS Notification Delivery
-
-```mermaid
-sequenceDiagram
-    participant OutboxEventDispatcher
-    participant EventOutboxRepository
-    participant Artemis as ActiveMQ Artemis
-    participant NotificationEventConsumer
-    participant SchedulePublishedNotificationService
-    participant TeamMemberRepository
-    participant NotificationService
-
-    OutboxEventDispatcher->>EventOutboxRepository: findTop50BySentAtIsNullOrderByCreatedAtAsc()
-    EventOutboxRepository-->>OutboxEventDispatcher: pending events
-    OutboxEventDispatcher->>Artemis: send OutboxEventMessage to notification.events
-    OutboxEventDispatcher->>OutboxEventDispatcher: mark event sent
-    Artemis->>NotificationEventConsumer: deliver JMS message
-    NotificationEventConsumer->>NotificationEventConsumer: parse event type and payload
-    NotificationEventConsumer->>SchedulePublishedNotificationService: createNotifications(eventId, schedulePublishedEvent)
-    SchedulePublishedNotificationService->>TeamMemberRepository: find active team members
-    SchedulePublishedNotificationService->>NotificationService: create notification per active member
-```
-
-### Notification List And Read State
-
-```mermaid
-sequenceDiagram
-    participant Client as React or API Client
-    participant Security as JwtAuthenticationFilter
-    participant NotificationController
-    participant NotificationService
-    participant NotificationRepository
-
-    Client->>Security: GET /api/notifications with Bearer token
-    Security->>NotificationController: authenticated request
-    NotificationController->>NotificationService: listMyNotifications(username)
-    NotificationService->>NotificationRepository: findByRecipient_UsernameOrderByCreatedAtDesc(username)
-    NotificationService-->>NotificationController: NotificationResponse list
-    NotificationController-->>Client: 200 OK
-
-    Client->>Security: POST /api/notifications/{notificationId}/read with Bearer token
-    Security->>NotificationController: authenticated request
-    NotificationController->>NotificationService: markMyNotificationRead(username, notificationId)
-    NotificationService->>NotificationRepository: findByIdAndRecipient_Username(notificationId, username)
-    NotificationService->>NotificationService: set readAt if unread
-    NotificationService-->>NotificationController: NotificationResponse
-    NotificationController-->>Client: 200 OK
-```
-
-### Publication Readiness
-
-```mermaid
-sequenceDiagram
-    participant Client as React or API Client
-    participant Security as JwtAuthenticationFilter
-    participant ScheduleController
-    participant ScheduleService
-    participant ScheduleRepository
-    participant ShiftRepository
-    participant AssignmentRepository
-    participant AssignmentValidator
-
-    Client->>Security: GET /api/schedules/{scheduleId}/publication-readiness with Bearer token
-    Security->>ScheduleController: authenticated request
-    ScheduleController->>ScheduleService: getPublicationReadiness(username, scheduleId)
-    ScheduleService->>ScheduleRepository: findById(scheduleId)
-    ScheduleService->>ScheduleService: validate manager access
-    ScheduleService->>AssignmentRepository: find assignments for schedule shifts
-    ScheduleService->>ShiftRepository: find shifts in schedule order
-    ScheduleService->>AssignmentValidator: validate existing assignments for each shift
-    Note over ScheduleService,AssignmentValidator: Invalid assignment: 409 instead of a readiness report
-    ScheduleService->>ScheduleService: calculate required workers, assigned workers, and open slots
-    ScheduleService-->>ScheduleController: SchedulePublicationReadinessResponse
-    ScheduleController-->>Client: 200 OK
-```
-
-Readiness and publication share `AssignmentValidator.validateExistingAssignments`.
-It checks capacity, active membership, required role, availability, overlap, and
-minimum rest using the existing rules. The current assignment is excluded from
-overlap/rest queries, and a fully staffed shift is valid. `confirmUnfilled` only
-permits open slots; it never bypasses eligibility checks. Validation failure
-leaves the draft and publication number unchanged and creates no outbox event.
-The read-only readiness endpoint does not lock or reserve the schedule. Publishing
-revalidates under write locks, even if a previous readiness report was successful.
-
-### Schedule Write Coordination
-
-`ScheduleWriteLock` requires an existing service transaction. It acquires the
-same team row lock as `SwapRequestLock`, then refreshes entities loaded before
-waiting. Schedule publication/reopening/deletion, shift creation/editing/deletion,
-manual/automatic assignment, assignment deletion, template creation/deletion,
-slot creation, and template generation all participate. This deliberately
-serializes these writes within one team. Different teams can proceed independently
-unless they share employees.
-
-The order is team, any needed shifts in ID order, then employees in ID order.
-Publication needs the team and assigned-employee locks; the team lock already
-prevents its shifts and assignments from changing through these write paths.
-Manual assignment now reads the shift without locking, checks manager access,
-then locks the team before the shift. It must not take a shift lock first and
-wait for the team, since request execution takes these locks in the opposite order.
-
-After waiting, draft-only actions return `409` if the schedule is now published.
-A schedule/shift/assignment removed during the wait returns `404` when refreshed.
-Two publications cannot produce two publication events for the same draft state.
-Reopening coordinates with request execution: reopening first invalidates the
-request at execution without changing owners; execution first keeps the completed
-transfer/swap when the schedule is reopened.
-
-Client versions protect shift edits; deletion snapshots protect draft/template
-and individual shift/assignment confirmation as described below. Request refreshes
-map missing records to `404`; the API handler also covers missing lazy associations
-before refresh (JPA `EntityNotFoundException` or Spring's retrieval wrapper).
-Future team/member/role mutations must join the write protocol; no all-writers
-guarantee is claimed for them. Demo initialization only creates an empty database
-under its own advisory lock and never edits an existing workflow.
-Spring/JPA pessimistic-lock failures and lock timeouts map
-to `409 CONCURRENT_MODIFICATION`. Other database errors are not blanket-mapped
-to conflicts, and writes are not automatically retried. Production timeout
-settings are unchanged; short database timeouts are configured in integration
-tests, including the template tests that exercise the HTTP error path.
-
-### Template Write Coordination
-
-`ShiftTemplateService` reuses `ScheduleWriteLock.lockTeam` for name uniqueness
-checks and `lockTemplate` for slot creation, deletion, and generation.
-`lockTemplate` takes the team write lock, then refreshes the template without
-another row lock: participating mutations already serialize through the team.
-Generation also refreshes the target schedule and rechecks draft status before
-reading slots. Ordinary listing remains read-only, without write locks. Deletion
-previews briefly use the team lock to read a consistent parent/child snapshot.
-
-Deletion checks current shift references under the lock. A competing generation
-committed first makes the template used (`409`); deletion committed first makes
-waiting operations return `404` on refresh, before inserting dependent records.
-Duplicate creation checks the trimmed name after the team lock, producing `409`
-without falling through to a database unique-constraint error. Different teams
-do not share that lock or name uniqueness scope.
-
-Slot creation and generation serialize. A slot committed before generation is
-included; a slot added afterwards needs another generation call. The repeat call
-skips existing occurrences. Template deletion cascades its unused slots only
-after checking the confirmed revision. New slot
-editing/deletion APIs and future metadata writers must follow the
-same protocol when implemented.
-
-### Deletion Confirmation
-
-`ScheduleService.previewDraftDeletion` and
-`ShiftTemplateService.previewTemplateDeletion` authorize the manager, lock the
-team, refresh the parent, and enforce deletion eligibility. They return the
-current schedule/template identity, child counts, and an opaque revision.
-`DeletionRevision` uses SHA-256 over the parent ID/version and sorted groups of
-child IDs/versions: shifts and assignments for drafts, slots for templates.
-This avoids relying on a parent's JPA version to change when a child changes.
-No schema or aggregate-version trigger is needed; future writers must still use
-the shared lock and preserve JPA version updates.
-
-The UI requests a fresh preview before its confirmation dialog. On confirmation,
-DELETE submits the unchanged `revision` query parameter. Each delete reacquires
-the team lock, repeats authorization/eligibility checks, computes current state,
-and compares before removing anything. Missing/malformed revisions return `400`,
-stale state `409`, and missing resources `404`. The revision is not a credential;
-it has no time-based expiry and is valid only while the represented state matches.
-The dialog does not hold a transaction open and conflicts are never auto-retried.
-This protects the confirmation snapshot, not an arbitrarily old list response.
-
-Draft deletion also explicitly rejects any source/target transfer or swap request
-history. Existing foreign keys prevented that deletion already; the new check
-returns a clear conflict without deleting historical requests or partial data.
-
-`ShiftService.previewShiftDeletion` uses the same protocol, returning the shift,
-assignment count, and revision. Its revision includes the shift ID/version,
-schedule ID/version, and assignment IDs/versions. A child added or replaced
-after confirmation is not silently removed with the shift. The successful delete
-cascades assignments through the existing foreign key.
-
-`AssignmentService.previewAssignmentDeletion` returns the current assignment,
-shift, and revision. This revision includes all three record IDs/versions:
-assignment, shift, and schedule. Even a shift-time edit or publish/reopen cycle
-invalidates the confirmation. Removal preserves the shift and other assignments.
-The frontend shows current employee identity and shift times before confirming.
-
-Individual deletions also reject source/target request history, regardless of
-request status. These checks run while holding the same team lock used by request
-creation/execution. Reopening and deletion committed before a waiting request
-cause `404`, not an orphan request or a generic persistence error. Preview calls
-release their locks before the user confirms; DELETE never refreshes a stale
-revision on the client's behalf.
-
-### Shift Editing
-
-`ShiftService.updateShift` checks manager ownership, acquires the team lock, and
-refreshes the schedule before checking draft status. It locks and refreshes the
-shift, compares the required request `version` with its refreshed `@Version`,
-checks the schedule date range and role's team, then locks assigned
-employees in ID order before applying the proposed fields. It calls the shared
-validator in the service transaction. An eligibility or excess-capacity conflict propagates
-as `409`; rollback restores every edited field, including any changes Hibernate
-flushed while running validation queries. Assignment owners are not changed.
-
-The employee locks coordinate editing with availability changes and assignment
-creation in other teams. A conflicting operation committed first is visible to
-the second operation's validation. PostgreSQL tests verify both orders and
-rollback without ownership changes.
-
-`ShiftResponse` includes the entity version for create/list/update and generated
-shifts. The update service flushes after validation and before creating its
-response so the returned version matches the saved row. A no-op edit need not
-increment it. No migration is needed: the column and JPA version mapping already
-existed, but previously the client did not send its version.
-
-An outdated version throws `ObjectOptimisticLockingFailureException` before any
-fields are changed. `GlobalExceptionHandler` maps Spring/JPA optimistic-lock
-exceptions to `409 STALE_VERSION` with a reload-and-review message. Required-field
-validation rejects missing/null/negative versions with `400`; a deleted shift
-returns `404`. Version knowledge never bypasses team-manager authorization.
-Postman captures the version on create/list/update, not in an automatic
-pre-save refresh. Replacing the version on a stale body without reviewing newer
-values would still intentionally overwrite them. The React edit form remains
-planned in roadmap part 9, rather than being claimed as complete here.
-
-### Schedule Reopening
-
-```mermaid
-sequenceDiagram
-    participant Client as React or API Client
-    participant Security as JwtAuthenticationFilter
-    participant ScheduleController
-    participant ScheduleService
-    participant ScheduleRepository
-    participant ScheduleWriteLock
-
-    Client->>Security: POST /api/schedules/{scheduleId}/reopen with Bearer token
-    Security->>ScheduleController: authenticated request
-    ScheduleController->>ScheduleService: reopenSchedule(username, scheduleId)
-    ScheduleService->>ScheduleRepository: findById(scheduleId)
-    ScheduleService->>ScheduleService: validate manager access
-    ScheduleService->>ScheduleWriteLock: lock team and refresh schedule
-    ScheduleService->>ScheduleService: validate refreshed published status
-    ScheduleService->>ScheduleService: mark schedule DRAFT
-    ScheduleService-->>ScheduleController: ScheduleResponse
-    ScheduleController-->>Client: 200 OK
-```
-
-### Employee Published Schedule List
-
-```mermaid
-sequenceDiagram
-    participant Client as React or API Client
-    participant Security as JwtAuthenticationFilter
-    participant ScheduleController
-    participant ScheduleService
-    participant UserRepository
-    participant TeamMemberRepository
-    participant ScheduleRepository
-
-    Client->>Security: GET /api/schedules/me/published with Bearer token
-    Security->>ScheduleController: authenticated request
-    ScheduleController->>ScheduleService: listPublishedSchedulesForUser(username)
-    ScheduleService->>UserRepository: findByUsername(username)
-    ScheduleService->>TeamMemberRepository: find active team memberships
-    ScheduleService->>ScheduleRepository: find PUBLISHED schedules for active teams
-    ScheduleService-->>ScheduleController: ScheduleResponse list
-    ScheduleController-->>Client: 200 OK
-```
-
-### Employee Published Schedule Details
-
-```mermaid
-sequenceDiagram
-    participant Client as React or API Client
-    participant Security as JwtAuthenticationFilter
-    participant ScheduleController
-    participant ScheduleService
-    participant UserRepository
-    participant ScheduleRepository
-    participant TeamMemberRepository
-    participant ShiftRepository
-    participant AssignmentRepository
-
-    Client->>Security: GET /api/schedules/me/published/{scheduleId} with Bearer token
-    Security->>ScheduleController: authenticated request
-    ScheduleController->>ScheduleService: getPublishedScheduleDetailsForUser(username, scheduleId)
-    ScheduleService->>UserRepository: findByUsername(username)
-    ScheduleService->>ScheduleRepository: findById(scheduleId)
-    ScheduleService->>ScheduleService: require PUBLISHED status
-    ScheduleService->>TeamMemberRepository: confirm active team membership
-    ScheduleService->>ShiftRepository: find shifts in schedule order
-    ScheduleService->>AssignmentRepository: find assignments for schedule shifts
-    ScheduleService-->>ScheduleController: PublishedScheduleDetailsResponse
-    ScheduleController-->>Client: 200 OK
-```
-
-### Manual Assignment
-
-```mermaid
-sequenceDiagram
-    participant Client as React or API Client
-    participant Security as JwtAuthenticationFilter
-    participant AssignmentController
-    participant AssignmentService
-    participant AssignmentValidator
-    participant Repositories
-    participant Database
-
-    Client->>Security: POST /api/assignments with Bearer token
-    Security->>AssignmentController: authenticated request
-    AssignmentController->>AssignmentService: createAssignment(username, request)
-    AssignmentService->>Repositories: load shift, employee, and managed schedule context
-    Repositories->>Database: queries
-    AssignmentService->>Database: lock team, refresh schedule, then lock and refresh shift
-    AssignmentService->>AssignmentService: validate refreshed draft status
-    AssignmentService->>Database: lock employee row with PESSIMISTIC_WRITE
-    AssignmentService->>AssignmentValidator: validate team membership, role, capacity, availability, overlap, rest
-    AssignmentValidator->>Repositories: run assignment validation queries
-    AssignmentService->>Repositories: save Assignment
-    Repositories->>Database: insert assignment
-    AssignmentService-->>AssignmentController: AssignmentResponse
-    AssignmentController-->>Client: 201 Created
-```
-
-Manual and automatic assignment workflows first lock the team and refresh the
-schedule, then acquire a PostgreSQL row-level `PESSIMISTIC_WRITE` shift lock
-before checking capacity. The lock is held by the
-transaction until it completes, so concurrent assignment requests for the same
-shift are serialized. This prevents two requests from both seeing the same open
-slot and inserting assignments beyond `requiredWorkers`.
-
-Both workflows also lock the employee row before assignment validation. A second
-assignment for that employee waits for the first transaction and then checks the
-committed overlap/rest state, including assignments in another schedule.
-Automatic assignment acquires all shift locks in ascending shift ID order, then
-all candidate employee locks in ascending user ID order. Assignment processing
-still uses chronological shift order and the existing workload ranking.
-
-Transfer/swap execution uses the same team-then-shifts-then-employees lock order,
-as described below. Availability writes also take the employee lock before
-validation or deletion, without subsequently acquiring team/shift locks. Assigned
-shift edits and publication also take employee locks before eligibility checks.
-PostgreSQL regression tests run with `mvn verify -Ppostgres-it` from the backend
-directory. Remaining protocol boundaries are listed under Schedule Write Coordination.
-
-### Availability Constraint
-
-```mermaid
-sequenceDiagram
-    participant Client as React or API Client
-    participant AvailabilityConstraintController
-    participant AvailabilityConstraintService
-    participant UserRepository
-    participant AssignmentRepository
-    participant AvailabilityConstraintRepository
-
-    Client->>AvailabilityConstraintController: POST /api/availability-constraints
-    AvailabilityConstraintController->>AvailabilityConstraintService: createConstraint(username, request)
-    AvailabilityConstraintService->>AvailabilityConstraintService: validate time range
-    AvailabilityConstraintService->>UserRepository: resolve username, then findByIdForUpdate(employeeId)
-    UserRepository-->>AvailabilityConstraintService: employee with write lock held until commit
-    AvailabilityConstraintService->>AssignmentRepository: find overlapping assignments
-    AssignmentRepository-->>AvailabilityConstraintService: overlaps or empty list
-    Note over AvailabilityConstraintService,AssignmentRepository: Overlap after waiting: 409 and rollback, no constraint saved
-    AvailabilityConstraintService->>AvailabilityConstraintRepository: save constraint
-    AvailabilityConstraintRepository-->>AvailabilityConstraintService: saved constraint
-    AvailabilityConstraintService-->>AvailabilityConstraintController: AvailabilityConstraintResponse
-    AvailabilityConstraintController-->>Client: 201 Created
-```
-
-Availability creation and deletion use `lockCurrentUser`; listing uses the
-non-locking `currentUser`. The existing `UserRepository.findByIdForUpdate` row lock
-coordinates with manual/automatic assignment and request execution across server
-threads or instances, not only within a JVM. Creation checks assignments after
-the lock is acquired. Deletion loads the constraint after locking, so a second
-concurrent deletion sees `404` rather than a stale entity.
-
-If assignment or request execution commits first, an overlapping constraint
-returns `409`. If the constraint commits first, manual assignment returns `409`,
-automatic assignment skips the employee, and transfer/swap execution records
-`INVALIDATED` without changing either owner. A waiting assignment can proceed
-after a conflicting constraint is deleted. These outcomes are verified in
-`AvailabilityConcurrencyIT`. `ScheduleWorkflowConcurrencyIT` additionally verifies
-availability versus assigned-shift editing through the same employee lock.
-
-### Transfer Request Creation
-
-```mermaid
-sequenceDiagram
-    participant Client as React or API Client
-    participant Security
-    participant SwapRequestController
-    participant SwapRequestService
-    participant Repositories
-    participant Database
-
-    Client->>Security: POST /api/requests/transfers with Bearer token
-    Security->>SwapRequestController: authenticated request
-    SwapRequestController->>SwapRequestService: createTransferRequest(username, request)
-    SwapRequestService->>Repositories: load requester and source assignment
-    Repositories->>Database: queries
-    SwapRequestService->>Database: lock source team through SwapRequestLock; refresh source state
-    SwapRequestService->>Repositories: load target employee
-    SwapRequestService->>SwapRequestService: validate employee requester, ownership, published schedule, target team membership, no active request
-    SwapRequestService->>Repositories: save SwapRequest
-    Repositories->>Database: insert swap_requests row
-    SwapRequestService-->>SwapRequestController: SwapRequestResponse
-    SwapRequestController-->>Client: 201 Created
-```
-
-### Swap Request Creation
-
-```mermaid
-sequenceDiagram
-    participant Client as React or API Client
-    participant Security
-    participant SwapRequestController
-    participant SwapRequestService
-    participant Repositories
-    participant Database
-
-    Client->>Security: POST /api/requests/swaps with Bearer token
-    Security->>SwapRequestController: authenticated request
-    SwapRequestController->>SwapRequestService: createSwapRequest(username, request)
-    SwapRequestService->>Repositories: load requester and source assignment
-    Repositories->>Database: queries
-    SwapRequestService->>Database: lock source team through SwapRequestLock; refresh source state
-    SwapRequestService->>Repositories: load target assignment
-    SwapRequestService->>SwapRequestService: validate ownership, published schedules, same team, target membership, no active requests
-    SwapRequestService->>Repositories: save SwapRequest
-    Repositories->>Database: insert swap_requests row with target_assignment_id
-    SwapRequestService-->>SwapRequestController: SwapRequestResponse
-    SwapRequestController-->>Client: 201 Created
-```
-
-### Transfer Request Target Approval
-
-```mermaid
-sequenceDiagram
-    participant Client as React or API Client
-    participant Security
-    participant SwapRequestController
-    participant SwapRequestService
-    participant SwapRequest
-    participant SwapRequestExecutor
-    participant SwapRequestLock
-    participant AssignmentValidator
-    participant Assignment
-
-    Client->>Security: POST /api/requests/{requestId}/employee-approve with Bearer token
-    Security->>SwapRequestController: authenticated request
-    SwapRequestController->>SwapRequestService: approveByTargetEmployee(username, requestId)
-    SwapRequestService->>SwapRequestLock: lock team and refresh request/assignment state
-    SwapRequestService->>SwapRequestService: validate current user is the target employee
-    SwapRequestService->>SwapRequest: approveByTargetEmployee(now, teamApprovalPolicy)
-    SwapRequest->>SwapRequest: PENDING_EMPLOYEE to APPROVED or PENDING_MANAGER
-    SwapRequestService->>SwapRequestExecutor: executeIfReady(request, approvedAt)
-    alt Team policy is EMPLOYEE
-        SwapRequestExecutor->>SwapRequestLock: lock shifts, then employees, in ID order
-        SwapRequestExecutor->>AssignmentValidator: validateEmployeeCanReceiveTransferredAssignment(shift, targetEmployee)
-        alt Target employee is eligible
-            SwapRequestExecutor->>Assignment: transferTo(targetEmployee, approvedAt)
-            SwapRequestExecutor->>SwapRequestExecutor: invalidate competing active requests
-        else Target employee is not eligible
-            SwapRequestExecutor->>SwapRequest: invalidate(approvedAt)
-        end
-    else Team policy is MANAGER
-        SwapRequestExecutor-->>SwapRequestService: request is not ready for execution yet
-    end
-    SwapRequestService-->>SwapRequestController: SwapRequestResponse
-    SwapRequestController-->>Client: 200 OK
-```
-
-### Transfer Request Manager Approval
-
-```mermaid
-sequenceDiagram
-    participant Client as React or API Client
-    participant Security
-    participant SwapRequestController
-    participant SwapRequestService
-    participant SwapRequest
-    participant TeamManagerRepository
-    participant SwapRequestExecutor
-    participant SwapRequestLock
-    participant AssignmentValidator
-    participant Assignment
-
-    Client->>Security: POST /api/requests/{requestId}/manager-approve with Bearer token
-    Security->>SwapRequestController: authenticated request
-    SwapRequestController->>SwapRequestService: approveByManager(username, requestId)
-    SwapRequestService->>SwapRequestService: validate current user has MANAGER application role
-    SwapRequestService->>SwapRequestLock: lock team and refresh request/assignment state
-    SwapRequestService->>TeamManagerRepository: confirm manager owns the source shift team
-    SwapRequestService->>SwapRequest: approveByManager(manager, now)
-    SwapRequest->>SwapRequest: PENDING_MANAGER to APPROVED
-    SwapRequestService->>SwapRequestExecutor: executeIfReady(request, approvedAt)
-    SwapRequestExecutor->>SwapRequestLock: lock shifts, then employees, in ID order
-    SwapRequestExecutor->>AssignmentValidator: validateEmployeeCanReceiveTransferredAssignment(shift, targetEmployee)
-    alt Target employee is eligible
-        SwapRequestExecutor->>Assignment: transferTo(targetEmployee, approvedAt)
-        SwapRequestExecutor->>SwapRequestExecutor: invalidate competing active requests
-    else Target employee is not eligible
-        SwapRequestExecutor->>SwapRequest: invalidate(approvedAt)
-    end
-    SwapRequestService-->>SwapRequestController: SwapRequestResponse
-    SwapRequestController-->>Client: 200 OK
-```
-
-The same approval endpoints handle `SWAP` requests. For swaps, final execution
-validates both resulting assignments while ignoring the assignment each employee
-is giving up, then exchanges the two assignment owners. If either side fails
-validation, the request becomes `INVALIDATED` and no assignment changes.
-
-`SwapRequestLock` uses a pessimistic write lock on the source team row for every
-request write entry point, including creation, rejection, and cancellation.
-This covers source/target cross-column conflicts that the two separate partial
-unique indexes cannot prevent by themselves. It deliberately serializes request
-writes for one team; other teams can proceed unless execution shares employees.
-Entities loaded before a lock wait are refreshed before ownership/status checks.
-A second approval, or an approval after cancellation/invalidation, therefore
-checks the committed state and returns `409 Conflict`.
-
-For final execution, shifts are locked first and employees second, with IDs
-sorted inside each group. This matches manual/automatic assignment and keeps
-their overlap/rest validation coordinated. After a successful transfer or swap,
-active requests referencing either changed assignment are invalidated within
-the same transaction, including conflicting records from earlier versions.
-
-The service owns the transaction. The executor and lock helper require that
-transaction (`Propagation.MANDATORY`); the shared validator does not introduce
-another transactional service boundary. Consequently a caught business
-validation exception does not mark the operation rollback-only, and the
-`INVALIDATED` state can commit. Unexpected database failures still roll back
-the entire operation. No new schema migration or request-status JMS event is
-introduced by this change.
-
-## Database Migration Timeline
-
-```mermaid
-flowchart LR
-    v1["V1<br/>Users and teams"]
-    v2["V2<br/>Schedules"]
-    v3["V3<br/>Shifts"]
-    v4["V4<br/>Assignments"]
-    v5["V5<br/>Availability constraints"]
-    v6["V6<br/>Staffing roles"]
-    v7["V7<br/>Team member staffing roles"]
-    v8["V8<br/>Required staffing role on shifts"]
-    v9["V9<br/>Notifications and event outbox"]
-    v10["V10<br/>Swap requests"]
-    v11["V11<br/>Shift templates"]
-    v12["V12<br/>Generated shift uniqueness"]
-    v13["V13<br/>Swap target active uniqueness"]
-
-    v1 --> v2 --> v3 --> v4 --> v5 --> v6 --> v7 --> v8 --> v9 --> v10 --> v11 --> v12 --> v13
-```
-
-## Component Responsibilities
-
-| Area | Responsibility |
+The diagram is a typical ordering, not a guarantee that the HTTP response arrives
+before consumption. Delivery is independent after commit; the request does not
+wait for notification creation.
+
+| Event | Recipients |
 | --- | --- |
-| `auth` | Login, JWT creation, JWT request authentication, current user endpoint. |
-| `config` | Security configuration and explicit, transactional, empty-database-only demo initialization. |
-| `error` | Unified API error response model and global exception handling. |
-| `health` | Public health check endpoint. |
-| `user` | User entity and broad application role such as `MANAGER` or `EMPLOYEE`. |
-| `team` | Teams, active team membership, team managers, and managed team listing for manager UI. |
-| `schedule` | Draft schedule creation, managed draft schedule listing, publication/reopening, readiness, employee and manager published list/details, and shared write coordination through `ScheduleWriteLock`. |
-| `shift` | Shift creation, listing, version-checked update with existing-assignment revalidation, deletion, schedule-range validation, optional required staffing role storage, and optional source template slot storage for generated shifts. |
-| `assignment` | Manual assignment creation/list/delete, basic automatic assignment, and shared validation through `AssignmentValidator` for candidates and existing assignments, including capacity, membership, availability, overlap, rest, and required staffing roles. |
-| `request` | Transfer and swap request model, request statuses, transfer/swap creation, employee and manager scoped request lists, target employee approval/rejection, manager approval, requester cancellation, team-scoped write coordination through `SwapRequestLock`, and atomic approved request execution through `SwapRequestExecutor`. |
-| `availability` | Employee unavailable time ranges; create/delete operations share the employee write lock with assignment creation and transfer/swap execution before conflict checks or deletion. |
-| `staffing` | Team-specific professional roles, role create/list API, employee role assignment/list API, and persistence for assigning roles to team members. |
-| `template` | Shift template and template slot persistence model, manager-scoped create/list/delete APIs, and template-based shift generation into draft schedules. Current mutations reuse the shared team lock and refresh templates after waiting. |
-| `messaging` | Event outbox persistence, event creation, scheduled outbox dispatch, and JMS message shape. |
-| `notification` | Personal notifications, unread count, mark-as-read behavior, JMS event consumption, schedule-published notification creation, and idempotent notification creation. |
-| Flyway migrations | Versioned PostgreSQL schema changes. |
-| PostgreSQL | Persistent relational storage. |
-| ActiveMQ Artemis | JMS broker used for asynchronous notification events. |
+| `schedule.published` | Active team members. |
+| `request.created` | Target employee and team managers, for transfers and swaps. |
+
+`OutboxEventDispatcher` polls up to 50 pending events every five seconds by
+default, sends JSON to `notification.events`, then marks the event sent. A send
+or serialization failure increments `attempt_count`; the row remains pending.
+`sent_at` means dispatch, not proof that every recipient notification exists.
+
+Database commit and JMS send are not one distributed transaction. Delivery may
+repeat, for example after a send succeeds but the outbox update rolls back.
+Notification creation checks the event/recipient pair and has a database unique
+constraint. This is not an exactly-once delivery guarantee, a verified
+multi-dispatcher design, or a completed broker recovery/DLQ implementation.
+Unsupported event types are currently ignored by the consumer. There is no
+application DLQ viewer or replay workflow.
+
+Notifications are persisted separately from broker messages. A consumed queue can
+be empty while notifications remain visible in the application/DB. HTTP
+validation failures such as `409` are API responses, not automatically JMS events.
+The notification center reads the API and can mark notifications as read.
+Event messages may contain an earlier snapshot; request/schedule details are the
+current state. Some generated notification text remains English.
+
+## Errors, Logging And Verification
+
+API and security errors use `status`, `error`, `code`, `message`, `path` and
+`timestamp`. Common codes include `VALIDATION_ERROR`, `MALFORMED_REQUEST`,
+`UNAUTHORIZED`, `FORBIDDEN`, `NOT_FOUND`, `STALE_VERSION`,
+`CONCURRENT_MODIFICATION`, and business codes such as `SHIFT_OVERLAP`,
+`SHIFT_CAPACITY` and `MINIMUM_REST`. Expected lock failures/timeouts map to
+`409`; unrelated database failures are not indiscriminately relabeled.
+
+SLF4J/Spring Boot logs identify workflow events by schedule, employee, request
+and event IDs. They are operational logs, not an audit-log feature. Passwords,
+JWTs and full request bodies are not intentionally logged.
+
+Unit tests isolate collaborators; PostgreSQL tests verify real migrations,
+transactions, lock waits and stored outcomes. MockMvc tests that inject a test
+identity do not prove login/JWT or browser behavior. Focused frontend tests and
+the response-ordering fixture do not replace live end-to-end testing.
+See [commands and representative tests](RUN_LOCALLY.md#verification).
+
+## Demo Initialization
+
+`DevelopmentDataSeeder` is disabled by default. Explicit initialization takes a
+transaction-scoped advisory lock, then checks users, teams and the independent
+outbox table before creating the scenario. Existing/partial databases are skipped.
+Failure rolls back the scenario, and concurrent initializers do not seed twice.
+
+Dates are chosen once. Restarting never restores transferred/deleted data or
+adopts a manual schedule by date. Preloaded notifications and the preloaded
+request are fixtures, not proof of JMS delivery. Use a new real API action to
+demonstrate the event pipeline. [Run Locally](RUN_LOCALLY.md) contains the explicit
+first-start command and the destructive-reset warning.

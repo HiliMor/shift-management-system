@@ -31,8 +31,8 @@ complete. Any scope reduction needs an explicit decision and instructor approval
 | 9 | Partial | Manager shift editing/deletion UI is implemented and verified with component fixtures and existing API tests. Template/slot lifecycle controls still require review against the approved workflow. | `Manager editing:` |
 | 10 | Partial | Monthly calendar and personal-shift filtering are implemented and verified. Approved read-only access to other teams' published schedules still needs explicit backend authorization; current access rules are unchanged. | `Schedule viewing:` |
 | 11 | Pending | Add JMS-backed request-status and team-join notifications. Verify outbox atomicity, retries/idempotence, correct recipients, and meaningful localized UI messages. Test broker interruption and document actual redelivery/DLQ behavior. | `Notification lifecycle:` |
-| 12 | Pending | Verify and simplify end-to-end UI flows: selected schedule consistency, stale async responses, action/error feedback, empty states, and responsive Hebrew/English layouts. Refactor only where it helps these workflows. | `Frontend workflow:` |
-| 13 | Pending | Correct installation/runtime requirements and update all three submission documents, diagrams, screenshots, and class/function explanations to match tested behavior. Keep the user guide concise and separate from demo setup. | `Submission documentation:` |
+| 12 | Partial | Published-schedule loading ignores obsolete responses, with four focused browser regression checks. Full live end-to-end flows, other async hooks, and action/error feedback still need verification. Mobile work is deferred at the owner's request. | `Frontend workflow:` |
+| 13 | Complete | Runtime/first-start instructions corrected; three local DOCX documents updated and visually checked with current behavior, diagrams, screenshots, and explicit approved-scope gaps. User guidance remains separate from demo setup. This documents the gaps; it does not close them or replace clean-install verification in part 14. | `Submission documentation:` |
 | 14 | Pending | Run the final regression matrix: fresh isolated install, manager/employee end-to-end flows, negative authorization, concurrent writes, and JMS recovery. Record results and known limitations before release. | `Release verification:` |
 
 ### Part 1 Boundary
@@ -72,6 +72,34 @@ separately using `mvn verify -Ppostgres-it`; normal
 
 ### Completion Record
 
+- Documentation consolidation (2026-08-31): the submission repository uses
+  `README.md`, `docs/RUN_LOCALLY.md`, and `docs/current-backend-architecture.md`.
+  Unique setup, Postman, verification, security and concurrency guidance was
+  merged before removing the three supplementary README files. This plan and
+  `spec-revised.md` remain tracked for future work but are excluded from the
+  separately prepared submission ZIP. Pre-consolidation copies
+  are preserved under `docs/local-reference/pre-consolidation-2026-08-31/`.
+  All tests, source code, API collection/environment and the separately submitted
+  DOCX files are retained. Approved-scope gaps remain visible in the root README.
+- Submission review (2026-08-31): preserved the test suite and source history.
+  `mvn -B -Ppostgres-it verify` passed 279 unit and 156 PostgreSQL integration
+  tests without failures or skips. `npm test` passed 17 checks; `npm run build`
+  passed. Four browser checks use the real published-schedules hook with delayed
+  fake API responses, not a signed-in end-to-end workflow. No application data
+  was changed. Fresh-machine installation, load testing, full live UI flows,
+  and real broker interruption/redelivery remain unverified in this review.
+- Part 12 increment: late detail successes, late authentication errors, old
+  loading completions, and pending responses after reset cannot overwrite the
+  currently selected published schedule. The fixture is available at
+  `/tests/published-schedules.html` through the frontend dev server; it does not
+  ship in the production build or run as part of `npm test`.
+- Part 13 increment: Node requirements match Vite; first-time demo initialization
+  is explicit and empty-database-only. Normal infrastructure shutdown uses
+  `docker compose stop`; documentation warns that the current broker container
+  has no persistent data volume. Submission files remain local, separate from
+  the scoped source commit and from the unchanged original design document.
+  Rendered and visually reviewed all pages: design (13), bilingual user guide
+  (8), and installation guide (8). DOCX package integrity checks passed.
 - Part 1 (2026-08-31): employee write locks added to manual/automatic assignment;
   automatic assignment takes shift locks and employee locks in deterministic ID
   order, then processes shifts chronologically. No migration or API change.

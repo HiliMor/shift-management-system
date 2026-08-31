@@ -1,0 +1,87 @@
+<!doctype html>
+<html lang="en">
+<head><meta charset="UTF-8"><title>Published schedule regression checks</title></head>
+<body>
+  <h1>Published schedule response ordering</h1>
+  <button id="run" type="button">Run regression checks</button>
+  <pre id="results">Not run</pre>
+  <div id="fixture"></div>
+  <script type="module">
+    import React, { act } from "react";
+    import { createRoot } from "react-dom/client";
+    import usePublishedSchedules from "../src/hooks/usePublishedSchedules.js";
+
+    window.IS_REACT_ACT_ENVIRONMENT = true;
+    const originalFetch = window.fetch;
+    const results = document.getElementById("results");
+    const session = { accessToken: "fixture-only" };
+    let requests, current, errors;
+    function Harness() {
+      current = usePublishedSchedules(session, (error) => errors.push(error));
+      return React.createElement("p", null, `Selected: ${current.selectedScheduleId}; displayed: ${current.selectedScheduleDetails?.id ?? "none"}`);
+    }
+    function assert(condition, message) { if (!condition) throw new Error(message); }
+    async function respond(id, status = 200) {
+      const index = requests.findIndex((request) => request.id === id);
+      assert(index >= 0, `Missing request: ${id}`);
+      const [request] = requests.splice(index, 1);
+      const payload = id === "list" ? [{ id: 101 }] : { id, message: "Fixture error" };
+      await act(async () => request.resolve(new Response(JSON.stringify(payload), { status })));
+    }
+    const cases = [
+      ["late A cannot replace B", async () => {
+        await act(async () => current.setSelectedScheduleId(101));
+        await act(async () => current.setSelectedScheduleId(202));
+        await respond(202);
+        await respond(101);
+        assert(current.selectedScheduleId === 202 && current.selectedScheduleDetails.id === 202, "Wrong schedule displayed");
+      }],
+      ["late failure from A cannot clear B or trigger an authentication error", async () => {
+        await act(async () => current.setSelectedScheduleId(101));
+        await act(async () => current.setSelectedScheduleId(202));
+        await respond(202);
+        await respond(101, 401);
+        assert(current.selectedScheduleDetails.id === 202 && errors.length === 0, "Stale failure was applied");
+      }],
+      ["old completion cannot finish the new loading state", async () => {
+        await act(async () => current.setSelectedScheduleId(101));
+        await act(async () => current.setSelectedScheduleId(202));
+        await respond(101);
+        assert(current.isLoadingDetails && current.selectedScheduleDetails === null, "Old request stopped loading");
+        await respond(202);
+        assert(!current.isLoadingDetails && current.selectedScheduleDetails.id === 202, "Current response missing");
+      }],
+      ["reset ignores pending list and detail responses", async () => {
+        await act(async () => current.setSelectedScheduleId(101));
+        await act(async () => current.resetPublishedSchedules());
+        await respond(101);
+        await respond("list");
+        assert(current.selectedScheduleDetails === null && current.publishedSchedules.length === 0, "Reset state was overwritten");
+      }],
+    ];
+    document.getElementById("run").onclick = async () => {
+      document.getElementById("run").disabled = true;
+      results.textContent = "";
+      try {
+        for (const [name, check] of cases) {
+          requests = []; errors = [];
+          window.fetch = (url) => {
+            const path = new URL(url).pathname;
+            if (!path.startsWith("/api/schedules/me/published")) throw new Error("Unexpected fixture request");
+            const id = path.endsWith("/published") ? "list" : Number(path.split("/").at(-1));
+            return new Promise((resolve) => requests.push({ id, resolve }));
+          };
+          const root = createRoot(document.getElementById("fixture"));
+          try {
+            await act(async () => root.render(React.createElement(Harness)));
+            await check();
+            results.textContent += `PASS: ${name}\n`;
+          } finally { await act(async () => root.unmount()); }
+        }
+        results.textContent += "4/4 checks passed";
+      } catch (error) { results.textContent += `FAIL: ${error.message}`; }
+      finally { window.fetch = originalFetch; document.getElementById("run").disabled = false; }
+    };
+  </script>
+</body>
+</html>

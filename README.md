@@ -1,163 +1,80 @@
 # Shift Management System
 
-A course project for managing employee shifts across teams.
+A Java course project for managing team schedules, employee assignments,
+availability constraints, and shift transfers/swaps, with a Hebrew/English React UI.
 
-The project is being implemented gradually. The current focus is a working
-Spring Boot backend with authentication, teams, schedules, shifts, manual
-assignment rules, availability constraint support, staffing role support,
-basic automatic assignment, shift templates, JMS-backed notifications, and
-React frontend workflows for the main manager and employee flows.
+## Documentation
 
-## Repository Structure
+- [Install, run, and verify](docs/RUN_LOCALLY.md): first-time setup, demo accounts,
+  tests, Postman, troubleshooting, and safe shutdown.
+- [Architecture](docs/current-backend-architecture.md): layers, domain model,
+  authorization, transactions, concurrency, JMS, and implementation boundaries.
 
-- `shift-management-backend/` - Spring Boot backend.
-- `shift-management-frontend/` - React frontend.
-- `IMPLEMENTATION_PLAN.md` - step-by-step implementation plan and current status.
-- `spec-revised.md` - main project specification.
+The updated design document, bilingual user guide, and installation guide for
+the instructor are submitted separately as DOCX files. Local planning notes are
+not required to build or run the repository. Known limitations remain below;
+removing duplicate documentation does not change the agreed project requirements.
 
-## Current Backend Status
+## Implemented Workflows
 
-Implemented:
+| User | Available workflows |
+| --- | --- |
+| Manager | Create draft schedules; create, edit, and delete shifts; assign/remove employees manually; run basic automatic assignment; check readiness; publish and reopen schedules. |
+| Manager | Create reusable templates and slots, generate shifts into a draft, and delete unused templates. |
+| Manager | Create new employee accounts in a managed team with optional existing staffing roles; review and approve transfer/swap requests. |
+| Employee | View published schedules of active teams; use weekly/monthly calendars or a list, with an optional personal-shift filter. |
+| Employee | Submit/delete unavailability constraints; create transfer/swap requests; approve/reject incoming requests; cancel outgoing active requests. |
+| Both | Sign in using JWT; view personal notifications, mark them as read, and follow links to schedules or requests. |
 
-- JWT login and authenticated API access.
-- Users, teams, team members, and team managers.
-- Managed team employee listing.
-- Manager creation of new employee accounts with active membership in an owned team and optional existing staffing roles. Creation is atomic, passwords are hashed, and duplicate usernames return `409`.
-- Draft schedule creation.
-- Manager-only draft schedule deletion, including its shifts and assignments.
-- Draft/template deletion shows a fresh confirmation preview and requires its revision; changed child records return `409` without deletion. Drafts with transfer/swap request history cannot be deleted.
-- Shift create, list, update, and delete operations.
-- Shift edits require the version read by the client; stale edits return `409 STALE_VERSION` without overwriting newer data. Postman saves returned versions automatically.
-- Shift edits revalidate existing assignments; invalid changes return `409` and leave the stored shift unchanged.
-- Schedule publication/reopening, draft deletion, shift writes, assignment writes, and template generation share a team write lock and reload state after waiting. Assigned-shift edits also lock employees before validation.
-- Manual assignment create, list, and delete operations.
-- Shift/assignment deletion also requires a reviewed preview revision. Assignment removal confirms the current employee and shift times; edits, publication cycles, or changed shift assignments invalidate the relevant snapshot. Transfer/swap history blocks deletion without removing historical requests.
-- Assignment validations for team membership, duplicate assignments, shift capacity, overlap, and minimum rest.
-- Manual and automatic assignment capacity checks use a PostgreSQL row-level write lock so concurrent requests cannot overfill the same shift.
-- Manual and automatic assignment also lock employee rows before validation, preventing concurrent assignment creation from bypassing overlap and minimum-rest checks across schedules.
-- Basic automatic assignment for draft schedules.
-- Automatic assignment ranks eligible employees by fewer assigned minutes in the schedule.
-- Automatic assignment returns a report with created assignments and remaining open slots.
-- Shift template and template slot persistence model.
-- Manager template create/list endpoints.
-- Manager safe template deletion for unused templates.
-- Template creation/deletion, slot creation, and generation coordinate through the team lock; deleted templates return `404` and used/duplicate templates return `409`. Expected database lock failures return `409 CONCURRENT_MODIFICATION`.
-- Manager template slot create/list endpoints.
-- Manager template shift generation endpoint.
-- Availability constraint persistence model.
-- Availability constraint create, personal list, and delete operations.
-- Availability constraint creation is rejected when it overlaps an existing assignment.
-- Availability creation/deletion shares the employee lock with manual/automatic assignment and transfer/swap execution, so competing operations validate committed state.
-- Assignment creation is rejected when it overlaps an employee availability constraint.
-- Initial staffing role persistence model.
-- Staffing role assignment persistence between team members and staffing roles.
-- Staffing role create and list operations.
-- Optional required staffing role on shifts.
-- Employee staffing role assignment and list operations.
-- Assignment creation validates required staffing roles.
-- Schedule publication from `DRAFT` to `PUBLISHED`.
-- Schedule reopening from `PUBLISHED` to `DRAFT`.
-- Employee published schedule list endpoint.
-- Employee published schedule details endpoint with shifts and assignments.
-- Manager published schedule list endpoint.
-- Publication readiness report.
-- Explicit confirmation for publishing schedules with unfilled shifts.
-- Readiness and publication validate existing assignments, including capacity, membership, roles, availability, overlap, and rest. Confirmation allows open slots, not invalid assignments.
-- Notification persistence model.
-- Personal notification list, unread count, and mark-as-read backend endpoints.
-- Event outbox persistence model for asynchronous messaging.
-- Schedule publication records a pending `schedule.published` outbox event.
-- ActiveMQ Artemis JMS configuration.
-- Scheduled outbox dispatcher that sends pending events to JMS.
-- JMS consumer that creates schedule-published notifications for active team members.
-- Request-created events that notify the target employee and team managers through JMS.
-- Transfer and swap request persistence model.
-- Transfer request creation endpoint for published assignments.
-- Swap request creation endpoint for exchanging two published assignments.
-- Outgoing, incoming, manager team, and pending-manager request list endpoints.
-- Target employee approval endpoint for transfer and swap requests.
-- Target employee rejection endpoint for transfer and swap requests.
-- Requester cancellation endpoint for active transfer and swap requests.
-- Transfer execution for teams with `EMPLOYEE` approval policy.
-- Manager approval and transfer execution for teams with `MANAGER` approval policy.
-- Swap execution for teams with `EMPLOYEE` or `MANAGER` approval policy.
-- Separate approved transfer/swap execution component in the backend request workflow.
-- Transfer/swap validation failures persist as `INVALIDATED` without changing assignment owners.
-- Request writes are serialized per team; final execution also locks shifts and employees to coordinate with manual/automatic assignment. Duplicate approvals return a conflict, and successful execution invalidates competing active requests.
-- Basic business logging for schedule, assignment, transfer and swap request, outbox, and notification workflows.
-- Unified JSON error responses for API and security errors.
-- Explicit, empty-database-only demo initialization with users, a managed team, staffing roles, schedules, assignments, notifications, and a transfer request. Disabled by default; subsequent starts never recreate deleted or transferred demo records. See `docs/RUN_LOCALLY.md` for first-time initialization.
+Staffing-role creation and assignment also have manager-scoped APIs; not every
+administrative API has a UI. Managers have a separate read-only published view.
+Scheduling checks cover active membership, required roles, capacity, unavailable
+times, overlap, and minimum rest. Updates/deletions reject stale client state.
+Calendar weeks start on Sunday. Templates generate shifts, not recurring employee
+assignment series. JMS currently handles publication and request-creation events.
 
-Frontend:
+## Technology And Structure
 
-- Login screen connected to `POST /api/auth/login`.
-- JWT session stored in browser local storage.
-- Expired JWT sessions return to the login screen with a clear message.
-- Role-based workspace title and navigation.
-- Published schedule list loaded from `GET /api/schedules/me/published`.
-- Published schedule details loaded from `GET /api/schedules/me/published/{scheduleId}`.
-- Shift and assignment display for selected published schedules.
-- Published schedules support Sunday-first weekly/monthly calendars and a list. Employees can filter all three views to their own shifts without hiding coworkers assigned to the same shift.
-- Employee availability constraint screen connected to create, list, and delete APIs.
-- Managed team list loaded from `GET /api/teams/me/managed`.
-- Team employees - manager-only creation form for a name, username, password, optional email, and optional team roles. Successful creation refreshes the employee list used for manual assignment.
-- Manager draft schedule creation connected to `POST /api/schedules`.
-- Managed draft schedule list loaded from `GET /api/schedules/me/managed/drafts`.
-- Manager shift creation connected to `POST /api/schedules/{scheduleId}/shifts`.
-- Managers can edit or delete existing shifts in the draft's build step. Edits send the viewed version; deletion confirms current shift details and assignment count using a fresh preview revision.
-- Manager manual assignment screen connected to `POST /api/assignments`.
-- Assignment screen loads draft schedule shifts, team employees, and existing schedule assignments.
-- Manager automatic assignment screen connected to `POST /api/schedules/{scheduleId}/auto-assign`.
-- Automatic assignment screen displays the created-assignment report and remaining open slots.
-- Manager publication screen supports readiness checks, publishing draft schedules, and reopening published schedules.
-- Notification center connected to personal notification list, unread count, and mark-as-read APIs.
-- Transfer and swap request screen connected to outgoing, incoming, and manager team request APIs.
-- Manager request view shows active requests waiting for either employee or manager approval, with actions enabled only at the correct workflow stage.
-- Transfer and swap request screen supports employee request creation from a selected published schedule.
-- Transfer and swap request screen supports employee approve/reject, requester cancel, and manager approve actions.
-- Manager screens use focused step-based navigation for draft, build, assign, and publish workflows.
-- Manager workflow uses one central selected draft schedule as the context for creating shifts, assigning employees, automatic assignment, template generation, and publication.
-- The build step visually separates template management, template-based shift generation, and single-shift creation.
-- Manager template screen supports template creation, slot creation, and shift generation.
-
-Planned next:
-
-- Follow the submission remediation roadmap in `IMPLEMENTATION_PLAN.md`: manager team/member management, remaining approved functional requirements, and submission verification. Current workflow concurrency and non-destructive demo initialization have dedicated regression tests.
-
-## Backend Documentation
-
-End-to-end local run instructions are documented in:
+- Java 21, Spring Boot, Spring Security/JWT, Spring Data JPA/Hibernate.
+- PostgreSQL and Flyway migrations; Hibernate validates the schema.
+- JMS with ActiveMQ Artemis and a transactional event outbox.
+- React and Vite, with shared components and workflow hooks.
 
 ```text
-docs/RUN_LOCALLY.md
+shift-management-backend/   Java source, SQL migrations, tests, Docker Compose
+shift-management-frontend/ React source and tests
+docs/                      Architecture and run instructions
+docs/postman/              API collection and local environment JSON
 ```
 
-Backend setup, run instructions, and API examples are documented in:
+Start with [Run Locally](docs/RUN_LOCALLY.md). On an empty database, the explicit
+initialization command creates demo login accounts; ordinary restarts never reset
+or refill application data. There is no public registration endpoint.
 
-```text
-shift-management-backend/README.md
-```
+## Verification
 
-The current backend and system context architecture is documented in:
+Tests stay in the repository. They do not become demo data, and frontend tests
+are not included in the production bundle. See [verification commands and their
+limits](docs/RUN_LOCALLY.md#verification).
 
-```text
-docs/current-backend-architecture.md
-```
+The 2026-08-31 run passed 279 backend unit tests, 156 PostgreSQL integration tests,
+17 frontend Node tests, four focused browser checks, and the frontend build.
+These results are not a claim of complete end-to-end or production verification.
 
-Frontend setup and run instructions are documented in:
+## Known Limitations
 
-```text
-shift-management-frontend/README.md
-```
+- No UI/API for creating teams or managers; initial setup is technical administration.
+  New employee creation is supported, but adding existing accounts to teams,
+  member editing/removal, invitations, and password reset/change are not implemented.
+- Private manager notes and recurring employee assignment series are not implemented.
+- Employees cannot view published schedules of teams they do not actively belong to.
+- Template/slot editing and individual slot deletion are not implemented.
+- JMS request-status/team-join notifications are not implemented. Some notification
+  content remains English even when the surrounding UI is Hebrew.
+- Full live end-to-end verification, a clean-machine installation rehearsal, broad
+  load tests, and broker outage/redelivery/DLQ verification remain outstanding.
+- Configuration contains development-only credentials and a JWT secret. The current
+  broker container has no persistent data volume. This is not a public-deployment setup.
 
-Postman collection import instructions are documented in:
-
-```text
-docs/postman/README.md
-```
-
-## Development Approach
-
-The project is built in small phases. Each phase adds a limited piece of
-functionality, tests the business rules, and updates the documentation before
-moving to the next feature.
+The [architecture](docs/current-backend-architecture.md) explains these boundaries
+and the trade-off of serializing scheduling writes within each team.
