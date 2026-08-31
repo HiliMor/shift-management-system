@@ -85,7 +85,7 @@ Implemented:
 - Request writes are serialized per team; final execution also locks shifts and employees to coordinate with manual/automatic assignment. Duplicate approvals return a conflict, and successful execution invalidates competing active requests.
 - Basic business logging for schedule, assignment, transfer and swap request, outbox, and notification workflows.
 - Unified JSON error responses for API and security errors.
-- Development seed data for a presentation scenario with users, a managed team, staffing roles, draft and published schedules, assignments, notifications, and an active transfer request.
+- Explicit, empty-database-only demo initialization with users, a managed team, staffing roles, schedules, assignments, notifications, and a transfer request. Disabled by default; subsequent starts never recreate deleted or transferred demo records. See `docs/RUN_LOCALLY.md` for first-time initialization.
 
 Frontend:
 
@@ -118,7 +118,7 @@ Frontend:
 
 Planned next:
 
-- Follow the submission remediation roadmap in `IMPLEMENTATION_PLAN.md`: remaining cross-workflow concurrency gaps, safe demo initialization, approved functional requirements, and submission verification.
+- Follow the submission remediation roadmap in `IMPLEMENTATION_PLAN.md`: manager team/member management, remaining approved functional requirements, and submission verification. Current workflow concurrency and non-destructive demo initialization have dedicated regression tests.
 
 ## Backend Documentation
 

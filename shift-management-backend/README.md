@@ -20,7 +20,7 @@ Implemented:
 - Flyway database migrations.
 - Initial user and team domain model.
 - Spring Data repositories for users, teams, team members, and team managers.
-- Development seed data.
+- Opt-in, empty-database-only development demo initialization.
 - JWT-based login.
 - Authenticated current-user endpoint: `GET /api/auth/me`.
 - Managed teams endpoint: `GET /api/teams/me/managed`.
@@ -1589,8 +1589,9 @@ mvn verify -Ppostgres-it
 
 The `postgres-it` profile runs `*IT` classes with Maven Failsafe. Testcontainers
 starts a disposable PostgreSQL 16 instance on a random port, applies the real
-Flyway migrations, and removes the container afterwards. Demo seeding, outbox
-dispatch, and JMS consumers are disabled in these tests. They do not connect to
+Flyway migrations, and removes the container afterwards. Outbox dispatch and JMS
+consumers are disabled. Demo seeding is disabled except in `DevelopmentDataSeederIT`,
+which explicitly tests initialization and restart safety. These tests do not connect to
 the development database or require the application servers to be running.
 The first run downloads test dependencies and Docker images as needed.
 
@@ -1683,17 +1684,19 @@ these are not login/JWT or browser tests. Unit checks also cover version compari
 after refresh, flush-before-response ordering, and optimistic-conflict error mapping.
 
 This is not a complete concurrency protocol for every API. Client versions now
-protect shift edits; draft/template deletions require a confirmation revision.
-Individual shift/assignment deletion preconditions remain pending. Existing
+protect shift edits; draft/template and individual shift/assignment deletions
+require a confirmation revision. Existing
 template create/delete, slot creation, and generation now coordinate with each
 other and with draft writes. Individual slot editing/deletion endpoints are not
-implemented yet; future lifecycle controls must join this protocol. Remaining
-individual-delete preconditions and request missing-row handling are in part 4.3c2 of
+implemented yet; future lifecycle controls must join this protocol. Request
+refreshes map missing records to `404`, as verified in part 4.3c2 of
 `../IMPLEMENTATION_PLAN.md`. Spring/JPA optimistic-lock failures map to
 `409 STALE_VERSION`; expected pessimistic-lock/timeout failures map to
 `409 CONCURRENT_MODIFICATION`. Unrelated unexpected errors remain `500`.
-Future team/member/role writes must join the protocol when implemented; demo
-initialization is handled separately in part 5. The shift version column already
+Future team/member/role writes must join the protocol when implemented. Demo
+initialization only writes into an empty database and serializes concurrent
+initializers with a transaction-scoped PostgreSQL advisory lock. It never mutates
+existing workflow data. The shift version column already
 exists; this API change needs no migration or new JMS event type.
 
 `TemplateConcurrencyIT` has twelve PostgreSQL scenarios. They cover duplicate
@@ -1727,8 +1730,27 @@ identity/version/group boundaries. These are not authenticated browser tests.
 
 ## Development Seed Data
 
-When `app.seed.enabled=true`, the application inserts development demo data.
-The seeder is idempotent: it reuses existing demo records when possible and creates only missing records.
+Demo initialization is **disabled by default** (`app.seed.enabled=false`). For
+the first start of a fresh local database, run:
+
+```bash
+mvn spring-boot:run -Dspring-boot.run.arguments=--app.seed.enabled=true
+```
+
+Use plain `mvn spring-boot:run` afterwards. Even with the flag enabled, any existing
+users, teams, or outbox records cause the entire initializer to skip. All other
+business tables depend on users/teams through foreign keys; Flyway's schema
+history is not application data. Legacy and partially populated databases are
+preserved, not repaired or topped up. No new migration or database reset is needed
+for this change, and existing accounts remain usable with their current credentials.
+
+`DevelopmentDataSeeder` creates the complete scenario in one transaction. A
+PostgreSQL transaction-level advisory lock serializes simultaneous initializers
+before they check for existing data. A failure rolls back all seed rows and
+allows a retry. The initializer does not identify or adopt existing schedules by
+name/date, reset templates, restore transferred/deleted assignments, or recreate
+deleted drafts. Dates are chosen once; restarting in another week does not add
+another scenario. Demo credentials must not be used in a public deployment.
 
 Seed users:
 
@@ -1755,19 +1777,33 @@ Seed team:
 Additional demo data:
 
 - Staffing roles: `Backend Developer`, `Frontend Developer`, and `QA Engineer`.
-- Active staffing-role assignments for all eight demo employees.
-- One published schedule for the current week with shifts and assignments.
+- Active staffing-role assignments: employees 1-3 have Backend, 4-6 have Frontend,
+  and 7-8 have QA.
+- One published schedule for the initialization week with three shifts and three
+  assignments. The Frontend shift belongs to `employee4`, matching that employee's
+  role; the Backend and transfer-source shifts belong to `employee1`.
 - One empty seven-day draft schedule for manual assignment practice.
 - One empty 21-day draft schedule for automatic assignment practice.
 - One active `כיסוי פיתוח יומי בחירום` template with three eight-hour development coverage slots that repeat every day.
-- Schedule-published notifications for active team members.
+- Eight preloaded schedule-published notifications for active team members.
 - One active transfer request from `employee1` to `employee2`.
 
 The manager can generate 21 shifts from the seeded template into the seven-day
 draft for manual assignment practice, or generate 63 shifts into the 21-day draft
 for automatic assignment. This gives the React UI and Postman collection both a
-small workflow and a realistic three-week scheduling scenario immediately after
-local startup.
+small workflow and a realistic three-week scheduling scenario after explicit
+initialization. The corrected role assignment only applies to new initialization;
+existing database records are not rewritten.
+
+Preloaded notifications are inserted directly by the notification service, not
+delivered through JMS. The preloaded request likewise does not emit a creation
+event. To demonstrate asynchronous delivery, perform a new publication or request
+creation through the API/UI and observe the outbox, Artemis, and notifications.
+
+`DevelopmentDataSeederTest` verifies the disabled default. PostgreSQL tests cover
+initial creation, repeated runs, completed transfers, deletions, manual schedules
+with matching dates, edited data, nonempty partial databases, failure rollback,
+and concurrent initializers. The local development database is not used.
 
 ## Local Frontend Access
 

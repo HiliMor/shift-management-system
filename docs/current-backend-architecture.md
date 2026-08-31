@@ -22,7 +22,7 @@ flowchart LR
     repositories["Spring Data JPA Repositories"]
     database["PostgreSQL Database"]
     flyway["Flyway Migrations"]
-    seed["Development Data Seeder"]
+    seed["Opt-in Demo Initializer<br/>Empty database only"]
 
     react --> cors
     apiClient --> security
@@ -42,6 +42,22 @@ flowchart LR
     flyway --> database
     seed --> repositories
 ```
+
+## Demo Initialization
+
+`DevelopmentDataSeeder` is disabled by default. Explicitly enabling `app.seed.enabled`
+creates the local demo scenario only when there is no application data. Within a
+single transaction it first acquires a PostgreSQL advisory lock, then checks
+users, teams, and the independent event outbox. Other business tables have foreign
+keys to users/teams. This prevents concurrent initializers from both seeing an
+empty database; all seed writes roll back together on failure.
+
+Existing, legacy, and partially populated databases are skipped without changes.
+Initialization never adopts a manually created schedule by date or recreates
+deleted/transferred data. It needs no migration or persistent demo marker.
+Normal startup does not seed. Preloaded notifications are fixture rows created
+directly by the notification service, not proof of JMS delivery; real API actions
+continue to use the transactional outbox. Setup is in `RUN_LOCALLY.md`.
 
 ## Frontend Integration
 
@@ -576,13 +592,14 @@ Client versions protect shift edits; deletion snapshots protect draft/template
 and individual shift/assignment confirmation as described below. Request refreshes
 map missing records to `404`; the API handler also covers missing lazy associations
 before refresh (JPA `EntityNotFoundException` or Spring's retrieval wrapper).
-Demo writes and future
-team/member/role mutations need their own planned work; no all-writers guarantee
-is claimed for them. Spring/JPA pessimistic-lock failures and lock timeouts map
+Future team/member/role mutations must join the write protocol; no all-writers
+guarantee is claimed for them. Demo initialization only creates an empty database
+under its own advisory lock and never edits an existing workflow.
+Spring/JPA pessimistic-lock failures and lock timeouts map
 to `409 CONCURRENT_MODIFICATION`. Other database errors are not blanket-mapped
 to conflicts, and writes are not automatically retried. Production timeout
-settings are unchanged; a short database timeout is configured only in the
-template integration tests to exercise the HTTP error path.
+settings are unchanged; short database timeouts are configured in integration
+tests, including the template tests that exercise the HTTP error path.
 
 ### Template Write Coordination
 
@@ -605,7 +622,7 @@ Slot creation and generation serialize. A slot committed before generation is
 included; a slot added afterwards needs another generation call. The repeat call
 skips existing occurrences. Template deletion cascades its unused slots only
 after checking the confirmed revision. New slot
-editing/deletion APIs, demo writes, and future metadata writers must follow the
+editing/deletion APIs and future metadata writers must follow the
 same protocol when implemented.
 
 ### Deletion Confirmation
@@ -1023,7 +1040,7 @@ flowchart LR
 | Area | Responsibility |
 | --- | --- |
 | `auth` | Login, JWT creation, JWT request authentication, current user endpoint. |
-| `config` | Security configuration and local development seed data. |
+| `config` | Security configuration and explicit, transactional, empty-database-only demo initialization. |
 | `error` | Unified API error response model and global exception handling. |
 | `health` | Public health check endpoint. |
 | `user` | User entity and broad application role such as `MANAGER` or `EMPLOYEE`. |

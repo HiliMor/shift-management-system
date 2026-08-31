@@ -97,7 +97,10 @@ reopening. A repeated successful deletion returns `404`.
 
 ## Seed Users
 
-When development seed data is enabled, these users are available:
+After explicit demo initialization on an empty database, these users are
+available (see `../RUN_LOCALLY.md`). Initialization is disabled by default and
+skips databases that already contain application data. Importing this collection
+or sending a login request does not create accounts:
 
 | Username | Password | Role |
 | --- | --- | --- |

@@ -24,7 +24,7 @@ complete. Any scope reduction needs an explicit decision and instructor approval
 | 2 | Complete | Fix request invalidation rollback; coordinate transfer/swap execution, concurrent approvals, and competing requests. Invalid requests persist as invalidated without partial ownership changes or an unexpected transaction error, verified against PostgreSQL. | `Request execution:` |
 | 3 | Complete | Validate existing assignments when changing shift times, roles, rest, or capacity; reject invalid edits. Readiness and publication recheck assignment validity even when unfilled shifts are explicitly allowed. PostgreSQL tests verify rollback and no publication event on failure. | `Schedule validation:` |
 | 4 | Complete | Current workflow APIs coordinate availability versus assignment, publication/reopening versus writes, and stale edits/deletions. PostgreSQL tests verify the shared locking order and expected conflict/missing-row responses. Demo initialization and future write APIs remain in their own parts below. | `Workflow concurrency:` |
-| 5 | Pending | Make demo initialization explicit and non-destructive. Restarting after a transfer, deletion, or manual schedule creation must not restore old assignments, repopulate edited schedules, or adopt a user's schedule by date alone. | `Demo initialization:` |
+| 5 | Complete | Demo initialization is opt-in and only creates an empty database. PostgreSQL tests verify that repeated starts preserve transfers, deletions, manual/edited data, and partial databases; failures roll back and concurrent initializers create one scenario. | `Demo initialization:` |
 | 6 | Pending | Complete manager team-member and staffing-role management, including the minimum user onboarding needed by that screen. Implement API first, then UI in separate commits; enforce team ownership and preserve existing history when removing membership. | `Team management:` |
 | 7 | Pending | Add private manager notes for employees and shifts. Verify that employee APIs and UI never expose them. | `Manager notes:` |
 | 8 | Pending | Implement recurring employee assignment series, distinct from shift-template generation. Preview occurrences and report per-occurrence validation failures without invalid partial assignments. Split persistence/API/UI into separate commits as needed. | `Recurring assignments:` |
@@ -42,8 +42,9 @@ It does not yet claim to fix shift editing/publication, request execution, or
 concurrent availability changes; those have their own steps above. It needs no
 database migration and must not change the assignment API contract.
 
-Integration tests use a disposable PostgreSQL container with demo seeding and
-messaging disabled. They run separately using `mvn verify -Ppostgres-it`; normal
+Integration tests use a disposable PostgreSQL container with messaging disabled.
+Demo seeding is disabled except in its dedicated initialization tests. They run
+separately using `mvn verify -Ppostgres-it`; normal
 `mvn test` remains the fast unit suite and does not require Docker.
 
 ### Part 4 Increments
@@ -269,6 +270,38 @@ messaging disabled. They run separately using `mvn verify -Ppostgres-it`; normal
 - Next increment: part 5, explicit non-destructive demo initialization. Completion
   of current API concurrency checks is not a claim that the seeder is safe or
   that the final UI/release regression has been completed.
+
+- Part 5 (2026-08-31): demo initialization is disabled by default. Explicit
+  `--app.seed.enabled=true` initializes an empty application database only.
+  Existing users, teams, or standalone outbox rows skip the entire initializer;
+  other business tables depend on users/teams through foreign keys. There is no
+  adoption by name/date, top-up of partial databases, automatic repair, or weekly
+  replenishment. No migration, marker table, or development database reset.
+- Concurrent initializers acquire the same PostgreSQL transaction-level advisory
+  lock before checking for data. Creation is atomic: a late failure rolls back
+  seed rows, and another attempt can initialize the empty database. The guard
+  replaces the old find-or-create helpers that could restore transferred/deleted
+  assignments or overwrite template details on startup.
+- The new scenario retains its users, team, template, published schedule, two
+  empty drafts, and pending transfer. The Frontend shift is assigned to employee4
+  instead of employee2 so that the staffing role is valid. This corrects new
+  initialization only; it does not silently repair existing records. Preloaded
+  notifications are database fixtures, not JMS-delivery evidence. Real API
+  publications and request creation still use the outbox.
+- Verification: two configuration tests and ten PostgreSQL tests passed. They
+  cover first initialization, repeated runs, transfer approval, read notifications,
+  deletion of draft/template/shift/assignment, manual schedules with identical
+  dates, edited profiles/memberships/templates, user-only/team-only/outbox-only
+  databases, rollback/retry, and observed advisory-lock waiting between two
+  initializers. The complete `mvn -B -Ppostgres-it clean verify` passed 279 unit
+  and 150 PostgreSQL tests with zero failures, errors, or skips.
+- Initial verification caught a test lifecycle ordering error and an inaccessible
+  event factory call; both were corrected before the successful clean build.
+  Run instructions now distinguish normal startup from explicit first-time demo
+  initialization and warn about destructive resets. No frontend code, existing
+  development data, running user servers, or local submission files were changed.
+  Browser behavior and live JMS recovery were not retested in this backend-only
+  increment. Next: part 6, starting with the manager team/member management API.
 
 ## Working Sources
 

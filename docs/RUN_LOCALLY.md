@@ -49,6 +49,26 @@ From the backend directory:
 mvn spring-boot:run
 ```
 
+This is the normal command for an existing database. Demo initialization is
+disabled by default (`app.seed.enabled=false`); restarting does not recreate
+deleted records, restore old assignments, or change the dates of existing data.
+
+### First Start With Demo Data (Empty Database Only)
+
+On a fresh local installation, use this command **instead of** the normal command
+above to create the demo accounts and scenario:
+
+```bash
+mvn spring-boot:run -Dspring-boot.run.arguments=--app.seed.enabled=true
+```
+
+Initialization runs once in a single transaction, after Flyway creates the
+schema. If the database already contains application data, it is skipped entirely,
+even with this flag. Existing or partially populated databases are not topped up.
+Use normal startup on subsequent runs. Do not reset an existing database just to
+apply a code update. Without initialization, a fresh database has no login accounts.
+These known demo credentials are for local use only, not a public deployment.
+
 Expected backend URL:
 
 ```text
@@ -90,6 +110,9 @@ http://127.0.0.1:5173
 
 ## Demo Users
 
+These accounts are created by the explicit first-time initialization above.
+Existing accounts retain their current names and passwords on subsequent starts.
+
 | Username | Password | Role |
 | --- | --- | --- |
 | `manager1` | `password` | `MANAGER` |
@@ -102,7 +125,7 @@ http://127.0.0.1:5173
 | `employee7` | `password` | `EMPLOYEE` |
 | `employee8` | `password` | `EMPLOYEE` |
 
-When `app.seed.enabled=true`, the backend also creates a presentation scenario:
+The same initialization creates this presentation scenario:
 
 - A `צוות פיתוח` managed by `manager1`.
 - Eight active employees with three staffing roles.
@@ -110,18 +133,26 @@ When `app.seed.enabled=true`, the backend also creates a presentation scenario:
 - An empty seven-day draft schedule for manual assignment practice.
 - An empty 21-day draft schedule for automatic assignment practice.
 - An active daily template with three eight-hour development coverage slots.
-- Schedule-published notifications for active employees.
+- Eight preloaded schedule-published notifications for active employees.
 - An active transfer request from `employee1` to `employee2`.
 
 The manager can generate 21 shifts from the daily template into the seven-day
 draft for manual assignment practice, or generate 63 shifts into the 21-day draft
 for automatic assignment.
 
+The dates are selected at initialization time, not advanced on every restart.
+The preloaded notifications are fixtures inserted directly into PostgreSQL. To
+demonstrate JMS delivery, publish a draft or create a new transfer/swap request
+through the UI or API; those real actions use the outbox and Artemis queue.
+
 ## Reset Local Demo Data
 
-The development seeder is idempotent, so it does not remove shifts or templates
-created during previous experiments. To start again with the current clean demo,
-stop the backend and run the following commands from the backend directory:
+**Optional and destructive: this removes all local application data, including
+manual changes. Back up anything you need first.** It is not required for normal
+restarts or updates. Only use it when you intentionally want to discard the
+entire local database and start a new demo.
+
+Stop the backend, then run from the backend directory:
 
 ```bash
 cd "/Users/hilimor/Java project/shift-management-backend"
@@ -129,10 +160,11 @@ docker compose down -v
 docker compose up -d
 ```
 
-The `-v` option deletes the local PostgreSQL data volume. It does not delete
-project files, Git history, or anything on GitHub. Start the backend again after
-these commands so Flyway recreates the schema and the development seeder inserts
-the demo data.
+The `-v` option deletes the local PostgreSQL data volume. Compose also recreates
+the broker container, so do not rely on its pending messages surviving this reset.
+Project files, Git history, and GitHub are unaffected. Now use the explicit
+first-time initialization command above. Normal startup alone creates the schema
+but does not insert demo data.
 
 ## If Port 8080 Is Busy
 

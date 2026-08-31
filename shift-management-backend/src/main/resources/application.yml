@@ -23,7 +23,7 @@ spring:
 
 app:
   seed:
-    enabled: true
+    enabled: false
   jwt:
     secret: "development-secret-key-change-before-production-123456789"
     expiration: 1h
