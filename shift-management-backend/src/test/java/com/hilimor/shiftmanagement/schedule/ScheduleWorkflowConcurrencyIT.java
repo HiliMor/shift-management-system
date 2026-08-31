@@ -118,6 +118,8 @@ class ScheduleWorkflowConcurrencyIT {
     private Assignment assignment;
     private Long templateId;
     private String scheduleDeletionRevision;
+    private String shiftDeletionRevision;
+    private String assignmentDeletionRevision;
 
     enum DraftWrite {
         MANUAL_ASSIGNMENT, AUTOMATIC_ASSIGNMENT, CREATE_SHIFT, EDIT_SHIFT,
@@ -144,6 +146,8 @@ class ScheduleWorkflowConcurrencyIT {
         templateService.createSlot(manager.getUsername(), templateId,
                 new CreateTemplateSlotRequest(0, LocalTime.of(9, 0), 480, "Generated", 1, null));
         scheduleDeletionRevision = scheduleService.previewDraftDeletion(manager.getUsername(), schedule.getId()).revision();
+        shiftDeletionRevision = shiftService.previewShiftDeletion(manager.getUsername(), schedule.getId(), shift.getId()).revision();
+        assignmentDeletionRevision = assignmentService.previewAssignmentDeletion(manager.getUsername(), assignment.getId()).revision();
     }
 
     @ParameterizedTest
@@ -320,10 +324,10 @@ class ScheduleWorkflowConcurrencyIT {
                 return shiftService.updateShift(manager.getUsername(), schedule.getId(), shift.getId(),
                         new UpdateShiftRequest(START, END, "Edited", 2, 0, null, shift.getVersion()));
             case DELETE_SHIFT:
-                shiftService.deleteShift(manager.getUsername(), schedule.getId(), shift.getId());
+                shiftService.deleteShift(manager.getUsername(), schedule.getId(), shift.getId(), shiftDeletionRevision);
                 break;
             case DELETE_ASSIGNMENT:
-                assignmentService.deleteAssignment(manager.getUsername(), assignment.getId());
+                assignmentService.deleteAssignment(manager.getUsername(), assignment.getId(), assignmentDeletionRevision);
                 break;
             case GENERATE_TEMPLATE:
                 return templateService.generateShifts(manager.getUsername(), templateId, new GenerateTemplateShiftsRequest(schedule.getId()));
@@ -343,6 +347,81 @@ class ScheduleWorkflowConcurrencyIT {
         assertThat(scheduleRepository.existsById(schedule.getId())).isTrue();
         assertThat(shiftSnapshot()).hasSize(3);
         assertThat(assignmentSnapshot()).hasSize(1);
+    }
+
+    @Test
+    void waitingShiftDeletionDoesNotRemoveAnAssignmentAddedAfterPreview() throws Exception {
+        Object result = runConcurrently(() -> write(DraftWrite.MANUAL_ASSIGNMENT), () -> write(DraftWrite.DELETE_SHIFT));
+        assertHttpError(result, HttpStatus.CONFLICT);
+        assertThat(shiftSnapshot()).hasSize(2);
+        assertThat(assignmentSnapshot()).hasSize(2);
+    }
+
+    @ParameterizedTest
+    @ValueSource(booleans = {true, false})
+    void shiftEditAndShiftDeletionObserveTheFirstCommit(boolean editFirst) throws Exception {
+        Supplier<?> edit = () -> write(DraftWrite.EDIT_SHIFT);
+        Supplier<?> deletion = () -> write(DraftWrite.DELETE_SHIFT);
+        Object result = runConcurrently(editFirst ? edit : deletion, editFirst ? deletion : edit);
+        assertHttpError(result, editFirst ? HttpStatus.CONFLICT : HttpStatus.NOT_FOUND);
+        assertThat(shiftRepository.existsById(shift.getId())).isEqualTo(editFirst);
+        assertThat(assignmentSnapshot()).hasSize(1);
+    }
+
+    @ParameterizedTest
+    @ValueSource(booleans = {true, false})
+    void shiftEditAndAssignmentDeletionObserveTheFirstCommit(boolean editFirst) throws Exception {
+        Supplier<?> edit = this::editAssignedShift;
+        Supplier<?> deletion = () -> write(DraftWrite.DELETE_ASSIGNMENT);
+        Object result = runConcurrently(editFirst ? edit : deletion, editFirst ? deletion : edit);
+        if (editFirst) {
+            assertHttpError(result, HttpStatus.CONFLICT);
+        } else {
+            assertThat(result).isInstanceOf(com.hilimor.shiftmanagement.shift.ShiftResponse.class);
+        }
+        assertThat(assignmentRepository.existsById(assignment.getId())).isEqualTo(editFirst);
+        assertThat(shiftRepository.findById(assignedShift.getId()).orElseThrow().getStartTime()).isEqualTo(START);
+    }
+
+    @Test
+    void twoConcurrentAssignmentDeletionsReturnOneSuccessAndOneNotFound() throws Exception {
+        Object result = runConcurrently(() -> write(DraftWrite.DELETE_ASSIGNMENT), () -> write(DraftWrite.DELETE_ASSIGNMENT));
+        assertHttpError(result, HttpStatus.NOT_FOUND);
+        assertThat(assignmentSnapshot()).isEmpty();
+        assertThat(shiftSnapshot()).hasSize(2);
+    }
+
+    @ParameterizedTest
+    @EnumSource(value = DraftWrite.class, names = {"DELETE_ASSIGNMENT", "DELETE_SHIFT", "DELETE_SCHEDULE"})
+    void requestLoadedBeforeReopenAndDeletionReturnsNotFoundAfterWaiting(DraftWrite deletion) throws Exception {
+        User target = transactions.execute(status -> {
+            User user = user("target-" + UUID.randomUUID(), ApplicationRole.EMPLOYEE);
+            memberRepository.save(new TeamMember(user, team, Instant.now(), true));
+            return user;
+        });
+        publish();
+        Object result = runConcurrently(() -> {
+            reopen();
+            // The test composes separate API operations in one uncommitted transaction.
+            scheduleRepository.flush();
+            if (deletion == DraftWrite.DELETE_ASSIGNMENT) {
+                String revision = assignmentService.previewAssignmentDeletion(manager.getUsername(), assignment.getId()).revision();
+                assignmentService.deleteAssignment(manager.getUsername(), assignment.getId(), revision);
+            } else if (deletion == DraftWrite.DELETE_SHIFT) {
+                String revision = shiftService.previewShiftDeletion(manager.getUsername(), schedule.getId(), assignedShift.getId()).revision();
+                shiftService.deleteShift(manager.getUsername(), schedule.getId(), assignedShift.getId(), revision);
+            } else {
+                String revision = scheduleService.previewDraftDeletion(manager.getUsername(), schedule.getId()).revision();
+                scheduleService.deleteDraftSchedule(manager.getUsername(), schedule.getId(), revision);
+            }
+            return true;
+        }, () -> requestService.createTransferRequest(employee.getUsername(),
+                new CreateTransferRequest(assignment.getId(), target.getId())));
+        assertHttpError(result, HttpStatus.NOT_FOUND);
+        assertThat(assignmentRepository.existsById(assignment.getId())).isFalse();
+        assertThat(requestRepository.existsBySourceAssignment_IdOrTargetAssignment_Id(assignment.getId(), assignment.getId())).isFalse();
+        assertThat(jdbc.queryForObject("select count(*) from event_outbox where event_type = 'request.created' and payload::jsonb ->> 'teamId' = ?",
+                Integer.class, team.getId().toString())).isZero();
     }
 
     private Object editAssignedShift() {
@@ -433,18 +512,23 @@ class ScheduleWorkflowConcurrencyIT {
 
     // Observe a real database lock wait while the first service write is still uncommitted.
     private Object runConcurrently(Supplier<?> firstAction, Supplier<?> secondAction) throws Exception {
-        CountDownLatch firstFinished = new CountDownLatch(1);
+        CompletableFuture<Void> firstFinished = new CompletableFuture<>();
         CountDownLatch allowCommit = new CountDownLatch(1);
         CompletableFuture<Integer> secondConnection = new CompletableFuture<>();
         try (var pool = Executors.newFixedThreadPool(2)) {
             var first = pool.submit(() -> transactions.execute(status -> {
-                Object result = firstAction.get();
-                firstFinished.countDown();
-                awaitCommitPermission(allowCommit);
-                return result;
+                try {
+                    Object result = firstAction.get();
+                    firstFinished.complete(null);
+                    awaitCommitPermission(allowCommit);
+                    return result;
+                } catch (RuntimeException | Error exception) {
+                    firstFinished.completeExceptionally(exception);
+                    throw exception;
+                }
             }));
             try {
-                assertThat(firstFinished.await(10, TimeUnit.SECONDS)).as("first operation finished before commit").isTrue();
+                firstFinished.get(10, TimeUnit.SECONDS);
                 var second = pool.submit(() -> {
                     try {
                         return transactions.execute(status -> {

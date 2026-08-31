@@ -13,6 +13,7 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestController;
 
@@ -56,8 +57,16 @@ public class ShiftController {
     public void deleteShift(
             Authentication authentication,
             @PathVariable Long scheduleId,
-            @PathVariable Long shiftId
+            @PathVariable Long shiftId,
+            @RequestParam(required = false) String revision
     ) {
-        shiftService.deleteShift(authentication.getName(), scheduleId, shiftId);
+        shiftService.deleteShift(authentication.getName(), scheduleId, shiftId, revision);
+    }
+
+    @GetMapping("/{shiftId}/deletion-preview")
+    public ShiftDeletionPreviewResponse previewShiftDeletion(
+            Authentication authentication, @PathVariable Long scheduleId, @PathVariable Long shiftId
+    ) {
+        return shiftService.previewShiftDeletion(authentication.getName(), scheduleId, shiftId);
     }
 }

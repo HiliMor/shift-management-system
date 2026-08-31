@@ -6,6 +6,7 @@ import java.lang.reflect.Method;
 import java.util.stream.Stream;
 
 import jakarta.persistence.OptimisticLockException;
+import jakarta.persistence.EntityNotFoundException;
 import jakarta.persistence.LockTimeoutException;
 import jakarta.persistence.PessimisticLockException;
 
@@ -20,6 +21,7 @@ import org.springframework.dao.PessimisticLockingFailureException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.orm.ObjectOptimisticLockingFailureException;
+import org.springframework.orm.jpa.JpaObjectRetrievalFailureException;
 import org.springframework.http.converter.HttpMessageNotReadableException;
 import org.springframework.mock.http.MockHttpInputMessage;
 import org.springframework.mock.web.MockHttpServletRequest;
@@ -27,10 +29,47 @@ import org.springframework.validation.BeanPropertyBindingResult;
 import org.springframework.validation.FieldError;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.server.ResponseStatusException;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.RestController;
+import org.springframework.test.web.servlet.setup.MockMvcBuilders;
+
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 class GlobalExceptionHandlerTest {
 
     private final GlobalExceptionHandler handler = new GlobalExceptionHandler();
+
+    @ParameterizedTest
+    @MethodSource("missingRecords")
+    void missingPersistenceRecordMapsTo404WithoutLeakingDetails(RuntimeException exception) throws Exception {
+        var mvc = MockMvcBuilders.standaloneSetup(new MissingRecordController(exception))
+                .setControllerAdvice(handler).build();
+        mvc.perform(get("/missing-record"))
+                .andExpect(status().isNotFound())
+                .andExpect(jsonPath("$.code").value("NOT_FOUND"))
+                .andExpect(jsonPath("$.message").value("This record no longer exists. Reload the current data."));
+    }
+
+    static Stream<RuntimeException> missingRecords() {
+        return Stream.of(new EntityNotFoundException("Internal entity ID"),
+                new JpaObjectRetrievalFailureException(new EntityNotFoundException("Internal entity ID")));
+    }
+
+    @RestController
+    static class MissingRecordController {
+        private final RuntimeException exception;
+
+        MissingRecordController(RuntimeException exception) {
+            this.exception = exception;
+        }
+
+        @GetMapping("/missing-record")
+        public void missingRecord() {
+            throw exception;
+        }
+    }
 
     @ParameterizedTest
     @MethodSource("optimisticConflicts")

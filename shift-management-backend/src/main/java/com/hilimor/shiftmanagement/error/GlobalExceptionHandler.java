@@ -6,6 +6,7 @@ import java.util.stream.Collectors;
 import com.hilimor.shiftmanagement.assignment.AssignmentValidationException;
 
 import jakarta.servlet.http.HttpServletRequest;
+import jakarta.persistence.EntityNotFoundException;
 import jakarta.persistence.OptimisticLockException;
 import jakarta.persistence.LockTimeoutException;
 import jakarta.persistence.PessimisticLockException;
@@ -19,6 +20,7 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.HttpStatusCode;
 import org.springframework.http.ResponseEntity;
 import org.springframework.http.converter.HttpMessageNotReadableException;
+import org.springframework.orm.ObjectRetrievalFailureException;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
@@ -28,6 +30,13 @@ import org.springframework.web.server.ResponseStatusException;
 public class GlobalExceptionHandler {
 
     private static final Logger log = LoggerFactory.getLogger(GlobalExceptionHandler.class);
+
+    @ExceptionHandler({EntityNotFoundException.class, ObjectRetrievalFailureException.class})
+    ResponseEntity<ApiErrorResponse> handleMissingRecord(Exception exception, HttpServletRequest request) {
+        // A lazy association can disappear before the workflow reaches its explicit refresh.
+        return buildResponse(HttpStatus.NOT_FOUND, "NOT_FOUND",
+                "This record no longer exists. Reload the current data.", request);
+    }
 
     @ExceptionHandler({OptimisticLockingFailureException.class, OptimisticLockException.class})
     ResponseEntity<ApiErrorResponse> handleStaleVersion(Exception exception, HttpServletRequest request) {

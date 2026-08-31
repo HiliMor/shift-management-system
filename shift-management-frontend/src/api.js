@@ -144,8 +144,12 @@ export function createAssignment(token, assignment) {
   });
 }
 
-export function deleteAssignment(token, assignmentId) {
-  return request(`/api/assignments/${assignmentId}`, {
+export function getAssignmentDeletionPreview(token, assignmentId) {
+  return request(`/api/assignments/${assignmentId}/deletion-preview`, { token, cache: "no-store" });
+}
+
+export function deleteAssignment(token, assignmentId, revision) {
+  return request(`/api/assignments/${assignmentId}?revision=${encodeURIComponent(revision)}`, {
     method: "DELETE",
     token,
   });

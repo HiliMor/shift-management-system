@@ -8,6 +8,7 @@ import {
   createShift,
   deleteAssignment,
   deleteSchedule,
+  getAssignmentDeletionPreview,
   getScheduleDeletionPreview,
   listManagedDraftSchedules,
   listMyManagedTeams,
@@ -45,7 +46,7 @@ function useManagerScheduling(
   onApiError,
   onScheduleContentChanged = () => {},
 ) {
-  const { t } = useLanguage();
+  const { t, language } = useLanguage();
   const [managedTeams, setManagedTeams] = useState([]);
   const [isLoadingManagedTeams, setIsLoadingManagedTeams] = useState(false);
   const [managedTeamsError, setManagedTeamsError] = useState("");
@@ -488,12 +489,26 @@ function useManagerScheduling(
     setCreatedAssignment(null);
 
     try {
-      await deleteAssignment(session.accessToken, assignmentId);
+      const deleted = await confirmDeletion({
+        loadPreview: () => getAssignmentDeletionPreview(session.accessToken, assignmentId),
+        describe: ({ assignment, shift }) => {
+          const date = (value) => new Date(value).toLocaleString(language === "he" ? "he-IL" : "en-GB");
+          return [
+            t("confirmRemoveAssignment"),
+            assignment.employeeFullName || assignment.employeeUsername,
+            `${t("shift")} #${shift.id}: ${shift.description || ""}`,
+            `${t("startTime")}: ${date(shift.startTime)}`,
+            `${t("endTime")}: ${date(shift.endTime)}`,
+          ].join("\n");
+        },
+        remove: (revision) => deleteAssignment(session.accessToken, assignmentId, revision),
+      });
+      if (!deleted) return;
       setAssignmentActionMessage("assignmentDeleted");
       refreshAssignmentData();
       onScheduleContentChanged();
     } catch (error) {
-      onApiError(error, setAssignmentActionError);
+      onApiError(error, () => setAssignmentActionError(deletionErrorMessage(error, t)));
     } finally {
       setDeletingAssignmentId(null);
     }

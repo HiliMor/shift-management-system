@@ -23,7 +23,7 @@ complete. Any scope reduction needs an explicit decision and instructor approval
 | 1 | Complete | Serialize manual/automatic assignment checks and writes for the same employee. Real PostgreSQL tests prevent cross-shift overlap, insufficient rest, and same-shift overfilling under concurrent operations. | `Assignment concurrency:` |
 | 2 | Complete | Fix request invalidation rollback; coordinate transfer/swap execution, concurrent approvals, and competing requests. Invalid requests persist as invalidated without partial ownership changes or an unexpected transaction error, verified against PostgreSQL. | `Request execution:` |
 | 3 | Complete | Validate existing assignments when changing shift times, roles, rest, or capacity; reject invalid edits. Readiness and publication recheck assignment validity even when unfilled shifts are explicitly allowed. PostgreSQL tests verify rollback and no publication event on failure. | `Schedule validation:` |
-| 4 | In progress | Complete cross-workflow concurrency: availability versus assignment, publication/reopening versus writes, and stale edits/deletions. Reuse a consistent locking order and map expected conflicts to clear HTTP responses instead of generic 500 errors. | `Workflow concurrency:` |
+| 4 | Complete | Current workflow APIs coordinate availability versus assignment, publication/reopening versus writes, and stale edits/deletions. PostgreSQL tests verify the shared locking order and expected conflict/missing-row responses. Demo initialization and future write APIs remain in their own parts below. | `Workflow concurrency:` |
 | 5 | Pending | Make demo initialization explicit and non-destructive. Restarting after a transfer, deletion, or manual schedule creation must not restore old assignments, repopulate edited schedules, or adopt a user's schedule by date alone. | `Demo initialization:` |
 | 6 | Pending | Complete manager team-member and staffing-role management, including the minimum user onboarding needed by that screen. Implement API first, then UI in separate commits; enforce team ownership and preserve existing history when removing membership. | `Team management:` |
 | 7 | Pending | Add private manager notes for employees and shifts. Verify that employee APIs and UI never expose them. | `Manager notes:` |
@@ -63,11 +63,11 @@ messaging disabled. They run separately using `mvn verify -Ppostgres-it`; normal
 - 4.3c1 (complete): require a confirmed deletion snapshot for draft schedules and
   unused templates, including child IDs/versions. Adapt the UI and Postman;
   protect request history and verify rollback after stale confirmations.
-- 4.3c2 (pending): review preconditions for individual shift/assignment deletions
-  and missing-row handling in request workflows. Availability records currently
-  have no editing API. Keep client contracts and callers aligned.
-  Completing the earlier increments does not close part 4 or protect every API
-  write path. Shift editing UI remains a separate requirement in part 9.
+- 4.3c2 (complete): individual shift/assignment deletions require confirmed
+  revisions; request refreshes and missing lazy associations return `404`.
+  UI/Postman callers are aligned. Availability records currently have no editing
+  API. Part 4 covers the current workflow APIs, not demo initialization or future
+  team/role writers. Shift editing UI remains a separate requirement in part 9.
 
 ### Completion Record
 
@@ -233,8 +233,42 @@ messaging disabled. They run separately using `mvn verify -Ppostgres-it`; normal
   files and all 25 scripts were validated; preview success/failure simulations
   confirmed revision capture/clearing and no pre-request refresh on DELETE.
   The working database and local submission documents were unchanged.
-- Next increment: 4.3c2, individual deletion preconditions and request missing-row
-  handling, before closing the current concurrency work.
+- Manual follow-up to 4.3c1: Hili verified cancellation and confirmed deletion of
+  a disposable draft containing a shift and assignment. Template deletion was
+  covered by automated tests; no additional manual template check was reported.
+- Part 4.3c2 (2026-08-31): shift/assignment deletion now has authorized preview
+  endpoints and requires the exact `revision`. Shift previews include assignment
+  IDs/versions and schedule version; assignment previews include shift/schedule
+  versions as well as the assignment version. Same-count changes and publication/
+  reopening invalidate the relevant confirmation without removing current data.
+- Both deletions block all source/target transfer/swap request history, including
+  cancelled requests. Successful shift deletion removes its assignments;
+  successful assignment deletion preserves the shift and other assignments.
+  Missing/invalid revisions return `400`, stale or ineligible deletes `409`, and
+  missing records `404`. No schema migration or automatic retry was introduced.
+- Request locking now translates missing refreshed rows into `404`. The API
+  handler also handles JPA/Spring missing-entity errors from lazy associations
+  before a refresh; unrelated unexpected exceptions still return `500`.
+- The removal UI loads the preview before confirming the current employee and
+  shift times; cancellation sends no DELETE. Postman includes both new previews,
+  distinct revision variables, and DELETE query parameters. Client contract
+  tests use mocked fetch, not browser login or the development backend.
+- Verification: focused checks passed 43 unit and 71 PostgreSQL tests. The full
+  `mvn -B -Ppostgres-it clean verify` passed 277 unit and 140 PostgreSQL tests with
+  no failures, errors, or skips. This includes nine additional lock-wait cases
+  and 17 additional deletion API cases. Three initial race-test setup failures
+  were fixed by flushing the composed reopen operation before the test's preview;
+  the concurrent transaction still waits for commit, as verified in PostgreSQL.
+- `npm test` passed six tests; `npm run build` passed. Both Postman JSON files,
+  all 29 scripts, the individual DELETE URLs, and eight preview success/failure
+  simulations passed. The new assignment confirmation dialog remains a manual
+  browser smoke check; authenticated browser automation was not attempted again
+  after the earlier permission denial. No development data or submission files
+  were changed. Temporary test containers were removed; existing user servers
+  were left running.
+- Next increment: part 5, explicit non-destructive demo initialization. Completion
+  of current API concurrency checks is not a claim that the seeder is safe or
+  that the final UI/release regression has been completed.
 
 ## Working Sources
 

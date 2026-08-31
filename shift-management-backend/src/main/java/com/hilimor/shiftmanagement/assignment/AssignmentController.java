@@ -11,6 +11,7 @@ import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestController;
 
@@ -52,8 +53,16 @@ public class AssignmentController {
     @ResponseStatus(HttpStatus.NO_CONTENT)
     public void deleteAssignment(
             Authentication authentication,
-            @PathVariable Long assignmentId
+            @PathVariable Long assignmentId,
+            @RequestParam(required = false) String revision
     ) {
-        assignmentService.deleteAssignment(authentication.getName(), assignmentId);
+        assignmentService.deleteAssignment(authentication.getName(), assignmentId, revision);
+    }
+
+    @GetMapping("/api/assignments/{assignmentId}/deletion-preview")
+    public AssignmentDeletionPreviewResponse previewAssignmentDeletion(
+            Authentication authentication, @PathVariable Long assignmentId
+    ) {
+        return assignmentService.previewAssignmentDeletion(authentication.getName(), assignmentId);
     }
 }

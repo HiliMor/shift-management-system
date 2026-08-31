@@ -9,6 +9,9 @@ import java.util.Objects;
 import com.hilimor.shiftmanagement.assignment.Assignment;
 import com.hilimor.shiftmanagement.assignment.AssignmentRepository;
 import com.hilimor.shiftmanagement.assignment.AssignmentValidator;
+import com.hilimor.shiftmanagement.request.SwapRequestRepository;
+import com.hilimor.shiftmanagement.schedule.DeletionRevision;
+import com.hilimor.shiftmanagement.schedule.DeletionRevision.RecordVersion;
 import com.hilimor.shiftmanagement.schedule.Schedule;
 import com.hilimor.shiftmanagement.schedule.ScheduleRepository;
 import com.hilimor.shiftmanagement.schedule.ScheduleStatus;
@@ -33,6 +36,7 @@ public class ShiftService {
     private final AssignmentRepository assignmentRepository;
     private final AssignmentValidator assignmentValidator;
     private final ScheduleWriteLock writeLock;
+    private final SwapRequestRepository requestRepository;
 
     public ShiftService(
             ScheduleRepository scheduleRepository,
@@ -41,7 +45,8 @@ public class ShiftService {
             StaffingRoleRepository staffingRoleRepository,
             AssignmentRepository assignmentRepository,
             AssignmentValidator assignmentValidator,
-            ScheduleWriteLock writeLock
+            ScheduleWriteLock writeLock,
+            SwapRequestRepository requestRepository
     ) {
         this.scheduleRepository = scheduleRepository;
         this.shiftRepository = shiftRepository;
@@ -50,6 +55,7 @@ public class ShiftService {
         this.assignmentRepository = assignmentRepository;
         this.assignmentValidator = assignmentValidator;
         this.writeLock = writeLock;
+        this.requestRepository = requestRepository;
     }
 
     @Transactional
@@ -135,7 +141,18 @@ public class ShiftService {
     }
 
     @Transactional
-    public void deleteShift(String username, Long scheduleId, Long shiftId) {
+    public ShiftDeletionPreviewResponse previewShiftDeletion(String username, Long scheduleId, Long shiftId) {
+        return deletionPreview(deletableShift(username, scheduleId, shiftId));
+    }
+
+    @Transactional
+    public void deleteShift(String username, Long scheduleId, Long shiftId, String revision) {
+        Shift shift = deletableShift(username, scheduleId, shiftId);
+        DeletionRevision.requireMatch(revision, deletionPreview(shift).revision());
+        shiftRepository.delete(shift);
+    }
+
+    private Shift deletableShift(String username, Long scheduleId, Long shiftId) {
         Schedule schedule = managedSchedule(username, scheduleId);
         writeLock.lockSchedule(schedule);
 
@@ -151,7 +168,20 @@ public class ShiftService {
         }
 
         writeLock.lockShift(shift);
-        shiftRepository.delete(shift);
+        if (requestRepository.existsBySourceAssignment_Shift_IdOrTargetAssignment_Shift_Id(shiftId, shiftId)) {
+            throw new ResponseStatusException(HttpStatus.CONFLICT,
+                    "Shifts with transfer or swap request history cannot be deleted");
+        }
+        return shift;
+    }
+
+    private ShiftDeletionPreviewResponse deletionPreview(Shift shift) {
+        Schedule schedule = shift.getSchedule();
+        List<Assignment> assignments = assignmentRepository.findByShift_IdOrderById(shift.getId());
+        String revision = DeletionRevision.of("shift", new RecordVersion(shift.getId(), shift.getVersion()), List.of(
+                List.of(new RecordVersion(schedule.getId(), schedule.getVersion())),
+                assignments.stream().map(a -> new RecordVersion(a.getId(), a.getVersion())).toList()));
+        return new ShiftDeletionPreviewResponse(ShiftResponse.from(shift), assignments.size(), revision);
     }
 
     private Schedule managedSchedule(String username, Long scheduleId) {

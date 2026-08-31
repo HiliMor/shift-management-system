@@ -16,6 +16,7 @@ import java.util.Optional;
 import com.hilimor.shiftmanagement.availability.AvailabilityConstraint;
 import com.hilimor.shiftmanagement.availability.AvailabilityConstraintRepository;
 import com.hilimor.shiftmanagement.schedule.Schedule;
+import com.hilimor.shiftmanagement.request.SwapRequestRepository;
 import com.hilimor.shiftmanagement.schedule.ScheduleRepository;
 import com.hilimor.shiftmanagement.schedule.ScheduleStatus;
 import com.hilimor.shiftmanagement.schedule.ScheduleWriteLock;
@@ -73,6 +74,9 @@ class AssignmentServiceTest {
     @Mock
     private ScheduleWriteLock writeLock;
 
+    @Mock
+    private SwapRequestRepository requestRepository;
+
     private AssignmentService assignmentService;
 
     @BeforeEach
@@ -91,7 +95,8 @@ class AssignmentServiceTest {
                 teamMemberRepository,
                 teamManagerRepository,
                 assignmentValidator,
-                writeLock
+                writeLock,
+                requestRepository
         );
     }
 
@@ -647,7 +652,8 @@ class AssignmentServiceTest {
         when(assignmentRepository.findById(30L)).thenReturn(Optional.of(assignment));
         when(teamManagerRepository.existsByManager_UsernameAndTeam_Id("manager1", 1L)).thenReturn(true);
 
-        assignmentService.deleteAssignment("manager1", 30L);
+        String revision = assignmentService.previewAssignmentDeletion("manager1", 30L).revision();
+        assignmentService.deleteAssignment("manager1", 30L, revision);
 
         verify(assignmentRepository).delete(assignment);
     }
@@ -660,7 +666,7 @@ class AssignmentServiceTest {
         when(assignmentRepository.findById(30L)).thenReturn(Optional.of(assignment));
         when(teamManagerRepository.existsByManager_UsernameAndTeam_Id("manager2", 1L)).thenReturn(false);
 
-        assertThatThrownBy(() -> assignmentService.deleteAssignment("manager2", 30L))
+        assertThatThrownBy(() -> assignmentService.deleteAssignment("manager2", 30L, null))
                 .isInstanceOfSatisfying(ResponseStatusException.class, exception ->
                         assertThat(exception.getStatusCode()).isEqualTo(HttpStatus.FORBIDDEN));
 
@@ -675,7 +681,7 @@ class AssignmentServiceTest {
         when(assignmentRepository.findById(30L)).thenReturn(Optional.of(assignment));
         when(teamManagerRepository.existsByManager_UsernameAndTeam_Id("manager1", 1L)).thenReturn(true);
 
-        assertThatThrownBy(() -> assignmentService.deleteAssignment("manager1", 30L))
+        assertThatThrownBy(() -> assignmentService.deleteAssignment("manager1", 30L, null))
                 .isInstanceOfSatisfying(AssignmentValidationException.class, exception -> {
                     assertThat(exception.getStatus()).isEqualTo(HttpStatus.CONFLICT);
                     assertThat(exception.getCode()).isEqualTo("SCHEDULE_NOT_DRAFT");
@@ -699,6 +705,7 @@ class AssignmentServiceTest {
     private Assignment assignment(Shift shift, User employee) {
         Assignment assignment = new Assignment(shift, employee, Instant.parse("2026-07-05T10:00:00Z"));
         ReflectionTestUtils.setField(assignment, "id", 30L);
+        ReflectionTestUtils.setField(assignment, "version", 0L);
         return assignment;
     }
 
@@ -787,6 +794,7 @@ class AssignmentServiceTest {
                 requiredStaffingRole
         );
         ReflectionTestUtils.setField(shift, "id", id);
+        ReflectionTestUtils.setField(shift, "version", 0L);
         return shift;
     }
 
@@ -802,6 +810,7 @@ class AssignmentServiceTest {
 
         Schedule schedule = new Schedule(team, LocalDate.of(2026, 7, 6), LocalDate.of(2026, 7, 12));
         ReflectionTestUtils.setField(schedule, "id", 10L);
+        ReflectionTestUtils.setField(schedule, "version", 0L);
         ReflectionTestUtils.setField(schedule, "status", status);
         return schedule;
     }

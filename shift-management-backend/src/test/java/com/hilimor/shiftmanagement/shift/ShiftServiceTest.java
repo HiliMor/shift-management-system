@@ -17,6 +17,7 @@ import java.util.Optional;
 
 import com.hilimor.shiftmanagement.assignment.AssignmentRepository;
 import com.hilimor.shiftmanagement.assignment.AssignmentValidator;
+import com.hilimor.shiftmanagement.request.SwapRequestRepository;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
@@ -61,6 +62,9 @@ class ShiftServiceTest {
 
     @Mock
     private ScheduleWriteLock writeLock;
+
+    @Mock
+    private SwapRequestRepository requestRepository;
 
     @InjectMocks
     private ShiftService shiftService;
@@ -469,7 +473,8 @@ class ShiftServiceTest {
         when(teamManagerRepository.existsByManager_UsernameAndTeam_Id("manager1", 1L)).thenReturn(true);
         when(shiftRepository.findById(20L)).thenReturn(Optional.of(shift));
 
-        shiftService.deleteShift("manager1", 10L, 20L);
+        String revision = shiftService.previewShiftDeletion("manager1", 10L, 20L).revision();
+        shiftService.deleteShift("manager1", 10L, 20L, revision);
 
         verify(shiftRepository).delete(shift);
     }
@@ -481,7 +486,7 @@ class ShiftServiceTest {
         when(scheduleRepository.findById(10L)).thenReturn(Optional.of(schedule));
         when(teamManagerRepository.existsByManager_UsernameAndTeam_Id("manager2", 1L)).thenReturn(false);
 
-        assertThatThrownBy(() -> shiftService.deleteShift("manager2", 10L, 20L))
+        assertThatThrownBy(() -> shiftService.deleteShift("manager2", 10L, 20L, null))
                 .isInstanceOfSatisfying(ResponseStatusException.class, exception ->
                         assertThat(exception.getStatusCode()).isEqualTo(HttpStatus.FORBIDDEN));
 
@@ -495,7 +500,7 @@ class ShiftServiceTest {
         when(scheduleRepository.findById(10L)).thenReturn(Optional.of(schedule));
         when(teamManagerRepository.existsByManager_UsernameAndTeam_Id("manager1", 1L)).thenReturn(true);
 
-        assertThatThrownBy(() -> shiftService.deleteShift("manager1", 10L, 20L))
+        assertThatThrownBy(() -> shiftService.deleteShift("manager1", 10L, 20L, null))
                 .isInstanceOfSatisfying(ResponseStatusException.class, exception ->
                         assertThat(exception.getStatusCode()).isEqualTo(HttpStatus.CONFLICT));
 
@@ -513,7 +518,7 @@ class ShiftServiceTest {
         when(teamManagerRepository.existsByManager_UsernameAndTeam_Id("manager1", 1L)).thenReturn(true);
         when(shiftRepository.findById(20L)).thenReturn(Optional.of(shift));
 
-        assertThatThrownBy(() -> shiftService.deleteShift("manager1", 10L, 20L))
+        assertThatThrownBy(() -> shiftService.deleteShift("manager1", 10L, 20L, null))
                 .isInstanceOfSatisfying(ResponseStatusException.class, exception ->
                         assertThat(exception.getStatusCode()).isEqualTo(HttpStatus.NOT_FOUND));
 
@@ -568,6 +573,7 @@ class ShiftServiceTest {
 
         Schedule schedule = new Schedule(team, LocalDate.of(2026, 7, 6), LocalDate.of(2026, 7, 12));
         ReflectionTestUtils.setField(schedule, "id", 10L);
+        ReflectionTestUtils.setField(schedule, "version", 0L);
         ReflectionTestUtils.setField(schedule, "status", status);
         return schedule;
     }

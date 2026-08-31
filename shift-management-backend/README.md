@@ -36,11 +36,11 @@ Implemented:
 - Shift responses expose `version`; updates require that version and reject stale edits with `409 STALE_VERSION`.
 - Shift edits validate existing assignments and roll back invalid changes.
 - `ScheduleWriteLock` coordinates publication/reopening, draft deletion, shift writes, assignment writes, and template generation with request execution through the same team row lock.
-- Shift delete endpoint: `DELETE /api/schedules/{scheduleId}/shifts/{shiftId}`.
+- Shift deletion preview: `GET /api/schedules/{scheduleId}/shifts/{shiftId}/deletion-preview`; deletion: `DELETE /api/schedules/{scheduleId}/shifts/{shiftId}?revision={revision}`.
 - Initial assignment domain model.
 - Manual assignment endpoint: `POST /api/assignments`.
 - Assignment list endpoint: `GET /api/schedules/{scheduleId}/assignments`.
-- Assignment delete endpoint: `DELETE /api/assignments/{assignmentId}`.
+- Assignment deletion preview: `GET /api/assignments/{assignmentId}/deletion-preview`; deletion: `DELETE /api/assignments/{assignmentId}?revision={revision}`.
 - Assignment validation for team membership, duplicate assignment, shift capacity, availability constraints, overlap, and minimum rest.
 - Manual and automatic assignment capacity checks use a PostgreSQL row-level write lock so concurrent requests cannot overfill the same shift.
 - Employee row locks serialize concurrent manual/automatic assignment creation across schedules, so overlap and minimum-rest checks see committed assignments from preceding operations.
@@ -997,7 +997,11 @@ assignments remain unchanged. Unassigned shifts can still be edited normally.
 Delete a shift from a draft schedule:
 
 ```bash
-curl -X DELETE http://localhost:8080/api/schedules/1/shifts/1 \
+curl http://localhost:8080/api/schedules/1/shifts/1/deletion-preview \
+  -H "Authorization: Bearer <TOKEN>"
+
+# Review shift identity/times and assignmentCount before confirming.
+curl -X DELETE "http://localhost:8080/api/schedules/1/shifts/1?revision=<REVISION_FROM_PREVIEW>" \
   -H "Authorization: Bearer <TOKEN>"
 ```
 
@@ -1008,6 +1012,12 @@ Expected response:
 ```
 
 Only managers assigned to the schedule's team can delete shifts.
+
+The preview includes `shift`, `assignmentCount`, and `revision`. Deletion checks
+the shift version, schedule version, and all assignment IDs/versions under the
+team lock. It removes the shift and its assignments only if that snapshot still
+matches. Transfer/swap history referencing any assignment in the shift blocks
+deletion with `409`, including cancelled or completed requests.
 Shifts can be deleted only while the schedule is still `DRAFT`.
 
 ## Assignment Endpoints
@@ -1064,7 +1074,11 @@ Only managers assigned to the schedule's team can list assignments for that sche
 Delete an assignment from a draft schedule:
 
 ```bash
-curl -X DELETE http://localhost:8080/api/assignments/1 \
+curl http://localhost:8080/api/assignments/1/deletion-preview \
+  -H "Authorization: Bearer <TOKEN>"
+
+# Review assignment.employeeFullName and shift start/end times before confirming.
+curl -X DELETE "http://localhost:8080/api/assignments/1?revision=<REVISION_FROM_PREVIEW>" \
   -H "Authorization: Bearer <TOKEN>"
 ```
 
@@ -1075,6 +1089,16 @@ Expected response:
 ```
 
 Only managers assigned to the assignment's team can delete assignments.
+
+The preview includes `assignment`, `shift`, and `revision`. The revision covers
+the assignment, shift, and schedule IDs/versions. Removal keeps the shift and
+other assignments; request history involving this assignment blocks removal.
+Both individual DELETE APIs require the exact preview revision: missing/malformed
+values return `400`, stale state or request history returns `409`, and a removed
+record returns `404`. Never automatically fetch a new revision to retry DELETE.
+Missing JPA rows, including lazy associations lost during a concurrent deletion,
+map to `404` without exposing internal entity details. Other unexpected database
+errors still use the normal server-error handler.
 Assignments can be deleted only while the schedule is still `DRAFT`.
 
 `AssignmentValidator` currently validates, in order:

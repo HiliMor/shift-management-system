@@ -20,6 +20,7 @@ For end-to-end local run instructions, see:
 - Create shift - manager-only form for adding shifts to a managed draft schedule.
 - Assign employee - manager-only draft assignment board and form for assigning an active team employee to a draft shift.
 - Remove assignment - manager-only action for removing an employee from a draft shift and refreshing the open slot count.
+- Assignment removal loads a fresh preview and confirms the current employee and shift times. Cancellation sends no DELETE; changed data or request history prevents removal and is shown without retrying automatically.
 - Automatic assignment - manager-only action for filling open draft shifts and reviewing the assignment report.
 - Shift templates - manager-only workflow for creating templates, adding slots, and generating draft shifts.
 - Delete unused template - manager-only action for removing a template that is not referenced by existing shifts.
@@ -36,9 +37,12 @@ For end-to-end local run instructions, see:
 ## Run Locally
 
 After updating from a version without deletion previews, restart the backend
-as well as updating the frontend. Both DELETE APIs now require a preview revision.
+as well as updating the frontend. Draft, template, and assignment removal require
+a preview revision; the shift DELETE API requires one too (shift deletion UI is
+still planned separately).
 Run `pnpm test` (or `npm test`) for the focused confirmation-flow tests; these
-use Node's built-in runner and do not replace browser testing.
+use Node's built-in runner. The API contract test uses Vite's module loader with
+network listeners disabled and a mocked fetch; these do not replace browser testing.
 
 Requirements:
 

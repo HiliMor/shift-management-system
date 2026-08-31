@@ -245,11 +245,7 @@ function AssignEmployeePanel({
                   <button
                     className="danger-button compact-button"
                     disabled={deletingAssignmentId !== null}
-                    onClick={() => {
-                      if (window.confirm(t("confirmRemoveAssignment"))) {
-                        onDeleteAssignment(assignment.id);
-                      }
-                    }}
+                    onClick={() => onDeleteAssignment(assignment.id)}
                     type="button"
                   >
                     {deletingAssignmentId === assignment.id

@@ -15,5 +15,9 @@ export function deletionErrorMessage(error, t) {
   if (error.message === "Schedules with transfer or swap request history cannot be deleted") {
     return t("cannotDeleteRequestHistory");
   }
+  if (["Shifts", "Assignments"].some((type) =>
+    error.message === `${type} with transfer or swap request history cannot be deleted`)) {
+    return t("cannotDeleteAssignmentHistory");
+  }
   return error.message;
 }

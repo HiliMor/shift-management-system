@@ -573,8 +573,10 @@ request at execution without changing owners; execution first keeps the complete
 transfer/swap when the schedule is reopened.
 
 Client versions protect shift edits; deletion snapshots protect draft/template
-confirmation as described below. Individual deletion preconditions and missing-row
-handling in request workflows remain in part 4.3c2. Demo writes and future
+and individual shift/assignment confirmation as described below. Request refreshes
+map missing records to `404`; the API handler also covers missing lazy associations
+before refresh (JPA `EntityNotFoundException` or Spring's retrieval wrapper).
+Demo writes and future
 team/member/role mutations need their own planned work; no all-writers guarantee
 is claimed for them. Spring/JPA pessimistic-lock failures and lock timeouts map
 to `409 CONCURRENT_MODIFICATION`. Other database errors are not blanket-mapped
@@ -630,6 +632,25 @@ This protects the confirmation snapshot, not an arbitrarily old list response.
 Draft deletion also explicitly rejects any source/target transfer or swap request
 history. Existing foreign keys prevented that deletion already; the new check
 returns a clear conflict without deleting historical requests or partial data.
+
+`ShiftService.previewShiftDeletion` uses the same protocol, returning the shift,
+assignment count, and revision. Its revision includes the shift ID/version,
+schedule ID/version, and assignment IDs/versions. A child added or replaced
+after confirmation is not silently removed with the shift. The successful delete
+cascades assignments through the existing foreign key.
+
+`AssignmentService.previewAssignmentDeletion` returns the current assignment,
+shift, and revision. This revision includes all three record IDs/versions:
+assignment, shift, and schedule. Even a shift-time edit or publish/reopen cycle
+invalidates the confirmation. Removal preserves the shift and other assignments.
+The frontend shows current employee identity and shift times before confirming.
+
+Individual deletions also reject source/target request history, regardless of
+request status. These checks run while holding the same team lock used by request
+creation/execution. Reopening and deletion committed before a waiting request
+cause `404`, not an orphan request or a generic persistence error. Preview calls
+release their locks before the user confirms; DELETE never refreshes a stale
+revision on the client's behalf.
 
 ### Shift Editing
 

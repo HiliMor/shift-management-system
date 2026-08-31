@@ -10,11 +10,14 @@ import com.hilimor.shiftmanagement.shift.Shift;
 import com.hilimor.shiftmanagement.user.User;
 
 import jakarta.persistence.EntityManager;
+import jakarta.persistence.EntityNotFoundException;
 import jakarta.persistence.LockModeType;
 
+import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.server.ResponseStatusException;
 
 @Component
 @Transactional(propagation = Propagation.MANDATORY)
@@ -28,17 +31,17 @@ public class SwapRequestLock {
 
     public void lockSource(Assignment sourceAssignment) {
         // One team lock covers requests referencing assignments as either source or target.
-        entityManager.refresh(sourceAssignment.getShift().getSchedule().getTeam(), LockModeType.PESSIMISTIC_WRITE);
-        entityManager.refresh(sourceAssignment);
-        entityManager.refresh(sourceAssignment.getShift().getSchedule());
+        refresh(sourceAssignment.getShift().getSchedule().getTeam(), LockModeType.PESSIMISTIC_WRITE, "Team not found");
+        refresh(sourceAssignment, LockModeType.NONE, "Assignment not found");
+        refresh(sourceAssignment.getShift().getSchedule(), LockModeType.NONE, "Schedule not found");
     }
 
     public void lockRequest(SwapRequest request) {
         lockSource(request.getSourceAssignment());
         // Entities loaded before waiting must not retain an earlier status or owner.
-        entityManager.refresh(request);
+        refresh(request, LockModeType.NONE, "Swap request not found");
         if (request.getTargetAssignment() != null) {
-            entityManager.refresh(request.getTargetAssignment());
+            refresh(request.getTargetAssignment(), LockModeType.NONE, "Assignment not found");
         }
     }
 
@@ -55,16 +58,24 @@ public class SwapRequestLock {
                 .map(Assignment::getShift)
                 .distinct()
                 .sorted(Comparator.comparing(Shift::getId))
-                .forEach(shift -> entityManager.refresh(shift, LockModeType.PESSIMISTIC_WRITE));
+                .forEach(shift -> refresh(shift, LockModeType.PESSIMISTIC_WRITE, "Shift not found"));
         Stream.of(request.getRequester(), request.getTargetEmployee())
                 .distinct()
                 .sorted(Comparator.comparing(User::getId))
                 .forEach(user -> entityManager.lock(user, LockModeType.PESSIMISTIC_WRITE));
 
-        assignments.forEach(entityManager::refresh);
+        assignments.forEach(assignment -> refresh(assignment, LockModeType.NONE, "Assignment not found"));
         assignments.stream()
                 .map(assignment -> assignment.getShift().getSchedule())
                 .distinct()
-                .forEach(entityManager::refresh);
+                .forEach(schedule -> refresh(schedule, LockModeType.NONE, "Schedule not found"));
+    }
+
+    private void refresh(Object entity, LockModeType mode, String missingMessage) {
+        try {
+            entityManager.refresh(entity, mode);
+        } catch (EntityNotFoundException exception) {
+            throw new ResponseStatusException(HttpStatus.NOT_FOUND, missingMessage);
+        }
     }
 }

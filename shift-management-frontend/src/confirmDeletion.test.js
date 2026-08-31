@@ -47,5 +47,9 @@ test("deletion errors have Hebrew and English messages", () => {
     const t = (key) => translations[language][key];
     assert.equal(deletionErrorMessage(new Error("Deletion preview is out of date. Review the current data before deleting."), t), t("staleDeletionPreview"));
     assert.equal(deletionErrorMessage(new Error("Schedules with transfer or swap request history cannot be deleted"), t), t("cannotDeleteRequestHistory"));
+    assert.ok(t("cannotDeleteAssignmentHistory"));
+    for (const type of ["Shifts", "Assignments"]) {
+      assert.equal(deletionErrorMessage(new Error(`${type} with transfer or swap request history cannot be deleted`), t), t("cannotDeleteAssignmentHistory"));
+    }
   }
 });

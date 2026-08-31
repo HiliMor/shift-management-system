@@ -11,12 +11,16 @@ import java.util.Map;
 import java.util.Set;
 import java.util.stream.Collectors;
 
+import com.hilimor.shiftmanagement.request.SwapRequestRepository;
+import com.hilimor.shiftmanagement.schedule.DeletionRevision;
+import com.hilimor.shiftmanagement.schedule.DeletionRevision.RecordVersion;
 import com.hilimor.shiftmanagement.schedule.Schedule;
 import com.hilimor.shiftmanagement.schedule.ScheduleRepository;
 import com.hilimor.shiftmanagement.schedule.ScheduleStatus;
 import com.hilimor.shiftmanagement.schedule.ScheduleWriteLock;
 import com.hilimor.shiftmanagement.shift.Shift;
 import com.hilimor.shiftmanagement.shift.ShiftRepository;
+import com.hilimor.shiftmanagement.shift.ShiftResponse;
 import com.hilimor.shiftmanagement.team.TeamManagerRepository;
 import com.hilimor.shiftmanagement.team.TeamMember;
 import com.hilimor.shiftmanagement.team.TeamMemberRepository;
@@ -44,6 +48,7 @@ public class AssignmentService {
     private final TeamManagerRepository teamManagerRepository;
     private final AssignmentValidator assignmentValidator;
     private final ScheduleWriteLock writeLock;
+    private final SwapRequestRepository requestRepository;
 
     public AssignmentService(
             AssignmentRepository assignmentRepository,
@@ -53,7 +58,8 @@ public class AssignmentService {
             TeamMemberRepository teamMemberRepository,
             TeamManagerRepository teamManagerRepository,
             AssignmentValidator assignmentValidator,
-            ScheduleWriteLock writeLock
+            ScheduleWriteLock writeLock,
+            SwapRequestRepository requestRepository
     ) {
         this.assignmentRepository = assignmentRepository;
         this.scheduleRepository = scheduleRepository;
@@ -63,6 +69,7 @@ public class AssignmentService {
         this.teamManagerRepository = teamManagerRepository;
         this.assignmentValidator = assignmentValidator;
         this.writeLock = writeLock;
+        this.requestRepository = requestRepository;
     }
 
     @Transactional
@@ -198,7 +205,25 @@ public class AssignmentService {
     }
 
     @Transactional
-    public void deleteAssignment(String managerUsername, Long assignmentId) {
+    public AssignmentDeletionPreviewResponse previewAssignmentDeletion(String managerUsername, Long assignmentId) {
+        return deletionPreview(deletableAssignment(managerUsername, assignmentId));
+    }
+
+    @Transactional
+    public void deleteAssignment(String managerUsername, Long assignmentId, String revision) {
+        Assignment assignment = deletableAssignment(managerUsername, assignmentId);
+        DeletionRevision.requireMatch(revision, deletionPreview(assignment).revision());
+        writeLock.lockAssignedEmployees(List.of(assignment));
+        assignmentRepository.delete(assignment);
+        log.info(
+                "Assignment {} deleted from shift {} by manager {}",
+                assignment.getId(),
+                assignment.getShift().getId(),
+                managerUsername
+        );
+    }
+
+    private Assignment deletableAssignment(String managerUsername, Long assignmentId) {
         Assignment assignment = assignmentRepository.findById(assignmentId)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Assignment not found"));
 
@@ -210,14 +235,20 @@ public class AssignmentService {
             throw conflict("SCHEDULE_NOT_DRAFT", "Assignments can be deleted only while the schedule is a draft");
         }
 
-        writeLock.lockAssignedEmployees(List.of(assignment));
-        assignmentRepository.delete(assignment);
-        log.info(
-                "Assignment {} deleted from shift {} by manager {}",
-                assignment.getId(),
-                assignment.getShift().getId(),
-                managerUsername
-        );
+        if (requestRepository.existsBySourceAssignment_IdOrTargetAssignment_Id(assignmentId, assignmentId)) {
+            throw new ResponseStatusException(HttpStatus.CONFLICT,
+                    "Assignments with transfer or swap request history cannot be deleted");
+        }
+        return assignment;
+    }
+
+    private AssignmentDeletionPreviewResponse deletionPreview(Assignment assignment) {
+        Shift shift = assignment.getShift();
+        Schedule schedule = shift.getSchedule();
+        String revision = DeletionRevision.of("assignment", new RecordVersion(assignment.getId(), assignment.getVersion()), List.of(
+                List.of(new RecordVersion(shift.getId(), shift.getVersion())),
+                List.of(new RecordVersion(schedule.getId(), schedule.getVersion()))));
+        return new AssignmentDeletionPreviewResponse(AssignmentResponse.from(assignment), ShiftResponse.from(shift), revision);
     }
 
     @Transactional(readOnly = true)
