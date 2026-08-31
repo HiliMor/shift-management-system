@@ -1,4 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
+import { confirmDeletion, deletionErrorMessage } from "../confirmDeletion.js";
+import { useLanguage } from "../i18n/LanguageContext.jsx";
 
 import {
   createAssignment,
@@ -6,6 +8,7 @@ import {
   createShift,
   deleteAssignment,
   deleteSchedule,
+  getScheduleDeletionPreview,
   listManagedDraftSchedules,
   listMyManagedTeams,
   listScheduleAssignments,
@@ -42,6 +45,7 @@ function useManagerScheduling(
   onApiError,
   onScheduleContentChanged = () => {},
 ) {
+  const { t } = useLanguage();
   const [managedTeams, setManagedTeams] = useState([]);
   const [isLoadingManagedTeams, setIsLoadingManagedTeams] = useState(false);
   const [managedTeamsError, setManagedTeamsError] = useState("");
@@ -350,7 +354,13 @@ function useManagerScheduling(
     setCreatedAssignment(null);
 
     try {
-      await deleteSchedule(session.accessToken, selectedDraftScheduleId);
+      const deleted = await confirmDeletion({
+        loadPreview: () => getScheduleDeletionPreview(session.accessToken, selectedDraftScheduleId),
+        describe: ({ schedule, shiftCount, assignmentCount }) =>
+          `${t("confirmDeleteDraftSchedule")}\n${schedule.teamName} #${schedule.id}\n${schedule.startDate} - ${schedule.endDate}\n${t("shifts")}: ${shiftCount}\n${t("assignments")}: ${assignmentCount}`,
+        remove: (revision) => deleteSchedule(session.accessToken, selectedDraftScheduleId, revision),
+      });
+      if (!deleted) return;
       setManagedDraftSchedules((current) =>
         current.filter((schedule) => schedule.id.toString() !== selectedDraftScheduleId),
       );
@@ -365,7 +375,7 @@ function useManagerScheduling(
       refreshDraftSchedules();
       onScheduleContentChanged();
     } catch (error) {
-      onApiError(error, setScheduleActionError);
+      onApiError(error, () => setScheduleActionError(deletionErrorMessage(error, t)));
     } finally {
       setIsDeletingSchedule(false);
     }

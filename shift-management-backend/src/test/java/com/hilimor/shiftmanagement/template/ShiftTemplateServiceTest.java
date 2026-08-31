@@ -28,6 +28,8 @@ import org.springframework.test.util.ReflectionTestUtils;
 import org.springframework.web.server.ResponseStatusException;
 
 import com.hilimor.shiftmanagement.schedule.Schedule;
+import com.hilimor.shiftmanagement.schedule.DeletionRevision;
+import com.hilimor.shiftmanagement.schedule.DeletionRevision.RecordVersion;
 import com.hilimor.shiftmanagement.schedule.ScheduleRepository;
 import com.hilimor.shiftmanagement.schedule.ScheduleStatus;
 import com.hilimor.shiftmanagement.schedule.ScheduleWriteLock;
@@ -190,7 +192,8 @@ class ShiftTemplateServiceTest {
         when(teamManagerRepository.existsByManager_UsernameAndTeam_Id("manager1", 1L)).thenReturn(true);
         when(shiftRepository.existsByTemplateSlot_ShiftTemplate_Id(50L)).thenReturn(false);
 
-        shiftTemplateService.deleteTemplate("manager1", 50L);
+        String revision = DeletionRevision.of("template", new RecordVersion(50L, 0L), List.of(List.of()));
+        shiftTemplateService.deleteTemplate("manager1", 50L, revision);
 
         var order = inOrder(writeLock, shiftRepository, shiftTemplateRepository);
         order.verify(writeLock).lockTemplate(template);
@@ -206,7 +209,7 @@ class ShiftTemplateServiceTest {
         when(teamManagerRepository.existsByManager_UsernameAndTeam_Id("manager1", 1L)).thenReturn(true);
         when(shiftRepository.existsByTemplateSlot_ShiftTemplate_Id(50L)).thenReturn(true);
 
-        assertThatThrownBy(() -> shiftTemplateService.deleteTemplate("manager1", 50L))
+        assertThatThrownBy(() -> shiftTemplateService.deleteTemplate("manager1", 50L, "0".repeat(64)))
                 .isInstanceOfSatisfying(ResponseStatusException.class, exception ->
                         assertThat(exception.getStatusCode()).isEqualTo(HttpStatus.CONFLICT));
 
@@ -220,7 +223,7 @@ class ShiftTemplateServiceTest {
         when(shiftTemplateRepository.findById(50L)).thenReturn(Optional.of(template));
         when(teamManagerRepository.existsByManager_UsernameAndTeam_Id("employee1", 1L)).thenReturn(false);
 
-        assertThatThrownBy(() -> shiftTemplateService.deleteTemplate("employee1", 50L))
+        assertThatThrownBy(() -> shiftTemplateService.deleteTemplate("employee1", 50L, "0".repeat(64)))
                 .isInstanceOfSatisfying(ResponseStatusException.class, exception ->
                         assertThat(exception.getStatusCode()).isEqualTo(HttpStatus.FORBIDDEN));
 
@@ -668,6 +671,7 @@ class ShiftTemplateServiceTest {
     private ShiftTemplate shiftTemplate(Team team, Long id, String name, int cycleDays) {
         ShiftTemplate shiftTemplate = new ShiftTemplate(team, name, null, cycleDays, 8);
         ReflectionTestUtils.setField(shiftTemplate, "id", id);
+        ReflectionTestUtils.setField(shiftTemplate, "version", 0L);
         return shiftTemplate;
     }
 

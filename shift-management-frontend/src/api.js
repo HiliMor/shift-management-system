@@ -70,8 +70,12 @@ export function createSchedule(token, schedule) {
   });
 }
 
-export function deleteSchedule(token, scheduleId) {
-  return request(`/api/schedules/${scheduleId}`, {
+export function getScheduleDeletionPreview(token, scheduleId) {
+  return request(`/api/schedules/${scheduleId}/deletion-preview`, { token, cache: "no-store" });
+}
+
+export function deleteSchedule(token, scheduleId, revision) {
+  return request(`/api/schedules/${scheduleId}?revision=${encodeURIComponent(revision)}`, {
     method: "DELETE",
     token,
   });
@@ -166,8 +170,12 @@ export function listShiftTemplates(token, teamId) {
   return request(`/api/teams/${teamId}/templates`, { token });
 }
 
-export function deleteShiftTemplate(token, templateId) {
-  return request(`/api/templates/${templateId}`, {
+export function getTemplateDeletionPreview(token, templateId) {
+  return request(`/api/templates/${templateId}/deletion-preview`, { token, cache: "no-store" });
+}
+
+export function deleteShiftTemplate(token, templateId, revision) {
+  return request(`/api/templates/${templateId}?revision=${encodeURIComponent(revision)}`, {
     method: "DELETE",
     token,
   });

@@ -9,6 +9,9 @@ import org.springframework.data.repository.query.Param;
 
 public interface SwapRequestRepository extends JpaRepository<SwapRequest, Long> {
 
+    boolean existsBySourceAssignment_Shift_Schedule_IdOrTargetAssignment_Shift_Schedule_Id(
+            Long sourceScheduleId, Long targetScheduleId);
+
     @Query("""
             select request from SwapRequest request
             where request.id <> :requestId

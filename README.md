@@ -24,6 +24,7 @@ Implemented:
 - Managed team employee listing.
 - Draft schedule creation.
 - Manager-only draft schedule deletion, including its shifts and assignments.
+- Draft/template deletion shows a fresh confirmation preview and requires its revision; changed child records return `409` without deletion. Drafts with transfer/swap request history cannot be deleted.
 - Shift create, list, update, and delete operations.
 - Shift edits require the version read by the client; stale edits return `409 STALE_VERSION` without overwriting newer data. Postman saves returned versions automatically.
 - Shift edits revalidate existing assignments; invalid changes return `409` and leave the stored shift unchanged.

@@ -1,9 +1,12 @@
 import { useEffect, useMemo, useState } from "react";
+import { confirmDeletion, deletionErrorMessage } from "../confirmDeletion.js";
+import { useLanguage } from "../i18n/LanguageContext.jsx";
 
 import {
   createShiftTemplate,
   createTemplateSlot,
   deleteShiftTemplate,
+  getTemplateDeletionPreview,
   generateShiftsFromTemplate,
   listShiftTemplates,
   listStaffingRoles,
@@ -43,6 +46,7 @@ function useShiftTemplates(
   onPublicationReadinessChanged,
   onApiError,
 ) {
+  const { t } = useLanguage();
   const [templateForm, setTemplateForm] = useState(emptyTemplateForm);
   const [slotForm, setSlotForm] = useState(emptySlotForm);
   const [generationForm, setGenerationForm] = useState(emptyGenerationForm);
@@ -281,7 +285,13 @@ function useShiftTemplates(
     setTemplateActionMessage("");
 
     try {
-      await deleteShiftTemplate(session.accessToken, templateId);
+      const deleted = await confirmDeletion({
+        loadPreview: () => getTemplateDeletionPreview(session.accessToken, templateId),
+        describe: ({ template, slotCount }) =>
+          `${t("confirmDeleteTemplate")}\n${template.name} #${template.id}\n${t("templateSlots")}: ${slotCount}`,
+        remove: (revision) => deleteShiftTemplate(session.accessToken, templateId, revision),
+      });
+      if (!deleted) return;
       setTemplates((current) => current.filter((template) => template.id !== templateId));
       setSlotForm(emptySlotForm);
       setGenerationForm(emptyGenerationForm);
@@ -290,7 +300,7 @@ function useShiftTemplates(
       setTemplateActionMessage("templateDeleted");
       refreshTemplates();
     } catch (error) {
-      onApiError(error, setTemplateActionError);
+      onApiError(error, () => setTemplateActionError(deletionErrorMessage(error, t)));
     } finally {
       setIsDeletingTemplate(false);
     }

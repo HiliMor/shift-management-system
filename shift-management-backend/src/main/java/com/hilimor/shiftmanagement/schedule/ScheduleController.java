@@ -12,6 +12,7 @@ import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestController;
 
@@ -38,9 +39,15 @@ public class ScheduleController {
     @ResponseStatus(HttpStatus.NO_CONTENT)
     public void deleteDraftSchedule(
             Authentication authentication,
-            @PathVariable Long scheduleId
+            @PathVariable Long scheduleId,
+            @RequestParam(required = false) String revision
     ) {
-        scheduleService.deleteDraftSchedule(authentication.getName(), scheduleId);
+        scheduleService.deleteDraftSchedule(authentication.getName(), scheduleId, revision);
+    }
+
+    @GetMapping("/{scheduleId}/deletion-preview")
+    public ScheduleDeletionPreviewResponse previewDraftDeletion(Authentication authentication, @PathVariable Long scheduleId) {
+        return scheduleService.previewDraftDeletion(authentication.getName(), scheduleId);
     }
 
     @GetMapping("/me/published")

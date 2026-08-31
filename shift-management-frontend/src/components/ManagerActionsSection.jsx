@@ -207,7 +207,7 @@ function ManagerActionsSection({
           <div className="draft-context-actions">
             <label className="draft-context-select">
               <span>{t("changeDraft")}</span>
-              <select value={selectedDraftScheduleId} onChange={(event) => onSelectDraftSchedule(event.target.value)}>
+              <select disabled={isDeletingSchedule} value={selectedDraftScheduleId} onChange={(event) => onSelectDraftSchedule(event.target.value)}>
                 {managedDraftSchedules.map((schedule) => (
                   <option key={schedule.id} value={schedule.id}>
                     #{schedule.id} - {schedule.teamName}, {formatDate(schedule.startDate)} {t("dateRangeSeparator")} {" "}
@@ -219,11 +219,7 @@ function ManagerActionsSection({
             <button
               className="danger-button compact-button"
               disabled={isDeletingSchedule || isLoadingDraftSchedules || !selectedDraftSchedule}
-              onClick={() => {
-                if (window.confirm(t("confirmDeleteDraftSchedule"))) {
-                  onDeleteDraftSchedule();
-                }
-              }}
+              onClick={onDeleteDraftSchedule}
               type="button"
             >
               {isDeletingSchedule ? t("deletingDraftSchedule") : t("deleteDraftSchedule")}

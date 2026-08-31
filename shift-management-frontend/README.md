@@ -23,6 +23,7 @@ For end-to-end local run instructions, see:
 - Automatic assignment - manager-only action for filling open draft shifts and reviewing the assignment report.
 - Shift templates - manager-only workflow for creating templates, adding slots, and generating draft shifts.
 - Delete unused template - manager-only action for removing a template that is not referenced by existing shifts.
+- Draft/template deletion first loads an authorized preview, then shows current identity and child counts in a confirmation dialog. A changed revision returns a localized error without automatically retrying deletion. Drafts with request history cannot be deleted.
 - Notifications - authenticated top-bar notification center that lists personal notifications, shows unread count, marks notifications as read, and links schedule-publication notifications to the published schedule.
 - Transfer and swap requests - authenticated screen section for outgoing, incoming, and pending manager approval requests.
 - Transfer and swap request creation - employee-only form based on the selected published schedule.
@@ -33,6 +34,11 @@ For end-to-end local run instructions, see:
 - The build step separates template management, template-based shift generation, and single-shift creation.
 
 ## Run Locally
+
+After updating from a version without deletion previews, restart the backend
+as well as updating the frontend. Both DELETE APIs now require a preview revision.
+Run `pnpm test` (or `npm test`) for the focused confirmation-flow tests; these
+use Node's built-in runner and do not replace browser testing.
 
 Requirements:
 

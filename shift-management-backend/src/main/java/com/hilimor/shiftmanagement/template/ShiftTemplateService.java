@@ -10,6 +10,8 @@ import java.util.List;
 import java.util.Objects;
 
 import com.hilimor.shiftmanagement.schedule.Schedule;
+import com.hilimor.shiftmanagement.schedule.DeletionRevision;
+import com.hilimor.shiftmanagement.schedule.DeletionRevision.RecordVersion;
 import com.hilimor.shiftmanagement.schedule.ScheduleRepository;
 import com.hilimor.shiftmanagement.schedule.ScheduleStatus;
 import com.hilimor.shiftmanagement.schedule.ScheduleWriteLock;
@@ -100,7 +102,19 @@ public class ShiftTemplateService {
     }
 
     @Transactional
-    public void deleteTemplate(String username, Long templateId) {
+    public TemplateDeletionPreviewResponse previewTemplateDeletion(String username, Long templateId) {
+        return deletionPreview(deletableTemplate(username, templateId));
+    }
+
+    @Transactional
+    public void deleteTemplate(String username, Long templateId, String revision) {
+        ShiftTemplate template = deletableTemplate(username, templateId);
+        DeletionRevision.requireMatch(revision, deletionPreview(template).revision());
+        shiftTemplateRepository.delete(template);
+        log.info("Shift template {} deleted by manager {}", templateId, username);
+    }
+
+    private ShiftTemplate deletableTemplate(String username, Long templateId) {
         ShiftTemplate shiftTemplate = managedTemplate(username, templateId);
         writeLock.lockTemplate(shiftTemplate);
 
@@ -111,8 +125,14 @@ public class ShiftTemplateService {
             );
         }
 
-        shiftTemplateRepository.delete(shiftTemplate);
-        log.info("Shift template {} deleted by manager {}", templateId, username);
+        return shiftTemplate;
+    }
+
+    private TemplateDeletionPreviewResponse deletionPreview(ShiftTemplate template) {
+        var slots = templateSlotRepository.findByShiftTemplate_IdOrderByDayOffsetAscStartTimeAsc(template.getId());
+        String revision = DeletionRevision.of("template", new RecordVersion(template.getId(), template.getVersion()),
+                List.of(slots.stream().map(slot -> new RecordVersion(slot.getId(), slot.getVersion())).toList()));
+        return new TemplateDeletionPreviewResponse(ShiftTemplateResponse.from(template), slots.size(), revision);
     }
 
     @Transactional

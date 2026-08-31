@@ -278,6 +278,8 @@ export const translations = {
     deleteDraftSchedule: "Delete draft schedule",
     deletingDraftSchedule: "Deleting...",
     confirmDeleteDraftSchedule: "Delete this draft schedule? Its shifts and assignments will also be deleted.",
+    staleDeletionPreview: "The data changed after the deletion preview. Nothing was deleted. Review the updated data and confirm again.",
+    cannotDeleteRequestHistory: "This schedule has transfer or swap request history and cannot be deleted.",
     draftScheduleDeleted: "Draft schedule deleted.",
     noDraftSelected: "No draft schedule selected",
     draftContextDescription:
@@ -565,6 +567,8 @@ export const translations = {
     deleteDraftSchedule: "מחיקת טיוטת לוח",
     deletingDraftSchedule: "מוחק/ת...",
     confirmDeleteDraftSchedule: "למחוק את טיוטת הלוח? גם המשמרות והשיבוצים שבה יימחקו.",
+    staleDeletionPreview: "הנתונים השתנו מאז הצגת האישור. דבר לא נמחק. יש לבדוק את הנתונים העדכניים ולאשר שוב.",
+    cannotDeleteRequestHistory: "ללוח הזה יש היסטוריית בקשות העברה או החלפה ולכן לא ניתן למחוק אותו.",
     draftScheduleDeleted: "טיוטת הלוח נמחקה.",
     noDraftSelected: "לא נבחרה טיוטת לוח",
     draftContextDescription:

@@ -67,6 +67,27 @@ field. Expect `409 STALE_VERSION`; listing the shifts must still show the first
 edit. Restore `{{shiftVersion}}` in the body afterwards. A deleted shift returns
 `404`; missing/null/negative versions return `400`.
 
+## Deleting Drafts And Templates
+
+Re-import the updated collection and environment (preserve any local tokens
+separately). DELETE now requires a revision, not only an ID:
+
+1. Choose `scheduleId` and run **Preview Draft Deletion**, or choose
+   `shiftTemplateId` and run **Preview Template Deletion** as the team's manager.
+2. Review the identity, dates where applicable, and child counts. A successful
+   preview stores `scheduleDeletionRevision` or `templateDeletionRevision`.
+3. Run the matching DELETE request without changing the selected ID. Expect `204`.
+4. If it returns `409`, review what changed with another explicit preview before
+   deciding to delete again. DELETE does not fetch a new revision automatically.
+
+To demonstrate stale confirmation on disposable data: preview a draft, create a
+shift inside it, then send DELETE with the saved revision. Expect `409` and verify
+the draft and new shift still exist. The analogous template scenario adds a slot
+after preview. Same-count edits/replacements also invalidate the revision.
+Preview clears its old revision before sending, so a failed preview cannot leave
+a previously saved value ready for reuse. Missing/invalid revisions return `400`.
+Used templates and drafts with request history are not deletable.
+
 ## Seed Users
 
 When development seed data is enabled, these users are available:

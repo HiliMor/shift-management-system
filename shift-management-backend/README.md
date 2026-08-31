@@ -28,7 +28,7 @@ Implemented:
 - CORS support for the local React development server.
 - Initial schedule domain model.
 - Schedule creation endpoint: `POST /api/schedules`.
-- Draft schedule delete endpoint: `DELETE /api/schedules/{scheduleId}`.
+- Draft deletion preview: `GET /api/schedules/{scheduleId}/deletion-preview`; deletion: `DELETE /api/schedules/{scheduleId}?revision={revision}`.
 - Initial shift domain model.
 - Shift creation endpoint: `POST /api/schedules/{scheduleId}/shifts`.
 - Shift list endpoint: `GET /api/schedules/{scheduleId}/shifts`.
@@ -51,7 +51,7 @@ Implemented:
 - Optional source template slot reference on generated shifts.
 - Template create endpoint: `POST /api/teams/{teamId}/templates`.
 - Template list endpoint: `GET /api/teams/{teamId}/templates`.
-- Template delete endpoint: `DELETE /api/templates/{templateId}`.
+- Template deletion preview: `GET /api/templates/{templateId}/deletion-preview`; deletion: `DELETE /api/templates/{templateId}?revision={revision}`.
 - Template slot create endpoint: `POST /api/templates/{templateId}/slots`.
 - Template slot list endpoint: `GET /api/templates/{templateId}/slots`.
 - Template shift generation endpoint: `POST /api/templates/{templateId}/generate`.
@@ -339,13 +339,25 @@ Only managers assigned to the requested team can create schedules for that team.
 Delete a draft schedule managed by the authenticated manager:
 
 ```bash
-curl -X DELETE http://localhost:8080/api/schedules/1 \
+curl http://localhost:8080/api/schedules/1/deletion-preview \
+  -H "Authorization: Bearer <TOKEN>"
+
+# Review schedule identity/dates, shiftCount, and assignmentCount in the response.
+curl -X DELETE "http://localhost:8080/api/schedules/1?revision=<REVISION_FROM_PREVIEW>" \
   -H "Authorization: Bearer <TOKEN>"
 ```
 
 Only `DRAFT` schedules can be deleted. The operation removes the schedule's
 assignments and shifts before removing the schedule itself. Published schedules
-cannot be deleted through this endpoint.
+cannot be deleted through this endpoint. Drafts with transfer/swap request
+history also return `409`, preserving their referenced assignments and requests.
+
+The required revision represents the parent and child IDs/versions, so a new
+shift, edited shift, or changed assignment invalidates an earlier confirmation.
+Missing/malformed revisions return `400`; stale revisions return `409` without
+deleting anything. Fetch another preview, review it, and explicitly confirm again.
+The preview does not reserve the data while the user reads it. Authorization and
+the draft/history rules are checked again under the team lock on DELETE.
 
 List draft schedules managed by the authenticated manager:
 
@@ -571,7 +583,11 @@ Running generation again skips shifts that were already created from the same te
 Delete a template that has not been used to generate shifts:
 
 ```bash
-curl -X DELETE http://localhost:8080/api/templates/1 \
+curl http://localhost:8080/api/templates/1/deletion-preview \
+  -H "Authorization: Bearer <TOKEN>"
+
+# Review template identity and slotCount in the response.
+curl -X DELETE "http://localhost:8080/api/templates/1?revision=<REVISION_FROM_PREVIEW>" \
   -H "Authorization: Bearer <TOKEN>"
 ```
 
@@ -591,9 +607,11 @@ sees the generated shifts and returns `409` without deleting the template or
 slots. Deleting the last draft that uses the template permits a later deletion.
 Adding a slot before generation includes it in that run; adding it after
 generation does not retroactively change existing shifts. Generate again to add
-its occurrences while skipping those already created. Deletion still acts on
-current state, not a client-supplied version; stale-screen deletion preconditions
-remain separate work in roadmap part 4.3c.
+its occurrences while skipping those already created. Deletion requires the
+revision from a fresh deletion preview. The revision includes slot IDs/versions
+as well as the template ID/version. A slot added after preview makes deletion
+return `409`, even if the template row's own version has not changed. Missing or
+malformed revisions return `400`. Do not automatically refresh and retry DELETE.
 
 Publish a draft schedule:
 
@@ -1641,11 +1659,12 @@ these are not login/JWT or browser tests. Unit checks also cover version compari
 after refresh, flush-before-response ordering, and optimistic-conflict error mapping.
 
 This is not a complete concurrency protocol for every API. Client versions now
-protect shift edits; deletions do not yet require an expected version. Existing
+protect shift edits; draft/template deletions require a confirmation revision.
+Individual shift/assignment deletion preconditions remain pending. Existing
 template create/delete, slot creation, and generation now coordinate with each
 other and with draft writes. Individual slot editing/deletion endpoints are not
 implemented yet; future lifecycle controls must join this protocol. Remaining
-stale-delete preconditions and request missing-row handling are in part 4.3c of
+individual-delete preconditions and request missing-row handling are in part 4.3c2 of
 `../IMPLEMENTATION_PLAN.md`. Spring/JPA optimistic-lock failures map to
 `409 STALE_VERSION`; expected pessimistic-lock/timeout failures map to
 `409 CONCURRENT_MODIFICATION`. Unrelated unexpected errors remain `500`.
@@ -1653,15 +1672,25 @@ Future team/member/role writes must join the protocol when implemented; demo
 initialization is handled separately in part 5. The shift version column already
 exists; this API change needs no migration or new JMS event type.
 
-`TemplateConcurrencyIT` adds eleven PostgreSQL scenarios. They cover duplicate
+`TemplateConcurrencyIT` has twelve PostgreSQL scenarios. They cover duplicate
 names, deletion before generation/slot creation/duplicate deletion, generation
 before deletion, both slot-creation/generation orders, repeated generation,
 removing the last using draft, independent creation in another team, and a real
-lock timeout through MockMvc. Stored templates, slots, and shifts are checked.
+lock timeout through MockMvc, and stale deletion waiting for a slot addition.
+Stored templates, slots, and shifts are checked.
 The timeout test returns `409` and preserves the other transaction's generated
 shifts; it uses test authentication, not a login/JWT or browser flow. Two new
 lock-helper tests verify template refresh ordering and missing-template handling;
 four error-handler cases cover Spring/JPA lock exception variants.
+
+`DeletionPreconditionIT` adds fifteen API scenarios against PostgreSQL, using
+MockMvc test authentication. It verifies preview counts, child edits/additions/
+removals/replacements, publish/reopen changes, fresh deletion, `400` for invalid
+revisions, `404` after deletion, authorization, and preservation of request
+history. Rejected deletes leave the committed parent/child state unchanged.
+Additional workflow/template tests observe actual lock waits before checking
+stale revisions. `DeletionRevisionTest` covers stable ordering and fingerprint
+identity/version/group boundaries. These are not authenticated browser tests.
 
 ## Important Notes
 

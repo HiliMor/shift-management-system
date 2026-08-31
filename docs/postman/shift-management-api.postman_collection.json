@@ -368,12 +368,32 @@
           "response": []
         },
         {
+          "name": "Preview Draft Deletion",
+          "event": [
+            {"listen": "prerequest", "script": {"type": "text/javascript", "exec": ["pm.environment.unset('scheduleDeletionRevision');"]}},
+            {"listen": "test", "script": {"type": "text/javascript", "exec": [
+              "if (pm.response.code === 200) {",
+              "  const data = pm.response.json();",
+              "  pm.environment.set('scheduleDeletionRevision', data.revision);",
+              "  pm.test('Preview identifies the selected schedule', () => pm.expect(String(data.schedule.id)).to.eql(String(pm.environment.get('scheduleId'))));",
+              "}"
+            ]}}
+          ],
+          "request": {
+            "method": "GET", "header": [],
+            "description": "Review the schedule identity, dates, shiftCount, and assignmentCount before running Delete Draft Schedule. The revision covers child IDs and versions, not just counts. No automatic refresh/retry is performed by DELETE.",
+            "url": {"raw": "{{baseUrl}}/api/schedules/{{scheduleId}}/deletion-preview", "host": ["{{baseUrl}}"], "path": ["api", "schedules", "{{scheduleId}}", "deletion-preview"]}
+          },
+          "response": []
+        },
+        {
           "name": "Delete Draft Schedule",
           "request": {
             "method": "DELETE",
             "header": [],
             "url": {
-              "raw": "{{baseUrl}}/api/schedules/{{scheduleId}}",
+              "raw": "{{baseUrl}}/api/schedules/{{scheduleId}}?revision={{scheduleDeletionRevision}}",
+              "query": [{"key": "revision", "value": "{{scheduleDeletionRevision}}"}],
               "host": [
                 "{{baseUrl}}"
               ],
@@ -1186,12 +1206,32 @@
           "response": []
         },
         {
+          "name": "Preview Template Deletion",
+          "event": [
+            {"listen": "prerequest", "script": {"type": "text/javascript", "exec": ["pm.environment.unset('templateDeletionRevision');"]}},
+            {"listen": "test", "script": {"type": "text/javascript", "exec": [
+              "if (pm.response.code === 200) {",
+              "  const data = pm.response.json();",
+              "  pm.environment.set('templateDeletionRevision', data.revision);",
+              "  pm.test('Preview identifies the selected template', () => pm.expect(String(data.template.id)).to.eql(String(pm.environment.get('shiftTemplateId'))));",
+              "}"
+            ]}}
+          ],
+          "request": {
+            "method": "GET", "header": [],
+            "description": "Review template identity and slotCount before running Delete Unused Shift Template. A changed slot or template invalidates the revision. Used templates cannot be deleted.",
+            "url": {"raw": "{{baseUrl}}/api/templates/{{shiftTemplateId}}/deletion-preview", "host": ["{{baseUrl}}"], "path": ["api", "templates", "{{shiftTemplateId}}", "deletion-preview"]}
+          },
+          "response": []
+        },
+        {
           "name": "Delete Unused Shift Template",
           "request": {
             "method": "DELETE",
             "header": [],
             "url": {
-              "raw": "{{baseUrl}}/api/templates/{{shiftTemplateId}}",
+              "raw": "{{baseUrl}}/api/templates/{{shiftTemplateId}}?revision={{templateDeletionRevision}}",
+              "query": [{"key": "revision", "value": "{{templateDeletionRevision}}"}],
               "host": [
                 "{{baseUrl}}"
               ],

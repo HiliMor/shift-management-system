@@ -11,6 +11,7 @@ import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestController;
 
@@ -45,9 +46,15 @@ public class ShiftTemplateController {
     @ResponseStatus(HttpStatus.NO_CONTENT)
     public void deleteTemplate(
             Authentication authentication,
-            @PathVariable Long templateId
+            @PathVariable Long templateId,
+            @RequestParam(required = false) String revision
     ) {
-        shiftTemplateService.deleteTemplate(authentication.getName(), templateId);
+        shiftTemplateService.deleteTemplate(authentication.getName(), templateId, revision);
+    }
+
+    @GetMapping("/api/templates/{templateId}/deletion-preview")
+    public TemplateDeletionPreviewResponse previewTemplateDeletion(Authentication authentication, @PathVariable Long templateId) {
+        return shiftTemplateService.previewTemplateDeletion(authentication.getName(), templateId);
     }
 
     @PostMapping("/api/templates/{templateId}/slots")

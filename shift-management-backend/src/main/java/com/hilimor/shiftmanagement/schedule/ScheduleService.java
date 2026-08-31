@@ -9,6 +9,8 @@ import com.hilimor.shiftmanagement.assignment.Assignment;
 import com.hilimor.shiftmanagement.assignment.AssignmentRepository;
 import com.hilimor.shiftmanagement.assignment.AssignmentValidator;
 import com.hilimor.shiftmanagement.messaging.EventOutboxService;
+import com.hilimor.shiftmanagement.request.SwapRequestRepository;
+import com.hilimor.shiftmanagement.schedule.DeletionRevision.RecordVersion;
 import com.hilimor.shiftmanagement.shift.ShiftRepository;
 import com.hilimor.shiftmanagement.team.Team;
 import com.hilimor.shiftmanagement.team.TeamManagerRepository;
@@ -40,6 +42,7 @@ public class ScheduleService {
     private final AssignmentValidator assignmentValidator;
     private final EventOutboxService eventOutboxService;
     private final ScheduleWriteLock writeLock;
+    private final SwapRequestRepository swapRequestRepository;
 
     public ScheduleService(
             ScheduleRepository scheduleRepository,
@@ -51,7 +54,8 @@ public class ScheduleService {
             AssignmentRepository assignmentRepository,
             AssignmentValidator assignmentValidator,
             EventOutboxService eventOutboxService,
-            ScheduleWriteLock writeLock
+            ScheduleWriteLock writeLock,
+            SwapRequestRepository swapRequestRepository
     ) {
         this.scheduleRepository = scheduleRepository;
         this.teamRepository = teamRepository;
@@ -63,6 +67,7 @@ public class ScheduleService {
         this.assignmentValidator = assignmentValidator;
         this.eventOutboxService = eventOutboxService;
         this.writeLock = writeLock;
+        this.swapRequestRepository = swapRequestRepository;
     }
 
     @Transactional
@@ -91,7 +96,21 @@ public class ScheduleService {
     }
 
     @Transactional
-    public void deleteDraftSchedule(String username, Long scheduleId) {
+    public ScheduleDeletionPreviewResponse previewDraftDeletion(String username, Long scheduleId) {
+        return deletionPreview(deletableSchedule(username, scheduleId));
+    }
+
+    @Transactional
+    public void deleteDraftSchedule(String username, Long scheduleId, String revision) {
+        Schedule schedule = deletableSchedule(username, scheduleId);
+        DeletionRevision.requireMatch(revision, deletionPreview(schedule).revision());
+        assignmentRepository.deleteByShift_Schedule_Id(scheduleId);
+        shiftRepository.deleteBySchedule_Id(scheduleId);
+        scheduleRepository.delete(schedule);
+        log.info("Draft schedule {} deleted by manager {}", scheduleId, username);
+    }
+
+    private Schedule deletableSchedule(String username, Long scheduleId) {
         Schedule schedule = managedSchedule(
                 username,
                 scheduleId,
@@ -103,11 +122,21 @@ public class ScheduleService {
             throw new ResponseStatusException(HttpStatus.CONFLICT, "Only draft schedules can be deleted");
         }
 
-        assignmentRepository.deleteByShift_Schedule_Id(scheduleId);
-        shiftRepository.deleteBySchedule_Id(scheduleId);
-        scheduleRepository.delete(schedule);
+        if (swapRequestRepository.existsBySourceAssignment_Shift_Schedule_IdOrTargetAssignment_Shift_Schedule_Id(
+                scheduleId, scheduleId)) {
+            throw new ResponseStatusException(HttpStatus.CONFLICT,
+                    "Schedules with transfer or swap request history cannot be deleted");
+        }
+        return schedule;
+    }
 
-        log.info("Draft schedule {} deleted by manager {}", scheduleId, username);
+    private ScheduleDeletionPreviewResponse deletionPreview(Schedule schedule) {
+        var shifts = shiftRepository.findBySchedule_IdOrderByStartTime(schedule.getId());
+        var assignments = assignmentRepository.findByShift_Schedule_IdOrderByShift_StartTimeAscEmployee_FullNameAsc(schedule.getId());
+        String revision = DeletionRevision.of("schedule", new RecordVersion(schedule.getId(), schedule.getVersion()),
+                List.of(shifts.stream().map(shift -> new RecordVersion(shift.getId(), shift.getVersion())).toList(),
+                        assignments.stream().map(assignment -> new RecordVersion(assignment.getId(), assignment.getVersion())).toList()));
+        return new ScheduleDeletionPreviewResponse(ScheduleResponse.from(schedule), shifts.size(), assignments.size(), revision);
     }
 
     @Transactional

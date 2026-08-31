@@ -225,11 +225,7 @@ function ShiftTemplatePanel({
                     <button
                       className="danger-button compact-button"
                       disabled={isDeletingTemplate}
-                      onClick={() => {
-                        if (window.confirm(t("confirmDeleteTemplate"))) {
-                          onDeleteTemplate(template.id);
-                        }
-                      }}
+                      onClick={() => onDeleteTemplate(template.id)}
                       type="button"
                     >
                       {isDeletingTemplate ? t("deletingTemplate") : t("deleteTemplate")}

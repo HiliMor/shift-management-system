@@ -572,9 +572,9 @@ Reopening coordinates with request execution: reopening first invalidates the
 request at execution without changing owners; execution first keeps the completed
 transfer/swap when the schedule is reopened.
 
-Client versions now protect shift edits as described below. Deletions do not yet
-require a client version. Remaining stale-delete preconditions and missing-row
-handling in request workflows remain in part 4.3c. Demo writes and future
+Client versions protect shift edits; deletion snapshots protect draft/template
+confirmation as described below. Individual deletion preconditions and missing-row
+handling in request workflows remain in part 4.3c2. Demo writes and future
 team/member/role mutations need their own planned work; no all-writers guarantee
 is claimed for them. Spring/JPA pessimistic-lock failures and lock timeouts map
 to `409 CONCURRENT_MODIFICATION`. Other database errors are not blanket-mapped
@@ -589,7 +589,8 @@ checks and `lockTemplate` for slot creation, deletion, and generation.
 `lockTemplate` takes the team write lock, then refreshes the template without
 another row lock: participating mutations already serialize through the team.
 Generation also refreshes the target schedule and rechecks draft status before
-reading slots. Reads remain read-only, without write locks.
+reading slots. Ordinary listing remains read-only, without write locks. Deletion
+previews briefly use the team lock to read a consistent parent/child snapshot.
 
 Deletion checks current shift references under the lock. A competing generation
 committed first makes the template used (`409`); deletion committed first makes
@@ -600,11 +601,35 @@ do not share that lock or name uniqueness scope.
 
 Slot creation and generation serialize. A slot committed before generation is
 included; a slot added afterwards needs another generation call. The repeat call
-skips existing occurrences. Template deletion cascades its unused slots, but does
-not yet require a version from the client. This is coordination between current
-API writes, not protection against every stale destructive decision. New slot
+skips existing occurrences. Template deletion cascades its unused slots only
+after checking the confirmed revision. New slot
 editing/deletion APIs, demo writes, and future metadata writers must follow the
 same protocol when implemented.
+
+### Deletion Confirmation
+
+`ScheduleService.previewDraftDeletion` and
+`ShiftTemplateService.previewTemplateDeletion` authorize the manager, lock the
+team, refresh the parent, and enforce deletion eligibility. They return the
+current schedule/template identity, child counts, and an opaque revision.
+`DeletionRevision` uses SHA-256 over the parent ID/version and sorted groups of
+child IDs/versions: shifts and assignments for drafts, slots for templates.
+This avoids relying on a parent's JPA version to change when a child changes.
+No schema or aggregate-version trigger is needed; future writers must still use
+the shared lock and preserve JPA version updates.
+
+The UI requests a fresh preview before its confirmation dialog. On confirmation,
+DELETE submits the unchanged `revision` query parameter. Each delete reacquires
+the team lock, repeats authorization/eligibility checks, computes current state,
+and compares before removing anything. Missing/malformed revisions return `400`,
+stale state `409`, and missing resources `404`. The revision is not a credential;
+it has no time-based expiry and is valid only while the represented state matches.
+The dialog does not hold a transaction open and conflicts are never auto-retried.
+This protects the confirmation snapshot, not an arbitrarily old list response.
+
+Draft deletion also explicitly rejects any source/target transfer or swap request
+history. Existing foreign keys prevented that deletion already; the new check
+returns a clear conflict without deleting historical requests or partial data.
 
 ### Shift Editing
 

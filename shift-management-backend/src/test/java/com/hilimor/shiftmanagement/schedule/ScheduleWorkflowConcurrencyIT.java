@@ -117,6 +117,7 @@ class ScheduleWorkflowConcurrencyIT {
     private Shift assignedShift;
     private Assignment assignment;
     private Long templateId;
+    private String scheduleDeletionRevision;
 
     enum DraftWrite {
         MANUAL_ASSIGNMENT, AUTOMATIC_ASSIGNMENT, CREATE_SHIFT, EDIT_SHIFT,
@@ -142,6 +143,7 @@ class ScheduleWorkflowConcurrencyIT {
                 new CreateShiftTemplateRequest("Weekly", null, 7, 0)).id();
         templateService.createSlot(manager.getUsername(), templateId,
                 new CreateTemplateSlotRequest(0, LocalTime.of(9, 0), 480, "Generated", 1, null));
+        scheduleDeletionRevision = scheduleService.previewDraftDeletion(manager.getUsername(), schedule.getId()).revision();
     }
 
     @ParameterizedTest
@@ -326,12 +328,21 @@ class ScheduleWorkflowConcurrencyIT {
             case GENERATE_TEMPLATE:
                 return templateService.generateShifts(manager.getUsername(), templateId, new GenerateTemplateShiftsRequest(schedule.getId()));
             case DELETE_SCHEDULE:
-                scheduleService.deleteDraftSchedule(manager.getUsername(), schedule.getId());
+                scheduleService.deleteDraftSchedule(manager.getUsername(), schedule.getId(), scheduleDeletionRevision);
                 break;
             case PUBLISH:
                 return publish();
         }
         return true;
+    }
+
+    @Test
+    void waitingDraftDeletionRejectsRevisionFromBeforeShiftCreation() throws Exception {
+        Object result = runConcurrently(() -> write(DraftWrite.CREATE_SHIFT), () -> write(DraftWrite.DELETE_SCHEDULE));
+        assertHttpError(result, HttpStatus.CONFLICT);
+        assertThat(scheduleRepository.existsById(schedule.getId())).isTrue();
+        assertThat(shiftSnapshot()).hasSize(3);
+        assertThat(assignmentSnapshot()).hasSize(1);
     }
 
     private Object editAssignedShift() {

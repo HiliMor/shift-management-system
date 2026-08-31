@@ -60,9 +60,12 @@ messaging disabled. They run separately using `mvn verify -Ppostgres-it`; normal
 - 4.3b (complete): coordinate template creation/deletion and slot creation with
   generation, refresh deleted templates after waiting, and return explicit
   conflicts for expected pessimistic-lock/timeout failures.
-- 4.3c (pending): finish stale-delete preconditions for destructive API actions,
-  including changes to child records, and missing-row handling in request
-  workflows. Define the required client contract and adapt callers together.
+- 4.3c1 (complete): require a confirmed deletion snapshot for draft schedules and
+  unused templates, including child IDs/versions. Adapt the UI and Postman;
+  protect request history and verify rollback after stale confirmations.
+- 4.3c2 (pending): review preconditions for individual shift/assignment deletions
+  and missing-row handling in request workflows. Availability records currently
+  have no editing API. Keep client contracts and callers aligned.
   Completing the earlier increments does not close part 4 or protect every API
   write path. Shift editing UI remains a separate requirement in part 9.
 
@@ -199,7 +202,39 @@ messaging disabled. They run separately using `mvn verify -Ppostgres-it`; normal
   current state without a client-version precondition. Individual slot editing/
   deletion APIs remain planned in part 9. Demo and future team/role writers must
   join the protocol separately. Part 4 is not yet complete.
-- Next increment: 4.3c, stale-delete preconditions and request missing-row handling.
+- Part 4.3c1 (2026-08-31): draft/template deletion now starts with an authorized
+  `GET .../deletion-preview`. The UI shows current identity/dates and child counts
+  in the existing confirmation dialog. `DELETE` requires the preview's opaque
+  `revision` query parameter; missing/malformed values return `400`, changed
+  state returns `409`, and an already deleted resource returns `404`.
+- `DeletionRevision` hashes the parent ID/version and sorted child ID/version
+  groups. Draft snapshots include shifts and assignments; template snapshots
+  include slots. This catches edits and same-count replacements, not only added
+  rows. Preview and delete each take the existing team lock for a coherent
+  snapshot; no lock is held while the user reviews the dialog. The revision is
+  a concurrency precondition, not an authorization credential or an expiry timer.
+- Drafts with transfer/swap request history are explicitly blocked with `409`;
+  their existing foreign keys already prevented deletion, previously as a DB
+  error. No requests or history are silently deleted. No migration was added.
+- Boundary: protection starts from the fresh confirmation preview, not the old
+  schedule-list response. On conflict the client does not refresh the revision
+  or retry deletion automatically; another explicit review/confirmation is needed.
+  Existing DELETE callers must fetch a preview first. Individual deletions and
+  request missing-row handling remain pending, so part 4 is still in progress.
+- Focused verification passed 55 unit and 57 PostgreSQL tests (15 new deletion
+  API cases and two additional lock-wait cases). Five Node tests cover preview/
+  confirmation ordering, cancellation, failures, no retry, and localization;
+  the frontend production build passed. Browser login to the isolated test app
+  was denied by the browser permission policy, so the authenticated UI flow was
+  not verified. Temporary UI/backend/database services were stopped afterwards.
+- Full regression: `mvn -B -Ppostgres-it clean verify` passed 275 unit tests and
+  114 PostgreSQL integration tests, without failures or skips. `npm test` passed
+  all five confirmation tests and `npm run build` succeeded. Both Postman JSON
+  files and all 25 scripts were validated; preview success/failure simulations
+  confirmed revision capture/clearing and no pre-request refresh on DELETE.
+  The working database and local submission documents were unchanged.
+- Next increment: 4.3c2, individual deletion preconditions and request missing-row
+  handling, before closing the current concurrency work.
 
 ## Working Sources
 

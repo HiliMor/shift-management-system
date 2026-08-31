@@ -87,6 +87,7 @@ class TemplateConcurrencyIT {
     private Team team;
     private Schedule schedule;
     private Long templateId;
+    private String deletionRevision;
 
     enum TemplateAction { GENERATE, ADD_SLOT, DELETE }
 
@@ -101,6 +102,7 @@ class TemplateConcurrencyIT {
         templateId = createTemplate(team.getId(), "Daily").id();
         templateService.createSlot(manager.getUsername(), templateId,
                 new CreateTemplateSlotRequest(0, LocalTime.of(8, 0), 480, "Morning", 1, null));
+        deletionRevision = templateService.previewTemplateDeletion(manager.getUsername(), templateId).revision();
     }
 
     @Test
@@ -173,11 +175,21 @@ class TemplateConcurrencyIT {
     }
 
     @Test
+    void waitingDeletionRejectsRevisionFromBeforeSlotCreation() throws Exception {
+        Object result = runConcurrently(this::addSlot, this::deleteTemplate);
+        assertHttpError(result, HttpStatus.CONFLICT,
+                "Deletion preview is out of date. Review the current data before deleting.");
+        assertThat(templates.existsById(templateId)).isTrue();
+        assertThat(slotSnapshot()).hasSize(2);
+    }
+
+    @Test
     void deletingTheLastUsingDraftAllowsWaitingTemplateDeletion() throws Exception {
         generate();
+        String scheduleRevision = scheduleService.previewDraftDeletion(manager.getUsername(), schedule.getId()).revision();
 
         Object result = runConcurrently(() -> {
-            scheduleService.deleteDraftSchedule(manager.getUsername(), schedule.getId());
+            scheduleService.deleteDraftSchedule(manager.getUsername(), schedule.getId(), scheduleRevision);
             return true;
         }, this::deleteTemplate);
 
@@ -215,6 +227,7 @@ class TemplateConcurrencyIT {
                 assertThat(generationFinished.await(10, TimeUnit.SECONDS)).isTrue();
                 // Keep the first transaction open until PostgreSQL times out the HTTP request.
                 mvc.perform(delete("/api/templates/" + templateId)
+                        .param("revision", deletionRevision)
                         .with(user(manager.getUsername()).roles("MANAGER")))
                         .andExpect(status().isConflict())
                         .andExpect(jsonPath("$.code").value("CONCURRENT_MODIFICATION"))
@@ -251,7 +264,7 @@ class TemplateConcurrencyIT {
     }
 
     private boolean deleteTemplate() {
-        templateService.deleteTemplate(manager.getUsername(), templateId);
+        templateService.deleteTemplate(manager.getUsername(), templateId, deletionRevision);
         return true;
     }
 

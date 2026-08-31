@@ -29,6 +29,7 @@ import com.hilimor.shiftmanagement.assignment.Assignment;
 import com.hilimor.shiftmanagement.assignment.AssignmentRepository;
 import com.hilimor.shiftmanagement.assignment.AssignmentValidator;
 import com.hilimor.shiftmanagement.messaging.EventOutboxService;
+import com.hilimor.shiftmanagement.request.SwapRequestRepository;
 import com.hilimor.shiftmanagement.shift.Shift;
 import com.hilimor.shiftmanagement.shift.ShiftRepository;
 import com.hilimor.shiftmanagement.team.SwapApprovalPolicy;
@@ -74,6 +75,9 @@ class ScheduleServiceTest {
 
     @Mock
     private ScheduleWriteLock writeLock;
+
+    @Mock
+    private SwapRequestRepository swapRequestRepository;
 
     @InjectMocks
     private ScheduleService scheduleService;
@@ -152,7 +156,8 @@ class ScheduleServiceTest {
         when(scheduleRepository.findById(10L)).thenReturn(Optional.of(schedule));
         when(teamManagerRepository.existsByManager_UsernameAndTeam_Id("manager1", 1L)).thenReturn(true);
 
-        scheduleService.deleteDraftSchedule("manager1", 10L);
+        String revision = scheduleService.previewDraftDeletion("manager1", 10L).revision();
+        scheduleService.deleteDraftSchedule("manager1", 10L, revision);
 
         InOrder deletionOrder = inOrder(assignmentRepository, shiftRepository, scheduleRepository);
         deletionOrder.verify(assignmentRepository).deleteByShift_Schedule_Id(10L);
@@ -167,7 +172,7 @@ class ScheduleServiceTest {
         when(scheduleRepository.findById(10L)).thenReturn(Optional.of(schedule));
         when(teamManagerRepository.existsByManager_UsernameAndTeam_Id("manager1", 1L)).thenReturn(true);
 
-        assertThatThrownBy(() -> scheduleService.deleteDraftSchedule("manager1", 10L))
+        assertThatThrownBy(() -> scheduleService.deleteDraftSchedule("manager1", 10L, "0".repeat(64)))
                 .isInstanceOfSatisfying(ResponseStatusException.class, exception ->
                         assertThat(exception.getStatusCode()).isEqualTo(HttpStatus.CONFLICT));
 
@@ -183,7 +188,7 @@ class ScheduleServiceTest {
         when(scheduleRepository.findById(10L)).thenReturn(Optional.of(schedule));
         when(teamManagerRepository.existsByManager_UsernameAndTeam_Id("manager2", 1L)).thenReturn(false);
 
-        assertThatThrownBy(() -> scheduleService.deleteDraftSchedule("manager2", 10L))
+        assertThatThrownBy(() -> scheduleService.deleteDraftSchedule("manager2", 10L, "0".repeat(64)))
                 .isInstanceOfSatisfying(ResponseStatusException.class, exception ->
                         assertThat(exception.getStatusCode()).isEqualTo(HttpStatus.FORBIDDEN));
 
@@ -762,6 +767,7 @@ class ScheduleServiceTest {
                 startDate.plusDays(6)
         );
         ReflectionTestUtils.setField(schedule, "id", id);
+        ReflectionTestUtils.setField(schedule, "version", 0L);
         if (status == ScheduleStatus.PUBLISHED) {
             schedule.publish(Instant.parse("2026-07-20T18:00:00Z"));
         }
