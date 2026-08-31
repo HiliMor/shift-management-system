@@ -54,10 +54,13 @@ messaging disabled. They run separately using `mvn verify -Ppostgres-it`; normal
 - 4.2 (complete): coordinate publication/reopening, draft deletion, shift and
   assignment writes, and template generation. Lock assigned employees for shift
   edits/publication; verify availability and cross-team assignment races.
-- 4.3 (pending): address remaining stale edits/deletions and map expected
-  concurrency failures to explicit HTTP conflicts. Include template/slot creation
-  and deletion versus generation, and client versions for stale edit submissions.
-  Completing 4.1-4.2 alone does not close part 4 or protect every API write path.
+- 4.3a (complete): require client versions for shift edits, return saved versions,
+  and map optimistic-lock failures to `409 STALE_VERSION`. Verify the API and
+  Postman contract, rollback, authorization, and concurrent same-version edits.
+- 4.3b (pending): address remaining stale deletions, template/slot creation and
+  deletion versus generation, and expected pessimistic-lock/timeout responses.
+  Completing the earlier increments does not close part 4 or protect every API
+  write path. Shift editing UI remains a separate requirement in part 9.
 
 ### Completion Record
 
@@ -140,8 +143,31 @@ messaging disabled. They run separately using `mvn verify -Ppostgres-it`; normal
   Browser interaction was not tested. Template generation is coordinated with
   schedule writes; template/slot lifecycle races and client-version conflicts
   are still pending. Part 4 remains in progress.
-- Next increment: 4.3, remaining stale edits/deletions, template lifecycle
-  conflicts, and explicit handling of expected concurrency errors.
+- Part 4.3a (2026-08-31): `UpdateShiftRequest.version` is required and non-negative;
+  `ShiftResponse.version` exposes the existing JPA version. Editing compares the
+  submitted version after locking/refreshing the shift and flushes before building
+  the response. Stale edits return `409 STALE_VERSION`; invalid/missing versions
+  return `400`, and deleted shifts return `404`. Authorization remains required.
+- Part 4.3a baseline: a MockMvc/PostgreSQL test submitted two edits based on the
+  same version. Before the fix, the stale description edit returned `200` instead
+  of `409` and restored the old shift hours. After the fix, focused verification
+  passed 29 unit tests and 58 PostgreSQL tests, including eleven new API scenarios
+  and one new concurrent-edit scenario. Existing validation tests now submit the
+  version actually read, without weakening their assertions.
+- Part 4.3a final verification: `mvn -B -Ppostgres-it clean verify` passed 266
+  unit tests and 86 PostgreSQL integration tests, with no failures or skips.
+  Postman JSON and script syntax were validated, and local script simulations
+  checked paired ID/version capture, selected-only refresh, missing-selection
+  clearing, and no version changes on failed requests. Unrelated collection
+  folders were unchanged. No development database or browser was used.
+- Postman create/list/update requests capture `shiftVersion`; only a successful
+  create/update replaces it from a write response (listing explicitly refreshes
+  it). No pre-request script refreshes and retries
+  stale bodies. Existing callers must add the required field and review current
+  data after a conflict. No migration, frontend, demo-data, or submission-document
+  change is needed for this increment. MockMvc tests are not browser/JWT tests.
+- Next increment: 4.3b, remaining stale deletions, template lifecycle conflicts,
+  and explicit handling of expected pessimistic-lock/timeout errors.
 
 ## Working Sources
 

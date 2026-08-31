@@ -25,6 +25,7 @@ Implemented:
 - Draft schedule creation.
 - Manager-only draft schedule deletion, including its shifts and assignments.
 - Shift create, list, update, and delete operations.
+- Shift edits require the version read by the client; stale edits return `409 STALE_VERSION` without overwriting newer data. Postman saves returned versions automatically.
 - Shift edits revalidate existing assignments; invalid changes return `409` and leave the stored shift unchanged.
 - Schedule publication/reopening, draft deletion, shift writes, assignment writes, and template generation share a team write lock and reload state after waiting. Assigned-shift edits also lock employees before validation.
 - Manual assignment create, list, and delete operations.

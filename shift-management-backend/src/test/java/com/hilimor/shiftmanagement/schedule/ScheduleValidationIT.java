@@ -285,7 +285,7 @@ class ScheduleValidationIT {
     }
 
     private UpdateShiftRequest request(Instant start, Instant end, int workers, int rest, Long roleId) {
-        return new UpdateShiftRequest(start, end, "Updated", workers, rest, roleId);
+        return new UpdateShiftRequest(start, end, "Updated", workers, rest, roleId, persistedShift().version());
     }
 
     private User user(String username, ApplicationRole role) {

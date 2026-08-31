@@ -18,6 +18,7 @@ import com.hilimor.shiftmanagement.staffing.StaffingRoleRepository;
 import com.hilimor.shiftmanagement.team.TeamManagerRepository;
 
 import org.springframework.http.HttpStatus;
+import org.springframework.orm.ObjectOptimisticLockingFailureException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.server.ResponseStatusException;
@@ -110,6 +111,9 @@ public class ShiftService {
             throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Shift not found");
         }
         writeLock.lockShift(shift);
+        if (!Objects.equals(request.version(), shift.getVersion())) {
+            throw new ObjectOptimisticLockingFailureException(Shift.class, shiftId);
+        }
         validateShiftWithinSchedule(schedule, request.startTime(), request.endTime());
         StaffingRole requiredStaffingRole = requiredStaffingRole(schedule, request.requiredStaffingRoleId());
         List<Assignment> assignments = assignmentRepository.findByShift_IdOrderById(shiftId);
@@ -124,6 +128,8 @@ public class ShiftService {
                 requiredStaffingRole
         );
         assignmentValidator.validateExistingAssignments(shift, assignments);
+        // Hibernate increments the version on flush; return that version to the client.
+        shiftRepository.flush();
 
         return ShiftResponse.from(shift);
     }

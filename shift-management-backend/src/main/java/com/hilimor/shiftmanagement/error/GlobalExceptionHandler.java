@@ -6,10 +6,12 @@ import java.util.stream.Collectors;
 import com.hilimor.shiftmanagement.assignment.AssignmentValidationException;
 
 import jakarta.servlet.http.HttpServletRequest;
+import jakarta.persistence.OptimisticLockException;
 import jakarta.validation.ConstraintViolationException;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.dao.OptimisticLockingFailureException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.HttpStatusCode;
 import org.springframework.http.ResponseEntity;
@@ -23,6 +25,12 @@ import org.springframework.web.server.ResponseStatusException;
 public class GlobalExceptionHandler {
 
     private static final Logger log = LoggerFactory.getLogger(GlobalExceptionHandler.class);
+
+    @ExceptionHandler({OptimisticLockingFailureException.class, OptimisticLockException.class})
+    ResponseEntity<ApiErrorResponse> handleStaleVersion(Exception exception, HttpServletRequest request) {
+        return buildResponse(HttpStatus.CONFLICT, "STALE_VERSION",
+                "This record has changed. Reload it and review your changes before saving again.", request);
+    }
 
     @ExceptionHandler(AssignmentValidationException.class)
     ResponseEntity<ApiErrorResponse> handleAssignmentValidation(

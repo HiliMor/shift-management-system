@@ -571,16 +571,18 @@ Reopening coordinates with request execution: reopening first invalidates the
 request at execution without changing owners; execution first keeps the completed
 transfer/swap when the schedule is reopened.
 
-This does not reject every edit submitted from an old browser view. Client
-versions, remaining template/slot lifecycle races, and expected lock-failure HTTP
-mapping remain in part 4.3. Demo writes and future team/member/role mutations need
-their own planned work; no all-writers guarantee is claimed for them.
+Client versions now protect shift edits as described below. Deletions do not yet
+require a client version. Remaining template/slot lifecycle races and expected
+pessimistic-lock/timeout HTTP mapping remain in part 4.3. Demo writes and future
+team/member/role mutations need their own planned work; no all-writers guarantee
+is claimed for them.
 
 ### Shift Editing
 
 `ShiftService.updateShift` checks manager ownership, acquires the team lock, and
 refreshes the schedule before checking draft status. It locks and refreshes the
-shift, checks the schedule date range and role's team, then locks assigned
+shift, compares the required request `version` with its refreshed `@Version`,
+checks the schedule date range and role's team, then locks assigned
 employees in ID order before applying the proposed fields. It calls the shared
 validator in the service transaction. An eligibility or excess-capacity conflict propagates
 as `409`; rollback restores every edited field, including any changes Hibernate
@@ -590,6 +592,22 @@ The employee locks coordinate editing with availability changes and assignment
 creation in other teams. A conflicting operation committed first is visible to
 the second operation's validation. PostgreSQL tests verify both orders and
 rollback without ownership changes.
+
+`ShiftResponse` includes the entity version for create/list/update and generated
+shifts. The update service flushes after validation and before creating its
+response so the returned version matches the saved row. A no-op edit need not
+increment it. No migration is needed: the column and JPA version mapping already
+existed, but previously the client did not send its version.
+
+An outdated version throws `ObjectOptimisticLockingFailureException` before any
+fields are changed. `GlobalExceptionHandler` maps Spring/JPA optimistic-lock
+exceptions to `409 STALE_VERSION` with a reload-and-review message. Required-field
+validation rejects missing/null/negative versions with `400`; a deleted shift
+returns `404`. Version knowledge never bypasses team-manager authorization.
+Postman captures the version on create/list/update, not in an automatic
+pre-save refresh. Replacing the version on a stale body without reviewing newer
+values would still intentionally overwrite them. The React edit form remains
+planned in roadmap part 9, rather than being claimed as complete here.
 
 ### Schedule Reopening
 
@@ -936,7 +954,7 @@ flowchart LR
 | `user` | User entity and broad application role such as `MANAGER` or `EMPLOYEE`. |
 | `team` | Teams, active team membership, team managers, and managed team listing for manager UI. |
 | `schedule` | Draft schedule creation, managed draft schedule listing, publication/reopening, readiness, employee and manager published list/details, and shared write coordination through `ScheduleWriteLock`. |
-| `shift` | Shift creation, listing, update with existing-assignment revalidation, deletion, schedule-range validation, optional required staffing role storage, and optional source template slot storage for generated shifts. |
+| `shift` | Shift creation, listing, version-checked update with existing-assignment revalidation, deletion, schedule-range validation, optional required staffing role storage, and optional source template slot storage for generated shifts. |
 | `assignment` | Manual assignment creation/list/delete, basic automatic assignment, and shared validation through `AssignmentValidator` for candidates and existing assignments, including capacity, membership, availability, overlap, rest, and required staffing roles. |
 | `request` | Transfer and swap request model, request statuses, transfer/swap creation, employee and manager scoped request lists, target employee approval/rejection, manager approval, requester cancellation, team-scoped write coordination through `SwapRequestLock`, and atomic approved request execution through `SwapRequestExecutor`. |
 | `availability` | Employee unavailable time ranges; create/delete operations share the employee write lock with assignment creation and transfer/swap execution before conflict checks or deletion. |

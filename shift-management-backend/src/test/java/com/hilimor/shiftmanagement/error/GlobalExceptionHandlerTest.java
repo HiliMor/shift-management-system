@@ -3,13 +3,19 @@ package com.hilimor.shiftmanagement.error;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import java.lang.reflect.Method;
+import java.util.stream.Stream;
+
+import jakarta.persistence.OptimisticLockException;
 
 import com.hilimor.shiftmanagement.assignment.AssignmentValidationException;
 
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.MethodSource;
 import org.springframework.core.MethodParameter;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.orm.ObjectOptimisticLockingFailureException;
 import org.springframework.http.converter.HttpMessageNotReadableException;
 import org.springframework.mock.http.MockHttpInputMessage;
 import org.springframework.mock.web.MockHttpServletRequest;
@@ -21,6 +27,25 @@ import org.springframework.web.server.ResponseStatusException;
 class GlobalExceptionHandlerTest {
 
     private final GlobalExceptionHandler handler = new GlobalExceptionHandler();
+
+    @ParameterizedTest
+    @MethodSource("optimisticConflicts")
+    void staleVersionReturnsConflictWithoutExposingPersistenceDetails(Exception exception) {
+        ResponseEntity<ApiErrorResponse> response = handler.handleStaleVersion(exception,
+                request("PUT", "/api/schedules/1/shifts/2"));
+
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.CONFLICT);
+        assertThat(response.getBody()).isNotNull();
+        assertThat(response.getBody().code()).isEqualTo("STALE_VERSION");
+        assertThat(response.getBody().message())
+                .isEqualTo("This record has changed. Reload it and review your changes before saving again.");
+        assertThat(response.getBody().path()).isEqualTo("/api/schedules/1/shifts/2");
+    }
+
+    static Stream<Exception> optimisticConflicts() {
+        return Stream.of(new ObjectOptimisticLockingFailureException("Internal entity", 2L),
+                new OptimisticLockException("Internal persistence details"));
+    }
 
     @Test
     void handleAssignmentValidationReturnsBusinessCode() {

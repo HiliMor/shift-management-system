@@ -12,7 +12,8 @@ public record ShiftResponse(
         int minRestHours,
         Long requiredStaffingRoleId,
         String requiredStaffingRoleName,
-        Long templateSlotId
+        Long templateSlotId,
+        Long version
 ) {
 
     public static ShiftResponse from(Shift shift) {
@@ -36,7 +37,8 @@ public record ShiftResponse(
                 shift.getMinRestHours(),
                 requiredStaffingRoleId,
                 requiredStaffingRoleName,
-                templateSlotId
+                templateSlotId,
+                shift.getVersion()
         );
     }
 }

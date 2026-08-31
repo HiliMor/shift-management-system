@@ -46,6 +46,27 @@ Alternative transfer endings:
 Some requests save IDs into the environment automatically, such as `scheduleId`,
 `shiftId`, `assignmentId`, and `transferRequestId`.
 
+## Editing A Shift
+
+`PUT` now requires a non-negative `version` from the shift you read. Re-import
+the updated collection; existing requests without this field return `400`.
+`Create Shift` saves both `shiftId` and `shiftVersion`. For an existing shift,
+set `scheduleId` and `shiftId`, then run `List Schedule Shifts`; it saves only the
+selected shift's version. Review its current fields and adapt the example dates,
+hours, capacity, rest, and role in `Update Shift` before sending it.
+
+On success, `Update Shift` stores the returned version for the next edit. A
+`409` with `code: STALE_VERSION` means another edit was saved first. Reload with
+`List Schedule Shifts`, review what changed, and reapply your intended edits.
+Do not just replace the version and resend an old body: that can deliberately
+overwrite newer data. No pre-request script silently refreshes the version.
+
+To demonstrate the protection on a test draft, note the current `shiftVersion`,
+save one edit, then put the noted old number directly in a second edit's `version`
+field. Expect `409 STALE_VERSION`; listing the shifts must still show the first
+edit. Restore `{{shiftVersion}}` in the body afterwards. A deleted shift returns
+`404`; missing/null/negative versions return `400`.
+
 ## Seed Users
 
 When development seed data is enabled, these users are available:

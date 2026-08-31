@@ -633,6 +633,7 @@
                   "if (pm.response.code === 201) {",
                   "  const data = pm.response.json();",
                   "  pm.environment.set('shiftId', data.id);",
+                  "  pm.environment.set('shiftVersion', data.version);",
                   "}"
                 ]
               }
@@ -672,7 +673,26 @@
         },
         {
           "name": "List Schedule Shifts",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "if (pm.response.code === 200) {",
+                  "  const selected = pm.response.json().find(shift => String(shift.id) === String(pm.environment.get('shiftId')));",
+                  "  if (selected) {",
+                  "    pm.environment.set('shiftVersion', selected.version);",
+                  "  } else {",
+                  "    pm.environment.unset('shiftVersion');",
+                  "  }",
+                  "}"
+                ]
+              }
+            }
+          ],
           "request": {
+            "description": "Set shiftId to the shift you want to edit. This request saves that shift's version into shiftVersion; it never selects an arbitrary shift. Review the returned fields before editing, especially after a STALE_VERSION conflict.",
             "method": "GET",
             "header": [],
             "url": {
@@ -692,7 +712,23 @@
         },
         {
           "name": "Update Shift",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "if (pm.response.code === 200) {",
+                  "  const data = pm.response.json();",
+                  "  pm.environment.set('shiftId', data.id);",
+                  "  pm.environment.set('shiftVersion', data.version);",
+                  "}"
+                ]
+              }
+            }
+          ],
           "request": {
+            "description": "Requires the version read with the shift (Create Shift or List Schedule Shifts saves shiftVersion). A successful save returns and stores the new version. On 409 STALE_VERSION, reload and review the latest fields before resubmitting. Do not automatically fetch a new version and retry the old body.",
             "method": "PUT",
             "header": [
               {
@@ -702,7 +738,7 @@
             ],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"startTime\": \"2026-08-10T07:00:00Z\",\n  \"endTime\": \"2026-08-10T15:00:00Z\",\n  \"description\": \"Updated morning shift\",\n  \"requiredWorkers\": 1,\n  \"minRestHours\": 8,\n  \"requiredStaffingRoleId\": null\n}",
+              "raw": "{\n  \"startTime\": \"2026-08-10T07:00:00Z\",\n  \"endTime\": \"2026-08-10T15:00:00Z\",\n  \"description\": \"Updated morning shift\",\n  \"requiredWorkers\": 1,\n  \"minRestHours\": 8,\n  \"requiredStaffingRoleId\": null,\n  \"version\": {{shiftVersion}}\n}",
               "options": {
                 "raw": {
                   "language": "json"

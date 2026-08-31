@@ -4,6 +4,9 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.doAnswer;
+import static org.mockito.Mockito.inOrder;
+import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -21,6 +24,7 @@ import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.http.HttpStatus;
+import org.springframework.orm.ObjectOptimisticLockingFailureException;
 import org.springframework.test.util.ReflectionTestUtils;
 import org.springframework.web.server.ResponseStatusException;
 
@@ -310,16 +314,26 @@ class ShiftServiceTest {
                 Instant.parse("2026-07-06T22:00:00Z"),
                 "Evening shift",
                 3,
-                10
+                10,
+                null,
+                0L
         );
 
         when(scheduleRepository.findById(10L)).thenReturn(Optional.of(schedule));
         when(teamManagerRepository.existsByManager_UsernameAndTeam_Id("manager1", 1L)).thenReturn(true);
         when(shiftRepository.findById(20L)).thenReturn(Optional.of(shift));
+        doAnswer(invocation -> {
+            ReflectionTestUtils.setField(shift, "version", 1L);
+            return null;
+        }).when(shiftRepository).flush();
 
         ShiftResponse response = shiftService.updateShift("manager1", 10L, 20L, request);
 
-        verify(assignmentValidator).validateExistingAssignments(shift, List.of());
+        var order = inOrder(writeLock, assignmentValidator, shiftRepository);
+        order.verify(writeLock).lockShift(shift);
+        order.verify(assignmentValidator).validateExistingAssignments(shift, List.of());
+        order.verify(shiftRepository).flush();
+        assertThat(response.version()).isEqualTo(1L);
         assertThat(response.id()).isEqualTo(20L);
         assertThat(response.scheduleId()).isEqualTo(10L);
         assertThat(response.startTime()).isEqualTo(Instant.parse("2026-07-06T14:00:00Z"));
@@ -342,7 +356,8 @@ class ShiftServiceTest {
                 "Evening supervisor shift",
                 1,
                 10,
-                30L
+                30L,
+                0L
         );
 
         when(scheduleRepository.findById(10L)).thenReturn(Optional.of(schedule));
@@ -370,6 +385,26 @@ class ShiftServiceTest {
     }
 
     @Test
+    void updateShiftChecksVersionAfterRefreshingTheLockedShift() {
+        Schedule schedule = schedule(ScheduleStatus.DRAFT);
+        Shift shift = shift(schedule);
+        when(scheduleRepository.findById(10L)).thenReturn(Optional.of(schedule));
+        when(teamManagerRepository.existsByManager_UsernameAndTeam_Id("manager1", 1L)).thenReturn(true);
+        when(shiftRepository.findById(20L)).thenReturn(Optional.of(shift));
+        doAnswer(invocation -> {
+            ReflectionTestUtils.setField(shift, "version", 1L);
+            return null;
+        }).when(writeLock).lockShift(shift);
+
+        assertThatThrownBy(() -> shiftService.updateShift("manager1", 10L, 20L, validUpdateRequest()))
+                .isInstanceOf(ObjectOptimisticLockingFailureException.class);
+
+        assertThat(shift.getDescription()).isEqualTo("Morning shift");
+        verifyNoInteractions(assignmentRepository, assignmentValidator, staffingRoleRepository);
+        verify(shiftRepository, never()).flush();
+    }
+
+    @Test
     void updateShiftRejectsShiftFromAnotherSchedule() {
         Schedule schedule = schedule(ScheduleStatus.DRAFT);
         Schedule otherSchedule = schedule(ScheduleStatus.DRAFT);
@@ -392,7 +427,9 @@ class ShiftServiceTest {
                 Instant.parse("2026-07-06T14:00:00Z"),
                 "Invalid shift",
                 3,
-                10
+                10,
+                null,
+                0L
         );
 
         assertThatThrownBy(() -> shiftService.updateShift("manager1", 10L, 20L, request))
@@ -409,7 +446,9 @@ class ShiftServiceTest {
                 Instant.parse("2026-07-13T05:00:00Z"),
                 "After schedule",
                 3,
-                10
+                10,
+                null,
+                0L
         );
 
         when(scheduleRepository.findById(10L)).thenReturn(Optional.of(schedule));
@@ -497,7 +536,9 @@ class ShiftServiceTest {
                 Instant.parse("2026-07-06T22:00:00Z"),
                 "Evening shift",
                 3,
-                10
+                10,
+                null,
+                0L
         );
     }
 
@@ -511,6 +552,7 @@ class ShiftServiceTest {
                 8
         );
         ReflectionTestUtils.setField(shift, "id", 20L);
+        ReflectionTestUtils.setField(shift, "version", 0L);
         return shift;
     }
 

@@ -58,6 +58,7 @@ import org.junit.jupiter.params.provider.ValueSource;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.http.HttpStatus;
+import org.springframework.dao.OptimisticLockingFailureException;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.test.context.DynamicPropertyRegistry;
 import org.springframework.test.context.DynamicPropertySource;
@@ -214,6 +215,23 @@ class ScheduleWorkflowConcurrencyIT {
         assertThat(publicationEvents()).isEqualTo(1);
     }
 
+    @Test
+    void twoConcurrentEditsWithTheSameVersionCannotBothSucceed() throws Exception {
+        var ownersBefore = assignmentSnapshot();
+        UpdateShiftRequest secondEdit = new UpdateShiftRequest(
+                START, END, "Stale description", 1, 0, null, shift.getVersion());
+
+        Object result = runConcurrently(() -> write(DraftWrite.EDIT_SHIFT),
+                () -> shiftService.updateShift(manager.getUsername(), schedule.getId(), shift.getId(), secondEdit));
+
+        assertThat(result).isInstanceOf(OptimisticLockingFailureException.class);
+        Shift stored = shiftRepository.findById(shift.getId()).orElseThrow();
+        assertThat(stored.getDescription()).isEqualTo("Edited");
+        assertThat(stored.getRequiredWorkers()).isEqualTo(2);
+        assertThat(stored.getVersion()).isEqualTo(shift.getVersion() + 1);
+        assertThat(assignmentSnapshot()).isEqualTo(ownersBefore);
+    }
+
     @ParameterizedTest
     @EnumSource(RequestMode.class)
     void reopeningCommittedFirstInvalidatesRequestWithoutChangingOwners(RequestMode mode) throws Exception {
@@ -298,7 +316,7 @@ class ScheduleWorkflowConcurrencyIT {
                         START.plus(Duration.ofDays(1)), END.plus(Duration.ofDays(1)), "Created", 1, 0));
             case EDIT_SHIFT:
                 return shiftService.updateShift(manager.getUsername(), schedule.getId(), shift.getId(),
-                        new UpdateShiftRequest(START, END, "Edited", 2, 0));
+                        new UpdateShiftRequest(START, END, "Edited", 2, 0, null, shift.getVersion()));
             case DELETE_SHIFT:
                 shiftService.deleteShift(manager.getUsername(), schedule.getId(), shift.getId());
                 break;
@@ -318,7 +336,7 @@ class ScheduleWorkflowConcurrencyIT {
 
     private Object editAssignedShift() {
         return shiftService.updateShift(manager.getUsername(), schedule.getId(), assignedShift.getId(),
-                new UpdateShiftRequest(START, END, "Moved", 1, 0));
+                new UpdateShiftRequest(START, END, "Moved", 1, 0, null, assignedShift.getVersion()));
     }
 
     private ScheduleResponse publish() {
@@ -422,7 +440,7 @@ class ScheduleWorkflowConcurrencyIT {
                             secondConnection.complete(jdbc.queryForObject("select pg_backend_pid()", Integer.class));
                             return secondAction.get();
                         });
-                    } catch (ResponseStatusException | AssignmentValidationException exception) {
+                    } catch (ResponseStatusException | AssignmentValidationException | OptimisticLockingFailureException exception) {
                         return exception;
                     }
                 });

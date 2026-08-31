@@ -33,6 +33,7 @@ Implemented:
 - Shift creation endpoint: `POST /api/schedules/{scheduleId}/shifts`.
 - Shift list endpoint: `GET /api/schedules/{scheduleId}/shifts`.
 - Shift update endpoint: `PUT /api/schedules/{scheduleId}/shifts/{shiftId}`.
+- Shift responses expose `version`; updates require that version and reject stale edits with `409 STALE_VERSION`.
 - Shift edits validate existing assignments and roll back invalid changes.
 - `ScheduleWriteLock` coordinates publication/reopening, draft deletion, shift writes, assignment writes, and template generation with request execution through the same team row lock.
 - Shift delete endpoint: `DELETE /api/schedules/{scheduleId}/shifts/{shiftId}`.
@@ -855,7 +856,9 @@ Expected response:
   "requiredWorkers": 2,
   "minRestHours": 8,
   "requiredStaffingRoleId": null,
-  "requiredStaffingRoleName": null
+  "requiredStaffingRoleName": null,
+  "templateSlotId": null,
+  "version": 0
 }
 ```
 
@@ -886,7 +889,9 @@ Expected response:
     "requiredWorkers": 2,
     "minRestHours": 8,
     "requiredStaffingRoleId": null,
-    "requiredStaffingRoleName": null
+    "requiredStaffingRoleName": null,
+    "templateSlotId": null,
+    "version": 0
   }
 ]
 ```
@@ -899,7 +904,7 @@ Update a shift inside a draft schedule:
 curl -X PUT http://localhost:8080/api/schedules/1/shifts/1 \
   -H 'Content-Type: application/json' \
   -H "Authorization: Bearer <TOKEN>" \
-  -d '{"startTime":"2026-07-05T14:00:00Z","endTime":"2026-07-05T22:00:00Z","description":"Evening shift","requiredWorkers":3,"minRestHours":10,"requiredStaffingRoleId":null}'
+  -d '{"startTime":"2026-07-05T14:00:00Z","endTime":"2026-07-05T22:00:00Z","description":"Evening shift","requiredWorkers":3,"minRestHours":10,"requiredStaffingRoleId":null,"version":0}'
 ```
 
 Expected response:
@@ -914,12 +919,28 @@ Expected response:
   "requiredWorkers": 3,
   "minRestHours": 10,
   "requiredStaffingRoleId": null,
-  "requiredStaffingRoleName": null
+  "requiredStaffingRoleName": null,
+  "templateSlotId": null,
+  "version": 1
 }
 ```
 
 Only managers assigned to the schedule's team can update shifts.
 Shifts can be updated only while the schedule is still `DRAFT`.
+The request must include the non-negative `version` returned when reading that
+shift. Missing/null/negative versions return `400 VALIDATION_ERROR`; an outdated
+version returns `409 STALE_VERSION` without changing any fields. A missing or
+deleted shift returns `404`. The example uses an initial version of `0`, not a
+constant to reuse for every update. Existing API clients must send this field.
+
+The server compares versions after locking and refreshing the shift. Validation
+and saving happen in the same transaction; a flush before building the response
+ensures it contains the saved version. Reuse the returned version for your next
+edit. An unchanged save may keep the same version. On a stale conflict, reload,
+review newer values, then reapply your intended changes; do not automatically
+retry the old body with a freshly fetched version. The React shift edit form is
+still planned in roadmap part 9; the current editing client is the API/Postman.
+
 Updated shift dates must stay inside the schedule date range according to the team's time zone.
 Updating a shift with `requiredStaffingRoleId: null` clears the professional role requirement.
 Existing employees must remain eligible for the edited shift, and
@@ -1560,13 +1581,14 @@ constraints. They do not acquire team/shift write locks afterwards, preserving t
 team-then-shifts-then-employees order used by request execution. The lock lasts
 until transaction completion; it is not a JVM-only lock.
 
-`ScheduleWorkflowConcurrencyIT` adds 28 scenarios. Nine draft operations are
+`ScheduleWorkflowConcurrencyIT` has 29 scenarios. Nine draft operations are
 tested against publication in both commit orders: manual assignment, automatic
 assignment, shift creation/editing/deletion, assignment deletion, template
 generation, draft deletion, and publication itself. Other scenarios cover
 reopening versus transfer/full-swap execution, assigned-shift edits versus
 availability and cross-team assignment, unconfirmed publication after assignment
-removal, and assignment after reopening. Tests observe database lock waits and
+removal, assignment after reopening, and two edits submitted with the same
+shift version (only the first saves). Tests observe database lock waits and
 check committed shifts, owners, schedule status, and publication outbox events.
 Four `ScheduleWriteLockTest` unit tests check ordering, employee deduplication,
 and missing-entity handling after a wait.
@@ -1585,12 +1607,21 @@ protected list for readiness validation. The read-only readiness endpoint takes
 no write lock and is only a current preview, not a reservation or permission to
 skip validation when publishing.
 
-This is not a complete concurrency protocol for every API. Client-supplied
-versions for stale edits, remaining template/slot lifecycle races, and expected
-lock-failure HTTP mapping remain in part 4.3 of `../IMPLEMENTATION_PLAN.md`.
+`ShiftEditingIT` adds eleven HTTP/JSON checks through MockMvc with real PostgreSQL
+transactions: stale edits, create/list/update versions, consecutive and no-op
+saves, refresh after a conflict, missing/null/negative versions, deleted shifts,
+and authorization. Authentication is supplied by Spring Security's test helper;
+these are not login/JWT or browser tests. Unit checks also cover version comparison
+after refresh, flush-before-response ordering, and optimistic-conflict error mapping.
+
+This is not a complete concurrency protocol for every API. Client versions now
+protect shift edits; deletions do not yet require an expected version. Remaining
+template/slot lifecycle races and expected pessimistic-lock/timeout HTTP mapping
+remain in part 4.3 of `../IMPLEMENTATION_PLAN.md`. Spring and JPA optimistic-lock
+failures map to `409 STALE_VERSION`; unrelated unexpected errors remain `500`.
 Future team/member/role writes must join the protocol when implemented; demo
-initialization is handled separately in part 5. No schema change, response DTO
-change, or new JMS event type is introduced by this step.
+initialization is handled separately in part 5. The shift version column already
+exists; this API change needs no migration or new JMS event type.
 
 ## Important Notes
 
