@@ -1120,6 +1120,22 @@ nav a:hover,
   grid-column: auto;
 }
 
+.employee-create-form .shift-form {
+  align-items: start;
+}
+
+.employee-username-field {
+  display: grid;
+  gap: 7px;
+  min-width: 0;
+}
+
+.employee-field-hint {
+  color: #52617a;
+  font-size: 0.8rem;
+  line-height: 1.5;
+}
+
 .employee-create-form .employee-role-options,
 .employee-create-form .section-actions {
   grid-column: 1 / -1;

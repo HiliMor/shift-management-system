@@ -1,12 +1,17 @@
-import { useState } from "react";
+import { useEffect, useId, useRef, useState } from "react";
 import useTeamEmployees from "../hooks/useTeamEmployees.js";
 import { useLanguage } from "../i18n/LanguageContext.jsx";
 
 export default function TeamEmployeesSection({ token, teams, teamsError, isLoadingTeams, onCreated, onApiError }) {
-  const { t } = useLanguage();
+  const { t, language } = useLanguage();
+  const usernameId = useId();
+  const usernameInput = useRef(null);
   const [selectedTeamId, setSelectedTeamId] = useState("");
   const teamId = teams.some((team) => String(team.id) === selectedTeamId) ? selectedTeamId : String(teams[0]?.id ?? "");
   const state = useTeamEmployees(token, teamId, onCreated, onApiError);
+  useEffect(() => {
+    usernameInput.current?.setCustomValidity("");
+  }, [language, teamId, state.form.username]);
   return (
     <section className="section-block" id="team-employees">
       <div className="section-heading"><h2>{t("teamEmployees")}</h2>
@@ -28,8 +33,15 @@ export default function TeamEmployeesSection({ token, teams, teamsError, isLoadi
           <h3>{t("createEmployee")}</h3>
           <fieldset className="shift-form" disabled={state.isSaving || state.isLoading || !!state.loadError}>
             <label>{t("employeeFullName")}<input name="fullName" required maxLength="200" value={state.form.fullName} onChange={state.change} /></label>
-            <label>{t("username")}<input name="username" autoComplete="off" required minLength="3" maxLength="100"
-              pattern="[A-Za-z0-9][A-Za-z0-9._\-]{2,99}" value={state.form.username} onChange={state.change} /></label>
+            <div className="employee-username-field">
+              <label htmlFor={usernameId}>{t("username")}</label>
+              <input ref={usernameInput} id={usernameId} name="username" autoComplete="off" required minLength="3" maxLength="100"
+                aria-describedby={`${usernameId}-rules`} pattern="[A-Za-z0-9][A-Za-z0-9._\-]{2,99}"
+                value={state.form.username}
+                onInvalid={(event) => event.currentTarget.setCustomValidity(t("employeeUsernameRules"))}
+                onChange={(event) => { event.currentTarget.setCustomValidity(""); state.change(event); }} />
+              <small className="employee-field-hint" id={`${usernameId}-rules`}>{t("employeeUsernameRules")}</small>
+            </div>
             <label>{t("password")}<input name="password" autoComplete="new-password" required minLength="8" maxLength="72"
               type="password" value={state.form.password} onChange={state.change} /></label>
             <label>{t("employeeEmail")}<input name="email" type="email" maxLength="255" value={state.form.email} onChange={state.change} /></label>

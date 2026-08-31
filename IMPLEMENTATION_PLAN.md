@@ -357,6 +357,12 @@ to roughly twenty minutes rather than full team administration.
 - A separate `TeamEmployeesSection` and `useTeamEmployees` provide the bilingual
   form and employee list. Successful creation refreshes assignment candidates.
   Team changes reset the form/feedback and ignore obsolete list responses.
+- Username rules are visible beside the field and used in localized browser
+  validation. Input, team, or language changes clear stale validation messages.
+  Full names need not be unique; the login username must be unique. No backend
+  validation or schema rule was changed by this usability clarification.
+  The 17 frontend tests and build passed after this change; isolated browser
+  checks covered Hebrew/English validation and recovery after input/team changes.
 - Six PostgreSQL integration tests passed: creation and real JWT login,
   optional roles/email and trimming, input validation including BCrypt's byte
   limit, unauthorized requests, invalid/cross-team roles without partial data,

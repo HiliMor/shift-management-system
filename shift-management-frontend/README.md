@@ -20,6 +20,7 @@ For end-to-end local run instructions, see:
 - Create schedule - manager-only form for creating a draft schedule for a managed team.
 - Team employees - manager-only navigation entry for creating a new employee in a managed team. Name, username, and password are required; email and existing team staffing roles are optional. The new account can log in immediately and appears in the assignment employee list after creation.
 - Employee creation clears credentials after success or team changes, blocks repeated submission while saving, and shows duplicate-username errors beside the form. Editing/removing existing members, adding existing accounts, invitations, password resets, and team-join notifications are outside this increment.
+- Username format and uniqueness requirements are displayed beside the creation field in Hebrew/English and reused for native validation feedback. Correcting the input or changing team/language clears stale custom validation. Full names may be shared by different employees; login usernames must be unique.
 - Delete draft schedule - manager-only action for removing the selected draft and its shifts and assignments.
 - Create shift - manager-only form for adding shifts to a managed draft schedule.
 - Manage existing shifts - the build step lists the selected draft's shifts with edit and delete actions. Editing covers dates/times, description, capacity, rest, and required role. Cancel discards the local form without a write.
