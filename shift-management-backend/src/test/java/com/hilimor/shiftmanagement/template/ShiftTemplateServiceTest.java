@@ -4,6 +4,8 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.inOrder;
+import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -98,6 +100,10 @@ class ShiftTemplateServiceTest {
         assertThat(response.defaultMinRestHours()).isEqualTo(8);
         assertThat(response.active()).isFalse();
 
+        var order = inOrder(writeLock, shiftTemplateRepository);
+        order.verify(writeLock).lockTeam(team);
+        order.verify(shiftTemplateRepository).existsByTeam_IdAndName(1L, "Routine Week");
+
         ArgumentCaptor<ShiftTemplate> captor = ArgumentCaptor.forClass(ShiftTemplate.class);
         verify(shiftTemplateRepository).save(captor.capture());
         assertThat(captor.getValue().getTeam()).isSameAs(team);
@@ -116,6 +122,7 @@ class ShiftTemplateServiceTest {
                         assertThat(exception.getStatusCode()).isEqualTo(HttpStatus.FORBIDDEN));
 
         verify(shiftTemplateRepository, never()).save(any());
+        verifyNoInteractions(writeLock);
     }
 
     @Test
@@ -160,6 +167,7 @@ class ShiftTemplateServiceTest {
 
         assertThat(responses).extracting(ShiftTemplateResponse::id).containsExactly(51L, 50L);
         assertThat(responses).extracting(ShiftTemplateResponse::name).containsExactly("Emergency Week", "Routine Week");
+        verifyNoInteractions(writeLock);
     }
 
     @Test
@@ -184,7 +192,10 @@ class ShiftTemplateServiceTest {
 
         shiftTemplateService.deleteTemplate("manager1", 50L);
 
-        verify(shiftTemplateRepository).delete(template);
+        var order = inOrder(writeLock, shiftRepository, shiftTemplateRepository);
+        order.verify(writeLock).lockTemplate(template);
+        order.verify(shiftRepository).existsByTemplateSlot_ShiftTemplate_Id(50L);
+        order.verify(shiftTemplateRepository).delete(template);
     }
 
     @Test
@@ -215,6 +226,7 @@ class ShiftTemplateServiceTest {
 
         verify(shiftRepository, never()).existsByTemplateSlot_ShiftTemplate_Id(any());
         verify(shiftTemplateRepository, never()).delete(any(ShiftTemplate.class));
+        verifyNoInteractions(writeLock);
     }
 
     @Test
@@ -252,6 +264,10 @@ class ShiftTemplateServiceTest {
         assertThat(response.requiredStaffingRoleId()).isEqualTo(20L);
         assertThat(response.requiredStaffingRoleName()).isEqualTo("Shift Supervisor");
 
+        var order = inOrder(writeLock, staffingRoleRepository, templateSlotRepository);
+        order.verify(writeLock).lockTemplate(template);
+        order.verify(staffingRoleRepository).findById(20L);
+
         ArgumentCaptor<TemplateSlot> captor = ArgumentCaptor.forClass(TemplateSlot.class);
         verify(templateSlotRepository).save(captor.capture());
         assertThat(captor.getValue().getShiftTemplate()).isSameAs(template);
@@ -271,6 +287,7 @@ class ShiftTemplateServiceTest {
                         assertThat(exception.getStatusCode()).isEqualTo(HttpStatus.FORBIDDEN));
 
         verify(templateSlotRepository, never()).save(any());
+        verifyNoInteractions(writeLock);
     }
 
     @Test
@@ -371,6 +388,7 @@ class ShiftTemplateServiceTest {
         assertThat(responses).extracting(TemplateSlotResponse::id).containsExactly(70L, 71L);
         assertThat(responses).extracting(TemplateSlotResponse::description)
                 .containsExactly("Morning shift", "Evening shift");
+        verifyNoInteractions(writeLock);
     }
 
     @Test
@@ -447,6 +465,11 @@ class ShiftTemplateServiceTest {
         assertThat(response.skippedOutsideSchedule()).isZero();
         assertThat(response.shifts()).extracting(shift -> shift.templateSlotId())
                 .containsExactly(70L, 71L, 70L);
+
+        var order = inOrder(writeLock, templateSlotRepository);
+        order.verify(writeLock).lockTemplate(template);
+        order.verify(writeLock).lockSchedule(schedule);
+        order.verify(templateSlotRepository).findByShiftTemplate_IdOrderByDayOffsetAscStartTimeAsc(50L);
 
         ArgumentCaptor<Shift> captor = ArgumentCaptor.forClass(Shift.class);
         verify(shiftRepository, times(3)).save(captor.capture());

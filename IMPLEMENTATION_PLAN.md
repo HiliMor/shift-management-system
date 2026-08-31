@@ -57,8 +57,12 @@ messaging disabled. They run separately using `mvn verify -Ppostgres-it`; normal
 - 4.3a (complete): require client versions for shift edits, return saved versions,
   and map optimistic-lock failures to `409 STALE_VERSION`. Verify the API and
   Postman contract, rollback, authorization, and concurrent same-version edits.
-- 4.3b (pending): address remaining stale deletions, template/slot creation and
-  deletion versus generation, and expected pessimistic-lock/timeout responses.
+- 4.3b (complete): coordinate template creation/deletion and slot creation with
+  generation, refresh deleted templates after waiting, and return explicit
+  conflicts for expected pessimistic-lock/timeout failures.
+- 4.3c (pending): finish stale-delete preconditions for destructive API actions,
+  including changes to child records, and missing-row handling in request
+  workflows. Define the required client contract and adapt callers together.
   Completing the earlier increments does not close part 4 or protect every API
   write path. Shift editing UI remains a separate requirement in part 9.
 
@@ -166,8 +170,36 @@ messaging disabled. They run separately using `mvn verify -Ppostgres-it`; normal
   stale bodies. Existing callers must add the required field and review current
   data after a conflict. No migration, frontend, demo-data, or submission-document
   change is needed for this increment. MockMvc tests are not browser/JWT tests.
-- Next increment: 4.3b, remaining stale deletions, template lifecycle conflicts,
-  and explicit handling of expected pessimistic-lock/timeout errors.
+- Part 4.3b (2026-08-31): current template mutations now reuse the team lock.
+  Creation checks normalized-name uniqueness after locking; slot creation,
+  deletion, and generation refresh the template after waiting. Generation also
+  retains target-schedule locking and draft validation. Read-only listing takes
+  no write lock, and different teams can create templates independently.
+- Part 4.3b baseline: nine of eleven PostgreSQL scenarios failed before the fix:
+  duplicate-name and foreign-key errors, a stale repeated delete, three missing
+  serialization cases, and a real lock timeout returning `500` instead of `409`.
+  Repeated generation and independent creation in another team already passed.
+- Part 4.3b focused verification passed 40 unit tests and 40 PostgreSQL scenarios.
+  Deletion-first returns `404`; generation-first prevents deletion with `409`.
+  Slot creation before generation is included; adding a slot afterwards requires
+  another generation call, which skips existing occurrences. Removing the last
+  using draft permits waiting template deletion. The lock-timeout HTTP test
+  preserves templates, slots, and the other transaction's committed shifts.
+- Part 4.3b full regression: `mvn -B -Ppostgres-it clean verify` passed 272 unit
+  tests and 97 PostgreSQL integration scenarios, with no failures or skipped
+  tests. Temporary test containers were removed; the development database was
+  not used or changed. No browser verification was needed for this backend-only
+  increment.
+- Expected Spring/JPA pessimistic-lock and lock-timeout failures now map to
+  `409 CONCURRENT_MODIFICATION`. No blanket handling of integrity errors or
+  automatic write retry was added. The two-second database lock timeout belongs
+  only to the test fixture; production settings were not changed. No migration,
+  request DTO, frontend, seed data, or submission documents were changed.
+- Boundary: current template writes are coordinated, but deletions still act on
+  current state without a client-version precondition. Individual slot editing/
+  deletion APIs remain planned in part 9. Demo and future team/role writers must
+  join the protocol separately. Part 4 is not yet complete.
+- Next increment: 4.3c, stale-delete preconditions and request missing-row handling.
 
 ## Working Sources
 

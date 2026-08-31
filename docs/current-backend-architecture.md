@@ -553,9 +553,10 @@ revalidates under write locks, even if a previous readiness report was successfu
 `ScheduleWriteLock` requires an existing service transaction. It acquires the
 same team row lock as `SwapRequestLock`, then refreshes entities loaded before
 waiting. Schedule publication/reopening/deletion, shift creation/editing/deletion,
-manual/automatic assignment, assignment deletion, and template generation all
-participate. This deliberately serializes writes to different schedules within
-one team. Different teams can proceed independently unless they share employees.
+manual/automatic assignment, assignment deletion, template creation/deletion,
+slot creation, and template generation all participate. This deliberately
+serializes these writes within one team. Different teams can proceed independently
+unless they share employees.
 
 The order is team, any needed shifts in ID order, then employees in ID order.
 Publication needs the team and assigned-employee locks; the team lock already
@@ -572,10 +573,38 @@ request at execution without changing owners; execution first keeps the complete
 transfer/swap when the schedule is reopened.
 
 Client versions now protect shift edits as described below. Deletions do not yet
-require a client version. Remaining template/slot lifecycle races and expected
-pessimistic-lock/timeout HTTP mapping remain in part 4.3. Demo writes and future
+require a client version. Remaining stale-delete preconditions and missing-row
+handling in request workflows remain in part 4.3c. Demo writes and future
 team/member/role mutations need their own planned work; no all-writers guarantee
-is claimed for them.
+is claimed for them. Spring/JPA pessimistic-lock failures and lock timeouts map
+to `409 CONCURRENT_MODIFICATION`. Other database errors are not blanket-mapped
+to conflicts, and writes are not automatically retried. Production timeout
+settings are unchanged; a short database timeout is configured only in the
+template integration tests to exercise the HTTP error path.
+
+### Template Write Coordination
+
+`ShiftTemplateService` reuses `ScheduleWriteLock.lockTeam` for name uniqueness
+checks and `lockTemplate` for slot creation, deletion, and generation.
+`lockTemplate` takes the team write lock, then refreshes the template without
+another row lock: participating mutations already serialize through the team.
+Generation also refreshes the target schedule and rechecks draft status before
+reading slots. Reads remain read-only, without write locks.
+
+Deletion checks current shift references under the lock. A competing generation
+committed first makes the template used (`409`); deletion committed first makes
+waiting operations return `404` on refresh, before inserting dependent records.
+Duplicate creation checks the trimmed name after the team lock, producing `409`
+without falling through to a database unique-constraint error. Different teams
+do not share that lock or name uniqueness scope.
+
+Slot creation and generation serialize. A slot committed before generation is
+included; a slot added afterwards needs another generation call. The repeat call
+skips existing occurrences. Template deletion cascades its unused slots, but does
+not yet require a version from the client. This is coordination between current
+API writes, not protection against every stale destructive decision. New slot
+editing/deletion APIs, demo writes, and future metadata writers must follow the
+same protocol when implemented.
 
 ### Shift Editing
 
@@ -959,7 +988,7 @@ flowchart LR
 | `request` | Transfer and swap request model, request statuses, transfer/swap creation, employee and manager scoped request lists, target employee approval/rejection, manager approval, requester cancellation, team-scoped write coordination through `SwapRequestLock`, and atomic approved request execution through `SwapRequestExecutor`. |
 | `availability` | Employee unavailable time ranges; create/delete operations share the employee write lock with assignment creation and transfer/swap execution before conflict checks or deletion. |
 | `staffing` | Team-specific professional roles, role create/list API, employee role assignment/list API, and persistence for assigning roles to team members. |
-| `template` | Shift template and template slot persistence model, manager-scoped create/list APIs, and template-based shift generation into draft schedules. |
+| `template` | Shift template and template slot persistence model, manager-scoped create/list/delete APIs, and template-based shift generation into draft schedules. Current mutations reuse the shared team lock and refresh templates after waiting. |
 | `messaging` | Event outbox persistence, event creation, scheduled outbox dispatch, and JMS message shape. |
 | `notification` | Personal notifications, unread count, mark-as-read behavior, JMS event consumption, schedule-published notification creation, and idempotent notification creation. |
 | Flyway migrations | Versioned PostgreSQL schema changes. |

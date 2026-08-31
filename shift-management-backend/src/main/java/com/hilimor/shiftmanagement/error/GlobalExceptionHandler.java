@@ -7,11 +7,14 @@ import com.hilimor.shiftmanagement.assignment.AssignmentValidationException;
 
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.persistence.OptimisticLockException;
+import jakarta.persistence.LockTimeoutException;
+import jakarta.persistence.PessimisticLockException;
 import jakarta.validation.ConstraintViolationException;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.dao.OptimisticLockingFailureException;
+import org.springframework.dao.PessimisticLockingFailureException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.HttpStatusCode;
 import org.springframework.http.ResponseEntity;
@@ -30,6 +33,12 @@ public class GlobalExceptionHandler {
     ResponseEntity<ApiErrorResponse> handleStaleVersion(Exception exception, HttpServletRequest request) {
         return buildResponse(HttpStatus.CONFLICT, "STALE_VERSION",
                 "This record has changed. Reload it and review your changes before saving again.", request);
+    }
+
+    @ExceptionHandler({PessimisticLockingFailureException.class, PessimisticLockException.class, LockTimeoutException.class})
+    ResponseEntity<ApiErrorResponse> handleConcurrentModification(Exception exception, HttpServletRequest request) {
+        return buildResponse(HttpStatus.CONFLICT, "CONCURRENT_MODIFICATION",
+                "Another operation is using this data. Reload it and try again.", request);
     }
 
     @ExceptionHandler(AssignmentValidationException.class)

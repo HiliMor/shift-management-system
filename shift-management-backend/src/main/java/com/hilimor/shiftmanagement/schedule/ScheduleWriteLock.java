@@ -5,6 +5,8 @@ import java.util.List;
 
 import com.hilimor.shiftmanagement.assignment.Assignment;
 import com.hilimor.shiftmanagement.shift.Shift;
+import com.hilimor.shiftmanagement.team.Team;
+import com.hilimor.shiftmanagement.template.ShiftTemplate;
 import com.hilimor.shiftmanagement.user.User;
 
 import jakarta.persistence.EntityManager;
@@ -27,9 +29,18 @@ public class ScheduleWriteLock {
         this.entityManager = entityManager;
     }
 
-    public void lockSchedule(Schedule schedule) {
+    public void lockTeam(Team team) {
         // Match request execution: team first, then shifts, then employees. Hold until commit.
-        refresh(schedule.getTeam(), LockModeType.PESSIMISTIC_WRITE, "Team not found");
+        refresh(team, LockModeType.PESSIMISTIC_WRITE, "Team not found");
+    }
+
+    public void lockTemplate(ShiftTemplate template) {
+        lockTeam(template.getTeam());
+        refresh(template, LockModeType.NONE, "Template not found");
+    }
+
+    public void lockSchedule(Schedule schedule) {
+        lockTeam(schedule.getTeam());
         refresh(schedule, LockModeType.NONE, "Schedule not found");
     }
 

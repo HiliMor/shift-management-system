@@ -70,6 +70,7 @@ public class ShiftTemplateService {
             CreateShiftTemplateRequest request
     ) {
         Team team = managedTeam(username, teamId);
+        writeLock.lockTeam(team);
         ShiftTemplate shiftTemplate = new ShiftTemplate(
                 team,
                 request.name(),
@@ -101,6 +102,7 @@ public class ShiftTemplateService {
     @Transactional
     public void deleteTemplate(String username, Long templateId) {
         ShiftTemplate shiftTemplate = managedTemplate(username, templateId);
+        writeLock.lockTemplate(shiftTemplate);
 
         if (shiftRepository.existsByTemplateSlot_ShiftTemplate_Id(templateId)) {
             throw new ResponseStatusException(
@@ -120,6 +122,7 @@ public class ShiftTemplateService {
             CreateTemplateSlotRequest request
     ) {
         ShiftTemplate shiftTemplate = managedTemplate(username, templateId);
+        writeLock.lockTemplate(shiftTemplate);
         validateDayOffsetInsideTemplateCycle(shiftTemplate, request.dayOffset());
         StaffingRole requiredStaffingRole = requiredStaffingRole(shiftTemplate, request.requiredStaffingRoleId());
 
@@ -161,6 +164,7 @@ public class ShiftTemplateService {
         if (!Objects.equals(schedule.getTeam().getId(), shiftTemplate.getTeam().getId())) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Template must belong to the schedule team");
         }
+        writeLock.lockTemplate(shiftTemplate);
         writeLock.lockSchedule(schedule);
         if (schedule.getStatus() != ScheduleStatus.DRAFT) {
             throw new ResponseStatusException(HttpStatus.CONFLICT, "Template shifts can be generated only for draft schedules");

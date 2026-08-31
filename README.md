@@ -38,6 +38,7 @@ Implemented:
 - Shift template and template slot persistence model.
 - Manager template create/list endpoints.
 - Manager safe template deletion for unused templates.
+- Template creation/deletion, slot creation, and generation coordinate through the team lock; deleted templates return `404` and used/duplicate templates return `409`. Expected database lock failures return `409 CONCURRENT_MODIFICATION`.
 - Manager template slot create/list endpoints.
 - Manager template shift generation endpoint.
 - Availability constraint persistence model.

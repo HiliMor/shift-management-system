@@ -6,6 +6,8 @@ import java.lang.reflect.Method;
 import java.util.stream.Stream;
 
 import jakarta.persistence.OptimisticLockException;
+import jakarta.persistence.LockTimeoutException;
+import jakarta.persistence.PessimisticLockException;
 
 import com.hilimor.shiftmanagement.assignment.AssignmentValidationException;
 
@@ -13,6 +15,8 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.MethodSource;
 import org.springframework.core.MethodParameter;
+import org.springframework.dao.CannotAcquireLockException;
+import org.springframework.dao.PessimisticLockingFailureException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.orm.ObjectOptimisticLockingFailureException;
@@ -45,6 +49,26 @@ class GlobalExceptionHandlerTest {
     static Stream<Exception> optimisticConflicts() {
         return Stream.of(new ObjectOptimisticLockingFailureException("Internal entity", 2L),
                 new OptimisticLockException("Internal persistence details"));
+    }
+
+    @ParameterizedTest
+    @MethodSource("lockConflicts")
+    void lockFailureReturnsConflictWithoutExposingDatabaseDetails(Exception exception) {
+        ResponseEntity<ApiErrorResponse> response = handler.handleConcurrentModification(exception,
+                request("DELETE", "/api/templates/2"));
+
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.CONFLICT);
+        assertThat(response.getBody()).isNotNull();
+        assertThat(response.getBody().code()).isEqualTo("CONCURRENT_MODIFICATION");
+        assertThat(response.getBody().message()).isEqualTo("Another operation is using this data. Reload it and try again.");
+        assertThat(response.getBody().path()).isEqualTo("/api/templates/2");
+    }
+
+    static Stream<Exception> lockConflicts() {
+        return Stream.of(new CannotAcquireLockException("Internal SQL"),
+                new PessimisticLockingFailureException("Internal SQL"),
+                new PessimisticLockException("Internal entity"),
+                new LockTimeoutException("Internal entity"));
     }
 
     @Test

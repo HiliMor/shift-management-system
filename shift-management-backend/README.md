@@ -55,6 +55,7 @@ Implemented:
 - Template slot create endpoint: `POST /api/templates/{templateId}/slots`.
 - Template slot list endpoint: `GET /api/templates/{templateId}/slots`.
 - Template shift generation endpoint: `POST /api/templates/{templateId}/generate`.
+- Template writes share the team lock: duplicate names, deletion, slot creation, and generation are checked against refreshed committed state.
 - Initial availability constraint domain model.
 - Availability constraint creation endpoint: `POST /api/availability-constraints`.
 - Personal availability constraint list endpoint: `GET /api/availability-constraints/me`.
@@ -187,7 +188,16 @@ Common error codes:
 - `UNAUTHORIZED` - authentication is missing or invalid.
 - `FORBIDDEN` - the authenticated user is not allowed to perform the action.
 - `NOT_FOUND` - the requested resource is not visible or does not exist.
+- `STALE_VERSION` (`409`) - a submitted edit version is outdated; reload and review the current fields before saving.
+- `CONCURRENT_MODIFICATION` (`409`) - a Spring/JPA pessimistic-lock failure or lock timeout prevented the operation; reload and retry deliberately.
 - Business validation codes such as `SHIFT_OVERLAP`, `SHIFT_CAPACITY`, `MINIMUM_REST`, `TEAM_MEMBERSHIP`, and `STAFFING_ROLE_REQUIRED`.
+
+The lock-error handler does not catch every database error. Unrelated integrity
+errors and unexpected exceptions still use the server-error path; unique-name
+and template-reference conflicts are prevented by coordinated checks rather
+than relabeled indiscriminately. There is no automatic write retry. Production
+database timeout settings are unchanged; the two-second `lock_timeout` used by
+`TemplateConcurrencyIT` applies only to its disposable test database connections.
 
 ## Authentication Endpoints
 
@@ -568,6 +578,22 @@ curl -X DELETE http://localhost:8080/api/templates/1 \
 Only managers of the template's team can delete it. Deleting a template also
 deletes its template slots. A template that is referenced by existing shifts
 returns `409 Conflict` and is kept.
+
+Template creation locks the team before checking the normalized name. Two
+concurrent creations of the same name in one team produce one template and one
+`409`; the same name is allowed in different teams. Slot creation, template
+deletion, and generation acquire that team lock and refresh the template before
+using it. Locks last until commit/rollback. Read-only listing takes no write lock.
+
+If deletion commits first, a waiting generation, slot creation, or repeated
+deletion returns `404 Template not found`. If generation commits first, deletion
+sees the generated shifts and returns `409` without deleting the template or
+slots. Deleting the last draft that uses the template permits a later deletion.
+Adding a slot before generation includes it in that run; adding it after
+generation does not retroactively change existing shifts. Generate again to add
+its occurrences while skipping those already created. Deletion still acts on
+current state, not a client-supplied version; stale-screen deletion preconditions
+remain separate work in roadmap part 4.3c.
 
 Publish a draft schedule:
 
@@ -1615,13 +1641,27 @@ these are not login/JWT or browser tests. Unit checks also cover version compari
 after refresh, flush-before-response ordering, and optimistic-conflict error mapping.
 
 This is not a complete concurrency protocol for every API. Client versions now
-protect shift edits; deletions do not yet require an expected version. Remaining
-template/slot lifecycle races and expected pessimistic-lock/timeout HTTP mapping
-remain in part 4.3 of `../IMPLEMENTATION_PLAN.md`. Spring and JPA optimistic-lock
-failures map to `409 STALE_VERSION`; unrelated unexpected errors remain `500`.
+protect shift edits; deletions do not yet require an expected version. Existing
+template create/delete, slot creation, and generation now coordinate with each
+other and with draft writes. Individual slot editing/deletion endpoints are not
+implemented yet; future lifecycle controls must join this protocol. Remaining
+stale-delete preconditions and request missing-row handling are in part 4.3c of
+`../IMPLEMENTATION_PLAN.md`. Spring/JPA optimistic-lock failures map to
+`409 STALE_VERSION`; expected pessimistic-lock/timeout failures map to
+`409 CONCURRENT_MODIFICATION`. Unrelated unexpected errors remain `500`.
 Future team/member/role writes must join the protocol when implemented; demo
 initialization is handled separately in part 5. The shift version column already
 exists; this API change needs no migration or new JMS event type.
+
+`TemplateConcurrencyIT` adds eleven PostgreSQL scenarios. They cover duplicate
+names, deletion before generation/slot creation/duplicate deletion, generation
+before deletion, both slot-creation/generation orders, repeated generation,
+removing the last using draft, independent creation in another team, and a real
+lock timeout through MockMvc. Stored templates, slots, and shifts are checked.
+The timeout test returns `409` and preserves the other transaction's generated
+shifts; it uses test authentication, not a login/JWT or browser flow. Two new
+lock-helper tests verify template refresh ordering and missing-template handling;
+four error-handler cases cover Spring/JPA lock exception variants.
 
 ## Important Notes
 

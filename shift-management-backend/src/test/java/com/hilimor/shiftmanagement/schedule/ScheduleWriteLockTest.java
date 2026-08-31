@@ -14,6 +14,7 @@ import java.util.List;
 import com.hilimor.shiftmanagement.assignment.Assignment;
 import com.hilimor.shiftmanagement.shift.Shift;
 import com.hilimor.shiftmanagement.team.Team;
+import com.hilimor.shiftmanagement.template.ShiftTemplate;
 import com.hilimor.shiftmanagement.user.User;
 
 import jakarta.persistence.EntityManager;
@@ -45,6 +46,32 @@ class ScheduleWriteLockTest {
         var order = inOrder(entityManager);
         order.verify(entityManager).refresh(team, LockModeType.PESSIMISTIC_WRITE);
         order.verify(entityManager).refresh(schedule, LockModeType.NONE);
+    }
+
+    @Test
+    void locksTeamBeforeReloadingTemplate() {
+        ShiftTemplate template = mock(ShiftTemplate.class);
+        when(template.getTeam()).thenReturn(team);
+
+        writeLock.lockTemplate(template);
+
+        var order = inOrder(entityManager);
+        order.verify(entityManager).refresh(team, LockModeType.PESSIMISTIC_WRITE);
+        order.verify(entityManager).refresh(template, LockModeType.NONE);
+    }
+
+    @Test
+    void reportsTemplateDeletedWhileWaitingAsNotFound() {
+        ShiftTemplate template = mock(ShiftTemplate.class);
+        when(template.getTeam()).thenReturn(team);
+        doNothing().when(entityManager).refresh(team, LockModeType.PESSIMISTIC_WRITE);
+        doThrow(new EntityNotFoundException()).when(entityManager).refresh(template, LockModeType.NONE);
+
+        assertThatThrownBy(() -> writeLock.lockTemplate(template))
+                .isInstanceOfSatisfying(ResponseStatusException.class, exception -> {
+                    assertThat(exception.getStatusCode()).isEqualTo(HttpStatus.NOT_FOUND);
+                    assertThat(exception.getReason()).isEqualTo("Template not found");
+                });
     }
 
     @Test
