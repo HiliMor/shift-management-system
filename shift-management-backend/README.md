@@ -25,6 +25,7 @@ Implemented:
 - Authenticated current-user endpoint: `GET /api/auth/me`.
 - Managed teams endpoint: `GET /api/teams/me/managed`.
 - Managed team employee endpoint: `GET /api/teams/{teamId}/employees`.
+- Employee creation endpoint: `POST /api/teams/{teamId}/employees`, restricted to that team's managers.
 - CORS support for the local React development server.
 - Initial schedule domain model.
 - Schedule creation endpoint: `POST /api/schedules`.
@@ -112,8 +113,41 @@ Implemented:
 
 Not implemented yet:
 
-- Schedule list, update, and delete endpoints.
+- Full manager team/member administration and schedule metadata updates.
 - Remaining team-scoped authorization for future manager workflows.
+
+## Employee Creation
+
+`POST /api/teams/{teamId}/employees` creates a new account, its active team
+membership, and optional staffing-role links in one transaction. The account
+is always `EMPLOYEE`; clients cannot choose `MANAGER`. No migration or demo
+reset is needed. Restart an already-running backend to load this endpoint.
+
+The JSON body contains `username`, `password`, `fullName`, optional `email`,
+and optional `staffingRoleIds` (an array of existing role IDs in this team).
+The username is case-sensitive, 3-100 ASCII letters/digits/dots/underscores/
+hyphens and starts with a letter or digit. The full name may contain Hebrew.
+The password requires at least 8 characters and at most 72 UTF-8 bytes; it is
+stored using BCrypt and is never returned in the response. Full names are
+limited to 200 characters and email to 255; blank email becomes null.
+
+Success returns `201` with the normal employee-list response shape (including
+role IDs/names, but no password/hash). The new employee can immediately log in
+using the supplied credentials. The manager must share those credentials
+privately; invitation email, password reset/change, and mandatory first-login
+password replacement are not implemented in this bounded course-project flow.
+
+Invalid input or a role outside this team returns `400`; unauthenticated access
+returns `401`, access by a non-manager or another team's manager returns `403`,
+and an existing username returns `409`. The database unique key also handles
+concurrent duplicate submissions. Failed creation leaves no partial membership.
+This endpoint does not add existing accounts to another team, edit employees,
+create teams/roles, or emit team-join JMS events.
+
+Postman: use **Teams / Create Team Employee**, after manager login and selecting
+`teamId`. Fill `newEmployeeUsername` and the secret `newEmployeePassword` locally;
+both are deliberately blank in the repository environment. Never commit real
+passwords/tokens. Focused database tests: `mvn -B -Ppostgres-it -Dit.test=TeamEmployeeIT verify`.
 
 ## Requirements
 

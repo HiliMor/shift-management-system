@@ -49,6 +49,7 @@ function AppShell({
               ) : null}
             </a>
           ) : null}
+          {isManager ? <a href="#team-employees">{t("teamEmployees")}</a> : null}
           <a href="#transfer-requests">
             {t("transferRequests")}
             {transferRequestCount > 0 ? <span className="nav-count">{transferRequestCount}</span> : null}

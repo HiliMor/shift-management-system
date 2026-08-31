@@ -74,6 +74,7 @@ function useManagerScheduling(
   const [isLoadingAssignmentShifts, setIsLoadingAssignmentShifts] = useState(false);
   const [assignmentShiftsError, setAssignmentShiftsError] = useState("");
   const [teamEmployees, setTeamEmployees] = useState([]);
+  const [teamEmployeesRefreshKey, setTeamEmployeesRefreshKey] = useState(0);
   const [isLoadingTeamEmployees, setIsLoadingTeamEmployees] = useState(false);
   const [teamEmployeesError, setTeamEmployeesError] = useState("");
   const [scheduleAssignments, setScheduleAssignments] = useState([]);
@@ -195,11 +196,13 @@ function useManagerScheduling(
 
     setIsLoadingStaffingRoles(true);
     setStaffingRolesError("");
+    let active = true;
 
     listStaffingRoles(session.accessToken, selectedDraftSchedule.teamId)
-      .then(setStaffingRoles)
-      .catch((error) => onApiError(error, setStaffingRolesError))
-      .finally(() => setIsLoadingStaffingRoles(false));
+      .then((roles) => { if (active) setStaffingRoles(roles); })
+      .catch((error) => { if (active) onApiError(error, setStaffingRolesError); })
+      .finally(() => { if (active) setIsLoadingStaffingRoles(false); });
+    return () => { active = false; };
   }, [selectedDraftSchedule, session]);
 
   useEffect(() => {
@@ -212,9 +215,11 @@ function useManagerScheduling(
 
     setIsLoadingAssignmentShifts(true);
     setAssignmentShiftsError("");
+    let active = true;
 
     listShifts(session.accessToken, assignmentForm.scheduleId)
       .then((shifts) => {
+        if (!active) return;
         setAssignmentShifts(shifts);
         setAssignmentForm((current) => {
           const currentShiftExists = shifts.some((shift) => shift.id.toString() === current.shiftId);
@@ -225,23 +230,27 @@ function useManagerScheduling(
           };
         });
       })
-      .catch((error) => onApiError(error, setAssignmentShiftsError))
-      .finally(() => setIsLoadingAssignmentShifts(false));
+      .catch((error) => { if (active) onApiError(error, setAssignmentShiftsError); })
+      .finally(() => { if (active) setIsLoadingAssignmentShifts(false); });
+    return () => { active = false; };
   }, [assignmentForm.scheduleId, assignmentRefreshKey, session]);
 
   useEffect(() => {
     if (!session?.accessToken || !selectedAssignmentSchedule) {
       setTeamEmployees([]);
       setTeamEmployeesError("");
+      setIsLoadingTeamEmployees(false);
       setAssignmentForm((current) => ({ ...current, employeeId: "" }));
       return;
     }
 
     setIsLoadingTeamEmployees(true);
     setTeamEmployeesError("");
+    let active = true;
 
     listTeamEmployees(session.accessToken, selectedAssignmentSchedule.teamId)
       .then((employees) => {
+        if (!active) return;
         setTeamEmployees(employees);
         setAssignmentForm((current) => {
           const currentEmployeeExists = employees.some((employee) => employee.id.toString() === current.employeeId);
@@ -252,9 +261,10 @@ function useManagerScheduling(
           };
         });
       })
-      .catch((error) => onApiError(error, setTeamEmployeesError))
-      .finally(() => setIsLoadingTeamEmployees(false));
-  }, [selectedAssignmentSchedule, session]);
+      .catch((error) => { if (active) onApiError(error, setTeamEmployeesError); })
+      .finally(() => { if (active) setIsLoadingTeamEmployees(false); });
+    return () => { active = false; };
+  }, [selectedAssignmentSchedule, session, teamEmployeesRefreshKey]);
 
   useEffect(() => {
     if (!session?.accessToken || !assignmentForm.scheduleId) {
@@ -265,11 +275,13 @@ function useManagerScheduling(
 
     setIsLoadingScheduleAssignments(true);
     setScheduleAssignmentsError("");
+    let active = true;
 
     listScheduleAssignments(session.accessToken, assignmentForm.scheduleId)
-      .then(setScheduleAssignments)
-      .catch((error) => onApiError(error, setScheduleAssignmentsError))
-      .finally(() => setIsLoadingScheduleAssignments(false));
+      .then((assignments) => { if (active) setScheduleAssignments(assignments); })
+      .catch((error) => { if (active) onApiError(error, setScheduleAssignmentsError); })
+      .finally(() => { if (active) setIsLoadingScheduleAssignments(false); });
+    return () => { active = false; };
   }, [assignmentForm.scheduleId, assignmentRefreshKey, session]);
 
   function refreshDraftSchedules() {
@@ -459,6 +471,15 @@ function useManagerScheduling(
     setCreatedAssignment(null);
   }
 
+  function clearShiftFeedback() {
+    setCreatedShift(null);
+    setShiftCreationError("");
+    setCreatedAssignment(null);
+    setAssignmentCreationError("");
+    setAssignmentActionError("");
+    setAssignmentActionMessage("");
+  }
+
   async function handleCreateAssignment(event) {
     event.preventDefault();
     setIsCreatingAssignment(true);
@@ -577,6 +598,7 @@ function useManagerScheduling(
     handleScheduleFormChange,
     handleShiftFormChange,
     clearCreatedAssignment,
+    clearShiftFeedback,
     isCreatingAssignment,
     isCreatingSchedule,
     isCreatingShift,
@@ -593,6 +615,7 @@ function useManagerScheduling(
     managedTeamsError,
     refreshAssignmentData,
     refreshDraftSchedules,
+    refreshTeamEmployees: () => setTeamEmployeesRefreshKey((current) => current + 1),
     resetManagerScheduling,
     scheduleAssignments,
     scheduleAssignmentsError,

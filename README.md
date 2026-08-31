@@ -22,6 +22,7 @@ Implemented:
 - JWT login and authenticated API access.
 - Users, teams, team members, and team managers.
 - Managed team employee listing.
+- Manager creation of new employee accounts with active membership in an owned team and optional existing staffing roles. Creation is atomic, passwords are hashed, and duplicate usernames return `409`.
 - Draft schedule creation.
 - Manager-only draft schedule deletion, including its shifts and assignments.
 - Draft/template deletion shows a fresh confirmation preview and requires its revision; changed child records return `409` without deletion. Drafts with transfer/swap request history cannot be deleted.
@@ -96,11 +97,14 @@ Frontend:
 - Published schedule list loaded from `GET /api/schedules/me/published`.
 - Published schedule details loaded from `GET /api/schedules/me/published/{scheduleId}`.
 - Shift and assignment display for selected published schedules.
+- Published schedules support Sunday-first weekly/monthly calendars and a list. Employees can filter all three views to their own shifts without hiding coworkers assigned to the same shift.
 - Employee availability constraint screen connected to create, list, and delete APIs.
 - Managed team list loaded from `GET /api/teams/me/managed`.
+- Team employees - manager-only creation form for a name, username, password, optional email, and optional team roles. Successful creation refreshes the employee list used for manual assignment.
 - Manager draft schedule creation connected to `POST /api/schedules`.
 - Managed draft schedule list loaded from `GET /api/schedules/me/managed/drafts`.
 - Manager shift creation connected to `POST /api/schedules/{scheduleId}/shifts`.
+- Managers can edit or delete existing shifts in the draft's build step. Edits send the viewed version; deletion confirms current shift details and assignment count using a fresh preview revision.
 - Manager manual assignment screen connected to `POST /api/assignments`.
 - Assignment screen loads draft schedule shifts, team employees, and existing schedule assignments.
 - Manager automatic assignment screen connected to `POST /api/schedules/{scheduleId}/auto-assign`.

@@ -128,8 +128,32 @@ export function listShifts(token, scheduleId) {
   return request(`/api/schedules/${scheduleId}/shifts`, { token });
 }
 
+export function updateShift(token, scheduleId, shiftId, shift) {
+  return request(`/api/schedules/${scheduleId}/shifts/${shiftId}`, {
+    method: "PUT", token, body: JSON.stringify(shift),
+  });
+}
+
+export function getShiftDeletionPreview(token, scheduleId, shiftId) {
+  return request(`/api/schedules/${scheduleId}/shifts/${shiftId}/deletion-preview`, {
+    token, cache: "no-store",
+  });
+}
+
+export function deleteShift(token, scheduleId, shiftId, revision) {
+  return request(`/api/schedules/${scheduleId}/shifts/${shiftId}?revision=${encodeURIComponent(revision)}`, {
+    method: "DELETE", token,
+  });
+}
+
 export function listTeamEmployees(token, teamId) {
   return request(`/api/teams/${teamId}/employees`, { token });
+}
+
+export function createTeamEmployee(token, teamId, employee) {
+  return request(`/api/teams/${teamId}/employees`, {
+    method: "POST", token, body: JSON.stringify(employee),
+  });
 }
 
 export function listScheduleAssignments(token, scheduleId) {

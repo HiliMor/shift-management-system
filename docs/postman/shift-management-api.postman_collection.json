@@ -278,6 +278,31 @@
           "response": []
         },
         {
+          "name": "Create Team Employee",
+          "event": [{
+            "listen": "test",
+            "script": {"type": "text/javascript", "exec": [
+              "if (pm.response.code === 201) pm.environment.set('createdEmployeeId', pm.response.json().id);"
+            ]}
+          }],
+          "request": {
+            "method": "POST",
+            "description": "Sign in as a manager of teamId. Set newEmployeeUsername and newEmployeePassword locally before sending. Username: 3-100 ASCII letters/digits/dots/underscores/hyphens, starting with a letter or digit. Password: at least 8 characters and at most 72 UTF-8 bytes. Creates an EMPLOYEE with active team membership; staffingRoleIds may contain existing role IDs from this team or be empty. Duplicate username returns 409. This is a write operation, not an idempotent setup request. Do not export real passwords or tokens.",
+            "header": [{"key": "Content-Type", "value": "application/json"}],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"username\": \"{{newEmployeeUsername}}\",\n  \"password\": \"{{newEmployeePassword}}\",\n  \"fullName\": \"New Employee\",\n  \"email\": null,\n  \"staffingRoleIds\": []\n}",
+              "options": {"raw": {"language": "json"}}
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/teams/{{teamId}}/employees",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "teams", "{{teamId}}", "employees"]
+            }
+          },
+          "response": []
+        },
+        {
           "name": "List Team Employees",
           "event": [
             {

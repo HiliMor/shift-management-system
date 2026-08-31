@@ -790,6 +790,63 @@ nav a:hover,
   gap: 14px;
 }
 
+.personal-shifts-filter {
+  align-items: center;
+  display: flex;
+  gap: 8px;
+}
+
+.personal-shifts-filter input {
+  min-height: 0;
+  width: 18px;
+  height: 18px;
+  accent-color: #206a5d;
+}
+
+.published-view-toggle {
+  flex-wrap: wrap;
+}
+
+.monthly-calendar-scroll {
+  overflow-x: auto;
+  max-width: 100%;
+}
+
+.monthly-calendar {
+  display: grid;
+  grid-template-columns: repeat(7, minmax(135px, 1fr));
+  gap: 4px;
+}
+
+.month-weekday {
+  font-size: 0.85rem;
+  font-weight: 700;
+  padding: 8px;
+  text-align: center;
+}
+
+.calendar-day.month-day {
+  min-height: 120px;
+  min-width: 135px;
+  border-radius: 4px;
+}
+
+.month-day .calendar-day-heading {
+  padding: 5px 8px;
+  font-size: 0.85rem;
+}
+
+.month-day .calendar-day-content {
+  gap: 5px;
+  padding: 5px;
+}
+
+.calendar-shift-compact {
+  padding: 6px;
+  font-size: 0.78rem;
+  gap: 4px;
+}
+
 .calendar-toolbar {
   align-items: center;
   display: flex;
@@ -1011,6 +1068,79 @@ nav a:hover,
   flex-wrap: wrap;
   gap: 8px;
   margin-inline-start: auto;
+}
+
+.managed-shift-list {
+  max-height: 420px;
+  overflow-y: auto;
+}
+
+.managed-shift-row {
+  align-items: center;
+  border-bottom: 1px solid #e1e6ef;
+  display: flex;
+  gap: 16px;
+  justify-content: space-between;
+  padding: 12px 0;
+}
+
+.managed-shift-row p {
+  margin: 4px 0;
+}
+
+.managed-shift-row small {
+  color: #66758b;
+}
+
+.managed-shift-row .row-actions {
+  flex-shrink: 0;
+}
+
+.shift-edit-form {
+  border-block: 1px solid #cbd5e1;
+  margin-bottom: 16px;
+  padding-block: 16px;
+}
+
+.shift-edit-form fieldset,
+.employee-create-form fieldset {
+  border: 0;
+  margin: 0;
+  min-width: 0;
+  padding: 0;
+}
+
+.employee-create-form {
+  border-block: 1px solid #e1e6ef;
+  margin-block: 18px;
+  padding-block: 16px;
+}
+
+.employee-create-form .shift-form > label:nth-child(3) {
+  grid-column: auto;
+}
+
+.employee-create-form .employee-role-options,
+.employee-create-form .section-actions {
+  grid-column: 1 / -1;
+}
+
+.employee-role-options {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+
+.employee-role-options label {
+  align-items: center;
+  display: flex;
+  gap: 6px;
+}
+
+.employee-role-options input {
+  width: 18px;
+  height: 18px;
+  min-height: 18px;
 }
 
 .assignment-guidance {

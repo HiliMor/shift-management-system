@@ -1,9 +1,12 @@
 import { useEffect, useState } from "react";
 import { useLanguage } from "../i18n/LanguageContext.jsx";
 import WeeklyScheduleCalendar from "./WeeklyScheduleCalendar.jsx";
+import MonthlyScheduleCalendar from "./MonthlyScheduleCalendar.jsx";
 import { groupShiftsByDate } from "../utils/shiftGroups.js";
+import { personalShifts } from "../utils/calendarDates.js";
 
 function ScheduleDetailsSection({
+  currentUserId,
   detailsError,
   formatDate,
   formatDateTime,
@@ -13,26 +16,30 @@ function ScheduleDetailsSection({
 }) {
   const { t } = useLanguage();
   const [viewMode, setViewMode] = useState("calendar");
-  const shiftGroups = selectedScheduleDetails
-    ? groupShiftsByDate(selectedScheduleDetails.shifts, formatDate)
-    : [];
+  const [onlyMine, setOnlyMine] = useState(false);
+  const hasCurrentDetails = selectedScheduleDetails && String(selectedScheduleDetails.schedule.id) === String(selectedScheduleId);
+  const allShifts = hasCurrentDetails ? selectedScheduleDetails.shifts : [];
+  const visibleShifts = onlyMine && currentUserId != null ? personalShifts(allShifts, currentUserId) : allShifts;
+  const shiftGroups = groupShiftsByDate(visibleShifts, formatDate);
+  const viewLabels = { calendar: "weeklyCalendar", month: "monthlyCalendar", list: "listView" };
 
   useEffect(() => {
     setViewMode("calendar");
-  }, [selectedScheduleId]);
+    setOnlyMine(false);
+  }, [selectedScheduleId, currentUserId]);
 
   return (
     <section className="section-block" id="schedule-details">
       <div className="section-heading">
         <h2>{t("scheduleDetails")}</h2>
-        <span>{selectedScheduleDetails?.shifts?.length ?? 0}</span>
+        <span>{visibleShifts.length}</span>
       </div>
 
       {!selectedScheduleId ? <p className="muted">{t("selectPublishedSchedule")}</p> : null}
       {isLoadingDetails ? <p className="muted">{t("loadingScheduleDetails")}</p> : null}
       {detailsError ? <p className="error-message">{detailsError}</p> : null}
 
-      {selectedScheduleDetails && !isLoadingDetails ? (
+      {hasCurrentDetails && !isLoadingDetails ? (
         <div className="details-stack">
           <div className="details-summary">
             <div>
@@ -52,37 +59,35 @@ function ScheduleDetailsSection({
             </div>
           </div>
 
-          {selectedScheduleDetails.shifts.length === 0 ? (
-            <p className="muted">{t("noShifts")}</p>
+          {visibleShifts.length === 0 ? (
+            <p className="muted" role="status">{t(onlyMine ? "noPersonalShifts" : "noShifts")}</p>
           ) : null}
 
           <div className="details-view-toolbar">
             <div>
               <p className="eyebrow">{t("shiftDisplay")}</p>
-              <strong>{viewMode === "calendar" ? t("weeklyCalendar") : t("listView")}</strong>
+              <strong>{t(viewLabels[viewMode])}</strong>
             </div>
-            <div className="view-toggle" role="group" aria-label={t("shiftDisplay")}>
-              <button
-                aria-pressed={viewMode === "calendar"}
-                className={viewMode === "calendar" ? "active-view-button" : "secondary-button"}
-                onClick={() => setViewMode("calendar")}
-                type="button"
-              >
-                {t("calendarView")}
-              </button>
-              <button
-                aria-pressed={viewMode === "list"}
-                className={viewMode === "list" ? "active-view-button" : "secondary-button"}
-                onClick={() => setViewMode("list")}
-                type="button"
-              >
-                {t("listView")}
-              </button>
+            {currentUserId != null ? (
+              <label className="personal-shifts-filter">
+                <input type="checkbox" checked={onlyMine} onChange={(event) => setOnlyMine(event.target.checked)} />
+                {t("onlyMyShifts")}
+              </label>
+            ) : null}
+            <div className="view-toggle published-view-toggle" role="group" aria-label={t("shiftDisplay")}>
+              {Object.entries(viewLabels).map(([mode, label]) => (
+                <button key={mode} aria-pressed={viewMode === mode}
+                  className={viewMode === mode ? "active-view-button" : "secondary-button"}
+                  onClick={() => setViewMode(mode)} type="button">{t(label)}</button>
+              ))}
             </div>
           </div>
 
           {viewMode === "calendar" ? (
-            <WeeklyScheduleCalendar schedule={selectedScheduleDetails.schedule} shifts={selectedScheduleDetails.shifts} />
+            <WeeklyScheduleCalendar schedule={selectedScheduleDetails.schedule} shifts={visibleShifts} />
+          ) : viewMode === "month" ? (
+            <MonthlyScheduleCalendar key={`${selectedScheduleId}-${selectedScheduleDetails.schedule.startDate}-${selectedScheduleDetails.schedule.endDate}`}
+              schedule={selectedScheduleDetails.schedule} shifts={visibleShifts} />
           ) : (
             <div className="shift-day-list">
               {shiftGroups.map((group) => (

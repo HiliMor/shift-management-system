@@ -4,6 +4,7 @@ import AssignEmployeePanel from "./manager/AssignEmployeePanel.jsx";
 import AutomaticAssignmentPanel from "./manager/AutomaticAssignmentPanel.jsx";
 import CreateSchedulePanel from "./manager/CreateSchedulePanel.jsx";
 import CreateShiftPanel from "./manager/CreateShiftPanel.jsx";
+import ManageShiftsPanel from "./manager/ManageShiftsPanel.jsx";
 import SchedulePublicationPanel from "./manager/SchedulePublicationPanel.jsx";
 import ShiftTemplatePanel from "./manager/ShiftTemplatePanel.jsx";
 
@@ -20,6 +21,8 @@ function managerActionMessageLabel(message, t) {
 }
 
 function ManagerActionsSection({
+  shiftEditing,
+  onRefreshShifts,
   automaticAssignmentError,
   automaticAssignmentForm,
   automaticAssignmentMessage,
@@ -271,6 +274,15 @@ function ManagerActionsSection({
 
             {activeWorkflowStep === "build" ? (
               <>
+                {selectedDraftSchedule ? (
+                  <ManageShiftsPanel
+                    scheduleId={selectedDraftScheduleId} shifts={assignmentShifts}
+                    isLoading={isLoadingAssignmentShifts || assignmentForm.scheduleId !== selectedDraftScheduleId}
+                    loadError={assignmentShiftsError} editor={shiftEditing} onRefresh={onRefreshShifts}
+                    staffingRoles={staffingRoles} staffingRolesError={staffingRolesError}
+                    isLoadingStaffingRoles={isLoadingStaffingRoles} formatDateTime={formatDateTime}
+                  />
+                ) : null}
                 <ShiftTemplatePanel
                   draftSchedulesError={draftSchedulesError}
                   assignmentShifts={assignmentShifts}

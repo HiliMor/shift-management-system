@@ -25,11 +25,11 @@ complete. Any scope reduction needs an explicit decision and instructor approval
 | 3 | Complete | Validate existing assignments when changing shift times, roles, rest, or capacity; reject invalid edits. Readiness and publication recheck assignment validity even when unfilled shifts are explicitly allowed. PostgreSQL tests verify rollback and no publication event on failure. | `Schedule validation:` |
 | 4 | Complete | Current workflow APIs coordinate availability versus assignment, publication/reopening versus writes, and stale edits/deletions. PostgreSQL tests verify the shared locking order and expected conflict/missing-row responses. Demo initialization and future write APIs remain in their own parts below. | `Workflow concurrency:` |
 | 5 | Complete | Demo initialization is opt-in and only creates an empty database. PostgreSQL tests verify that repeated starts preserve transfers, deletions, manual/edited data, and partial databases; failures roll back and concurrent initializers create one scenario. | `Demo initialization:` |
-| 6 | Pending | Complete manager team-member and staffing-role management, including the minimum user onboarding needed by that screen. Implement API first, then UI in separate commits; enforce team ownership and preserve existing history when removing membership. | `Team management:` |
+| 6 | Partial | New employee creation with active membership and optional existing team roles is implemented in API/UI. Existing-account membership, member editing/removal, team/role administration UI, and history-preserving removal remain open. | `Team management:` |
 | 7 | Pending | Add private manager notes for employees and shifts. Verify that employee APIs and UI never expose them. | `Manager notes:` |
 | 8 | Pending | Implement recurring employee assignment series, distinct from shift-template generation. Preview occurrences and report per-occurrence validation failures without invalid partial assignments. Split persistence/API/UI into separate commits as needed. | `Recurring assignments:` |
-| 9 | Pending | Complete manager shift editing/deletion in the UI and review template/slot lifecycle controls against the approved workflow. Make unsupported edits explicit rather than requiring Postman for normal management. | `Manager editing:` |
-| 10 | Pending | Complete monthly calendar and personal-shift filtering. Reconcile approved read-only access to other teams' published schedules with explicit backend authorization; never expose drafts or private notes. | `Schedule viewing:` |
+| 9 | Partial | Manager shift editing/deletion UI is implemented and verified with component fixtures and existing API tests. Template/slot lifecycle controls still require review against the approved workflow. | `Manager editing:` |
+| 10 | Partial | Monthly calendar and personal-shift filtering are implemented and verified. Approved read-only access to other teams' published schedules still needs explicit backend authorization; current access rules are unchanged. | `Schedule viewing:` |
 | 11 | Pending | Add JMS-backed request-status and team-join notifications. Verify outbox atomicity, retries/idempotence, correct recipients, and meaningful localized UI messages. Test broker interruption and document actual redelivery/DLQ behavior. | `Notification lifecycle:` |
 | 12 | Pending | Verify and simplify end-to-end UI flows: selected schedule consistency, stale async responses, action/error feedback, empty states, and responsive Hebrew/English layouts. Refactor only where it helps these workflows. | `Frontend workflow:` |
 | 13 | Pending | Correct installation/runtime requirements and update all three submission documents, diagrams, screenshots, and class/function explanations to match tested behavior. Keep the user guide concise and separate from demo setup. | `Submission documentation:` |
@@ -302,6 +302,77 @@ separately using `mvn verify -Ppostgres-it`; normal
   development data, running user servers, or local submission files were changed.
   Browser behavior and live JMS recovery were not retested in this backend-only
   increment. Next: part 6, starting with the manager team/member management API.
+
+### Submission Timebox: Parts 9 And 10
+
+On 2026-08-31, with approximately two hours until submission, the user requested
+as much verified progress as feasible within an hour. Two bounded frontend
+increments were prioritized ahead of larger new backend workflows. This does
+not remove or mark complete any remaining approved requirement.
+
+- Part 10.1: published schedules now offer weekly, monthly, and list views.
+  The monthly view uses six Sunday-first weeks, handles partial months and year
+  boundaries, and limits navigation to months in the schedule. Employees can
+  filter by their user ID across all three views; other assignees on the same
+  shift remain visible. Empty personal results have a distinct message.
+- Part 9.1: the manager build step lists existing draft shifts with edit/delete
+  controls. A shared form covers start/end, description, capacity, rest, and role.
+  Editing keeps the version and untouched instants from the opened record.
+  Deletion loads a fresh preview and confirms identity, dates, and assignment
+  count before sending its revision. Neither conflict is retried automatically.
+  Successful changes refresh shifts, assignments, and publication readiness.
+- Editor state is scoped to the current login/draft. Late editor responses are
+  ignored after context changes; superseded shift, role, and assignment list
+  responses are also ignored. This is not completion of all part 12 async work.
+- Verification: 16 frontend tests passed, including API-contract checks with
+  mocked fetch. Calendar/edit-time tests also passed in America/New_York and
+  Asia/Jerusalem. The production frontend build passed.
+- Desktop browser checks used actual components/hooks with synthetic data and
+  mocked edit/delete responses, not the development database. They covered
+  Hebrew/English viewing, monthly boundaries, leap February, personal filtering,
+  selectable weekly shifts, edit/cancel/save, stale-version rejection, reload
+  recovery, draft switching, and deletion cancellation/confirmation.
+- Backend regression: `mvn -B -Ppostgres-it -Dit.test=ShiftEditingIT,DeletionPreconditionIT verify`
+  passed 279 unit tests and 43 PostgreSQL integration tests with no failures or
+  skips. The first sandboxed Mockito run could not attach to the JVM; rerunning
+  outside the sandbox passed. No backend production code or migration changed.
+- Boundaries: authenticated browser end-to-end and live JMS recovery were not
+  rerun. The browser fixture does not prove production login/integration. No
+  development records or running user servers were changed. Calendar times
+  remain browser-local; overnight shifts appear on their start date. Template
+  editing, cross-team viewing, parts 6-8/11, and final submission verification
+  remain open. No additional mobile-specific work was done after the user's
+  request to focus on desktop.
+
+### Submission Timebox: Employee Onboarding
+
+On 2026-08-31 the user requested a minimal employee-creation increment, bounded
+to roughly twenty minutes rather than full team administration.
+
+- Part 6.1: managers can create a new EMPLOYEE in one of their managed teams,
+  with a username, initial password, full name, optional email, and optional
+  existing team roles. User/membership/role creation is transactional. The
+  database username constraint handles concurrent duplicate requests; passwords
+  are BCrypt-hashed and excluded from response DTOs and request `toString()`.
+- A separate `TeamEmployeesSection` and `useTeamEmployees` provide the bilingual
+  form and employee list. Successful creation refreshes assignment candidates.
+  Team changes reset the form/feedback and ignore obsolete list responses.
+- Six PostgreSQL integration tests passed: creation and real JWT login,
+  optional roles/email and trimming, input validation including BCrypt's byte
+  limit, unauthorized requests, invalid/cross-team roles without partial data,
+  and concurrent duplicate usernames (one `201`, one `409`).
+- Frontend checks include the authenticated POST contract and isolated desktop
+  browser exercises with actual components/hooks and mocked API responses.
+  All 17 frontend tests, the frontend production build, and 279 existing backend
+  unit tests passed. The six new integration tests ran with no failures/skips.
+  Those browser fixtures do not replace an authenticated browser end-to-end
+  run against the live backend. The development database was not modified.
+- Postman and README instructions include the new endpoint. No migration,
+  seed reset, new dependency, or user-server restart was performed.
+- This does not complete part 6 or part 11: existing-user enrollment, member
+  editing/removal, manager account creation, invitation email, password
+  reset/change, and team-join JMS events remain out of scope. Initial credentials
+  are supplied by the manager and must be shared privately.
 
 ## Working Sources
 

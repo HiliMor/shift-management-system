@@ -8,6 +8,7 @@ import ManagerActionsSection from "./components/ManagerActionsSection.jsx";
 import PublishedSchedulesSection from "./components/PublishedSchedulesSection.jsx";
 import ScheduleDetailsSection from "./components/ScheduleDetailsSection.jsx";
 import TransferRequestsSection from "./components/TransferRequestsSection.jsx";
+import TeamEmployeesSection from "./components/TeamEmployeesSection.jsx";
 import useAvailabilityConstraints from "./hooks/useAvailabilityConstraints.js";
 import useAutomaticAssignment from "./hooks/useAutomaticAssignment.js";
 import useEmployeeProfile from "./hooks/useEmployeeProfile.js";
@@ -16,6 +17,7 @@ import useNotifications from "./hooks/useNotifications.js";
 import usePublishedSchedules from "./hooks/usePublishedSchedules.js";
 import useSchedulePublication from "./hooks/useSchedulePublication.js";
 import useShiftTemplates from "./hooks/useShiftTemplates.js";
+import useShiftEditing from "./hooks/useShiftEditing.js";
 import useTransferRequests from "./hooks/useTransferRequests.js";
 import { useLanguage } from "./i18n/LanguageContext.jsx";
 
@@ -163,6 +165,7 @@ function App() {
     handleScheduleFormChange,
     handleShiftFormChange,
     clearCreatedAssignment,
+    clearShiftFeedback,
     isCreatingAssignment,
     isCreatingSchedule,
     isCreatingShift,
@@ -179,6 +182,7 @@ function App() {
     managedTeamsError,
     refreshAssignmentData,
     refreshDraftSchedules,
+    refreshTeamEmployees,
     resetManagerScheduling,
     scheduleAssignments,
     scheduleAssignmentsError,
@@ -203,6 +207,12 @@ function App() {
     handleApiError,
     handleManagerScheduleContentChanged,
   );
+
+  const shiftEditing = useShiftEditing(session, isManager ? selectedDraftScheduleId : "", () => {
+    refreshAssignmentData();
+    refreshPublicationReadiness();
+    clearShiftFeedback();
+  }, handleApiError);
 
   const {
     availabilityActionError,
@@ -444,6 +454,7 @@ function App() {
           />
 
           <ScheduleDetailsSection
+            currentUserId={session.user.id}
             detailsError={detailsError}
             formatDate={formatDate}
             formatDateTime={formatDateTime}
@@ -503,6 +514,8 @@ function App() {
 
       {isManager ? (
         <ManagerActionsSection
+          shiftEditing={shiftEditing}
+          onRefreshShifts={refreshAssignmentData}
           automaticAssignmentError={automaticAssignmentError}
           automaticAssignmentForm={automaticAssignmentForm}
           automaticAssignmentMessage={automaticAssignmentMessage}
@@ -622,6 +635,10 @@ function App() {
           selectedScheduleDetails={selectedManagedPublishedScheduleDetails}
           selectedScheduleId={selectedManagedPublishedScheduleId}
         />
+      ) : null}
+      {isManager ? (
+        <TeamEmployeesSection token={session.accessToken} teams={managedTeams} teamsError={managedTeamsError}
+          isLoadingTeams={isLoadingManagedTeams} onCreated={refreshTeamEmployees} onApiError={handleApiError} />
       ) : null}
     </AppShell>
   );
